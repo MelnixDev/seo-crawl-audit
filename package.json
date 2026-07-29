@@ -1,0 +1,46 @@
+{
+  "name": "seo-regression-guard",
+  "version": "0.1.0",
+  "description": "Local-first CLI for SEO audits, resumable crawls, HTML reports, and regression checks.",
+  "type": "module",
+  "bin": {
+    "seo-guard": "./bin/seo-guard.js"
+  },
+  "files": [
+    "bin",
+    "examples",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check bin/seo-guard.js && node --check src/cli.js && node --test"
+  },
+  "keywords": [
+    "seo",
+    "seo-audit",
+    "crawler",
+    "regression-testing",
+    "sitemap",
+    "html-report",
+    "cli",
+    "ci"
+  ],
+  "author": "MelnixDev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MelnixDev/seo-regression-guard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MelnixDev/seo-regression-guard/issues"
+  },
+  "homepage": "https://github.com/MelnixDev/seo-regression-guard#readme",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "dependencies": {
+    "parse5": "^8.0.0"
+  }
+}

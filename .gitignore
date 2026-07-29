@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+coverage/
+*.log
+*.checkpoint.ndjson
+.seo-guard.json
+seo-guard-report.html
+*-baseline.json
+*-seo-report.html

@@ -1,0 +1,155 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { createServer } from "node:http";
+import { once } from "node:events";
+import { mkdtemp, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { main, parseScanMenuSelection } from "../src/cli.js";
+
+test("scan creates a baseline and check fails on a new noindex", async (context) => {
+  let noindex = false;
+  const server = createServer((request, response) => {
+    if (request.url === "/robots.txt") {
+      response.writeHead(200, { "content-type": "text/plain" });
+      response.end("User-agent: *\nAllow: /\n");
+      return;
+    }
+
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end(`
+      <html>
+        <head>
+          <title>Stable title</title>
+          <meta name="robots" content="${noindex ? "noindex,follow" : "index,follow"}">
+          <link rel="canonical" href="/">
+        </head>
+        <body><h1>Home</h1></body>
+      </html>
+    `);
+  });
+
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  context.after(() => server.close());
+
+  const directory = await mkdtemp(join(tmpdir(), "seo-guard-test-"));
+  const baseline = join(directory, "baseline.json");
+  const address = server.address();
+  const url = `http://127.0.0.1:${address.port}/`;
+  const originalLog = console.log;
+  console.log = () => {};
+  context.after(() => {
+    console.log = originalLog;
+  });
+
+  const scanExitCode = await main([
+    "scan",
+    url,
+    "--output",
+    baseline,
+    "--max-pages",
+    "5",
+  ]);
+  noindex = true;
+  const checkExitCode = await main([
+    "check",
+    url,
+    "--baseline",
+    baseline,
+    "--max-pages",
+    "5",
+  ]);
+
+  assert.equal(scanExitCode, 0);
+  assert.equal(checkExitCode, 1);
+});
+
+test("--version prints the package version", async (context) => {
+  const messages = [];
+  const originalLog = console.log;
+  console.log = (message) => messages.push(message);
+  context.after(() => {
+    console.log = originalLog;
+  });
+
+  assert.equal(await main(["--version"]), 0);
+  assert.deepEqual(messages, ["0.1.0"]);
+});
+
+test("parses interactive scan menu choices and custom limits", () => {
+  assert.deepEqual(parseScanMenuSelection("", 500), {
+    mode: "fixed",
+    target: 100,
+  });
+  assert.deepEqual(parseScanMenuSelection("all", 500), {
+    mode: "all",
+    target: 500,
+  });
+  assert.deepEqual(parseScanMenuSelection("3", 500), {
+    mode: "step",
+    target: 500,
+  });
+  assert.deepEqual(parseScanMenuSelection("250", 500), {
+    mode: "fixed",
+    target: 250,
+  });
+  assert.equal(parseScanMenuSelection("invalid", 500), null);
+});
+
+test("--all scans every URL from a discovered sitemap", async (context) => {
+  let origin;
+  const server = createServer((request, response) => {
+    if (request.url === "/robots.txt") {
+      response.writeHead(200, { "content-type": "text/plain" });
+      response.end(`User-agent: *\nSitemap: ${origin}/sitemap.xml\n`);
+      return;
+    }
+
+    if (request.url === "/sitemap.xml") {
+      response.writeHead(200, { "content-type": "application/xml" });
+      response.end(`
+        <urlset>
+          <url><loc>${origin}/</loc></url>
+          <url><loc>${origin}/first</loc></url>
+          <url><loc>${origin}/second</loc></url>
+        </urlset>
+      `);
+      return;
+    }
+
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end(`
+      <title>${request.url}</title>
+      <meta name="description" content="Description">
+      <link rel="canonical" href="${request.url}">
+      <h1>Page</h1>
+    `);
+  });
+
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  context.after(() => server.close());
+
+  const address = server.address();
+  origin = `http://127.0.0.1:${address.port}`;
+  const directory = await mkdtemp(join(tmpdir(), "seo-guard-all-test-"));
+  const baselinePath = join(directory, "baseline.json");
+  const originalLog = console.log;
+  console.log = () => {};
+  context.after(() => {
+    console.log = originalLog;
+  });
+
+  const exitCode = await main([
+    origin,
+    "--all",
+    "--output",
+    baselinePath,
+  ]);
+  const baseline = JSON.parse(await readFile(baselinePath, "utf8"));
+
+  assert.equal(exitCode, 0);
+  assert.equal(baseline.pages.length, 3);
+  assert.equal(baseline.truncated, false);
+});
