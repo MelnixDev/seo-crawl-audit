@@ -8,7 +8,7 @@ import {
   normalizeUrl,
 } from "./urls.js";
 
-const DEFAULT_USER_AGENT = "seo-regression-guard/0.1.0";
+const DEFAULT_USER_AGENT = "seo-crawl-audit/0.1.0";
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
 const MAX_ROBOTS_BYTES = 512 * 1024;
 

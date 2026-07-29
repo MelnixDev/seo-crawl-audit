@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-const cliPath = join(projectRoot, "bin", "seo-guard.js");
+const cliPath = join(projectRoot, "bin", "seo-audit.js");
 
 async function waitFor(check, timeout = 5_000) {
   const startedAt = Date.now();
@@ -59,7 +59,7 @@ test("interrupted scan leaves a report and resumes without refetching saved page
   context.after(() => server.close());
   origin = `http://127.0.0.1:${server.address().port}`;
 
-  const directory = await mkdtemp(join(tmpdir(), "seo-guard-resume-"));
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-resume-"));
   const baselinePath = join(directory, "baseline.json");
   const checkpointPath = join(directory, "baseline.checkpoint.ndjson");
   const reportPath = join(directory, "report.html");

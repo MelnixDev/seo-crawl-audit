@@ -3,6 +3,9 @@ node_modules/
 coverage/
 *.log
 *.checkpoint.ndjson
+.seo-audit.json
+seo-audit-report.html
+# Ignore files created by the pre-release command name as well.
 .seo-guard.json
 seo-guard-report.html
 *-baseline.json

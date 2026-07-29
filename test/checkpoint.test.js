@@ -11,7 +11,7 @@ import {
 } from "../src/checkpoint.js";
 
 test("checkpoint resumes saved pages and resets for another source", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "seo-guard-checkpoint-"));
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-checkpoint-"));
   const path = join(directory, "scan.checkpoint.ndjson");
   const source = {
     startUrl: "https://example.com/",
@@ -55,8 +55,8 @@ test("checkpoint resumes saved pages and resets for another source", async () =>
 
 test("derives a nearby hidden-friendly checkpoint path", () => {
   assert.equal(
-    checkpointPathForOutput("/tmp/.seo-guard.json"),
-    "/tmp/.seo-guard.checkpoint.ndjson",
+    checkpointPathForOutput("/tmp/.seo-audit.json"),
+    "/tmp/.seo-audit.checkpoint.ndjson",
   );
   assert.equal(
     checkpointPathForOutput("/tmp/custom"),

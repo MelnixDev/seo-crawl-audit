@@ -1,10 +1,11 @@
-# SEO Regression Guard
+# SEO Crawl Audit
 
-`seo-guard` is a local-first command-line crawler that finds current on-page SEO
+`seo-audit` is a local-first command-line crawler that finds current on-page SEO
 problems and detects accidental SEO regressions after a site changes.
 
-It needs no account, API key, browser extension, or hosted dashboard. Scan
-results stay on your computer in readable JSON and self-contained HTML files.
+It is free and open-source software released under the MIT License. It needs no
+account, API key, browser extension, or hosted dashboard. Scan results stay on
+your computer in readable JSON and self-contained HTML files.
 
 ## What you get
 
@@ -23,17 +24,17 @@ results stay on your computer in readable JSON and self-contained HTML files.
 Node.js 20.19 or newer is required.
 
 ```bash
-git clone https://github.com/MelnixDev/seo-regression-guard.git
-cd seo-regression-guard
+git clone https://github.com/MelnixDev/seo-crawl-audit.git
+cd seo-crawl-audit
 npm install
 npm link
 ```
 
-After linking, `seo-guard` can be run from any directory:
+After linking, `seo-audit` can be run from any directory:
 
 ```bash
-seo-guard --version
-seo-guard --help
+seo-audit --version
+seo-audit --help
 ```
 
 ## Five-minute demo
@@ -43,7 +44,7 @@ made for crawler practice. It is unrelated to this project and keeps the demo
 small and reproducible.
 
 ```bash
-seo-guard scan https://quotes.toscrape.com/ \
+seo-audit scan https://quotes.toscrape.com/ \
   --no-sitemap \
   --pages 10 \
   --output quotes-baseline.json \
@@ -61,7 +62,7 @@ the filters.
 Run a fresh comparison later:
 
 ```bash
-seo-guard check https://quotes.toscrape.com/ \
+seo-audit check https://quotes.toscrape.com/ \
   --baseline quotes-baseline.json \
   --pages 10 \
   --report quotes-changes.html
@@ -69,22 +70,22 @@ seo-guard check https://quotes.toscrape.com/ \
 
 ## Commands
 
-### `seo-guard <url>`
+### `seo-audit <url>`
 
-A shortcut for `seo-guard scan <url>`.
+A shortcut for `seo-audit scan <url>`.
 
 ```bash
-seo-guard https://example.com/
+seo-audit https://example.com/
 ```
 
-### `seo-guard scan <url>`
+### `seo-audit scan <url>`
 
 Crawls a site, audits its current SEO state, and saves a baseline.
 
 ```bash
-seo-guard scan https://example.com/
-seo-guard scan https://example.com/ --pages 250
-seo-guard scan https://example.com/ --all
+seo-audit scan https://example.com/
+seo-audit scan https://example.com/ --pages 250
+seo-audit scan https://example.com/ --all
 ```
 
 By default, the command:
@@ -93,8 +94,8 @@ By default, the command:
 2. looks for a declared sitemap;
 3. tries `/sitemap.xml` and `/sitemap_index.xml` when needed;
 4. shows an interactive scan-size menu when a sitemap is found;
-5. saves the baseline to `.seo-guard.json`;
-6. creates `seo-guard-report.html` in an interactive terminal.
+5. saves the baseline to `.seo-audit.json`;
+6. creates `seo-audit-report.html` in an interactive terminal.
 
 The menu offers the first 100 pages, the whole sitemap, batches of 100 with
 confirmation, or any positive number entered by the user. `--pages` and `--all`
@@ -103,14 +104,14 @@ skip that menu.
 If no sitemap is found, the interactive command asks for its full URL. Pressing
 Enter instead starts a same-origin internal-link crawl.
 
-### `seo-guard check [url]`
+### `seo-audit check [url]`
 
 Crawls the site again and compares it with a saved baseline.
 
 ```bash
-seo-guard check
-seo-guard check https://preview.example.com/
-seo-guard check --baseline production-seo.json --strict
+seo-audit check
+seo-audit check https://preview.example.com/
+seo-audit check --baseline production-seo.json --strict
 ```
 
 When `url` is omitted, the source URL stored in the baseline is used. Supplying
@@ -120,19 +121,19 @@ deployment; same-path page and canonical URLs are mapped between the origins.
 An error-level regression returns exit code `1`. Warnings also return `1` when
 `--strict` is enabled.
 
-### `seo-guard report [baseline]`
+### `seo-audit report [baseline]`
 
 Builds a new HTML audit report from an existing baseline without crawling or
 making network requests.
 
 ```bash
-seo-guard report
-seo-guard report quotes-baseline.json
-seo-guard report quotes-baseline.json --report quotes-report.html
+seo-audit report
+seo-audit report quotes-baseline.json
+seo-audit report quotes-baseline.json --report quotes-report.html
 ```
 
-The default input is `.seo-guard.json`, and the default output is
-`seo-guard-report.html`.
+The default input is `.seo-audit.json`, and the default output is
+`seo-audit-report.html`.
 
 ## HTML report
 
@@ -157,8 +158,8 @@ Interactive `scan` and `check` commands create the default report automatically.
 For scripts or CI, request one explicitly:
 
 ```bash
-seo-guard scan https://example.com/ --report audit.html
-seo-guard check --report regressions.html
+seo-audit scan https://example.com/ --report audit.html
+seo-audit check --report regressions.html
 ```
 
 Use `--no-report` when an HTML file is not needed.
@@ -166,10 +167,10 @@ Use `--no-report` when an HTML file is not needed.
 ## Resume cache and interrupted scans
 
 `scan` stores completed page results in an append-only checkpoint beside the
-baseline. For the default `.seo-guard.json` output, its name is:
+baseline. For the default `.seo-audit.json` output, its name is:
 
 ```text
-.seo-guard.checkpoint.ndjson
+.seo-audit.checkpoint.ndjson
 ```
 
 The checkpoint contains extracted SEO results and discovered links, not full
@@ -177,7 +178,7 @@ page HTML. Each completed request batch is appended immediately. If the process
 is stopped, run the same compatible scan command again:
 
 ```bash
-seo-guard https://example.com/ --all
+seo-audit https://example.com/ --all
 ```
 
 The command reports how many pages were recovered and skips those URLs. A cache
@@ -191,7 +192,7 @@ interrupted. Checkpoint files are excluded by the included `.gitignore`.
 To deliberately make every request without reading or writing a checkpoint:
 
 ```bash
-seo-guard https://example.com/ --pages 100 --no-cache
+seo-audit https://example.com/ --pages 100 --no-cache
 ```
 
 `check` never reuses the scan checkpoint because regression detection must
@@ -229,9 +230,9 @@ are worth reviewing but do not fail a normal check.
 ## Options
 
 ```text
---baseline <file>       Baseline input for check (default: .seo-guard.json)
---output <file>         Baseline output for scan (default: .seo-guard.json)
---report <file>         HTML report output (default: seo-guard-report.html)
+--baseline <file>       Baseline input for check (default: .seo-audit.json)
+--output <file>         Baseline output for scan (default: .seo-audit.json)
+--report <file>         HTML report output (default: seo-audit-report.html)
 --no-report             Disable automatic HTML report generation
 --no-cache              Disable scan checkpoint caching and resume
 --pages <number>        Scan an exact number of pages
@@ -277,7 +278,7 @@ third-party service.
 Use `--json` for automation:
 
 ```bash
-seo-guard check --json
+seo-audit check --json
 ```
 
 Exit codes:
@@ -310,7 +311,7 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: node bin/seo-guard.js check https://preview.example.com/ --strict --json
+      - run: node bin/seo-audit.js check https://preview.example.com/ --strict --json
 ```
 
 Add `--report seo-regressions.html` and upload that file as a workflow artifact

@@ -33,7 +33,7 @@ test("scan creates a baseline and check fails on a new noindex", async (context)
   await once(server, "listening");
   context.after(() => server.close());
 
-  const directory = await mkdtemp(join(tmpdir(), "seo-guard-test-"));
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-test-"));
   const baseline = join(directory, "baseline.json");
   const address = server.address();
   const url = `http://127.0.0.1:${address.port}/`;
@@ -133,7 +133,7 @@ test("--all scans every URL from a discovered sitemap", async (context) => {
 
   const address = server.address();
   origin = `http://127.0.0.1:${address.port}`;
-  const directory = await mkdtemp(join(tmpdir(), "seo-guard-all-test-"));
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-all-test-"));
   const baselinePath = join(directory, "baseline.json");
   const originalLog = console.log;
   console.log = () => {};

@@ -10,7 +10,7 @@ const SCHEMA_VERSION = 1;
 
 function header(source) {
   return {
-    type: "seo-guard-checkpoint",
+    type: "seo-audit-checkpoint",
     schemaVersion: SCHEMA_VERSION,
     source,
   };
@@ -18,7 +18,7 @@ function header(source) {
 
 function isCompatible(value, source) {
   return (
-    value?.type === "seo-guard-checkpoint" &&
+    value?.type === "seo-audit-checkpoint" &&
     value.schemaVersion === SCHEMA_VERSION &&
     JSON.stringify(value.source) === JSON.stringify(source)
   );

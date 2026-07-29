@@ -25,18 +25,18 @@ import { mapUrlToBaseline, mapUrlToTarget } from "./target.js";
 import { normalizeUrl } from "./urls.js";
 
 const VERSION = "0.1.0";
-const DEFAULT_BASELINE = ".seo-guard.json";
-const DEFAULT_REPORT = "seo-guard-report.html";
+const DEFAULT_BASELINE = ".seo-audit.json";
+const DEFAULT_REPORT = "seo-audit-report.html";
 
-const HELP = `seo-guard ${VERSION}
+const HELP = `seo-audit ${VERSION}
 
-Local-first SEO regression crawler.
+Local-first SEO crawler, audit, and regression checker.
 
 Usage:
-  seo-guard <url> [options]
-  seo-guard scan <url> [options]
-  seo-guard check [url] [options]
-  seo-guard report [baseline] [options]
+  seo-audit <url> [options]
+  seo-audit scan <url> [options]
+  seo-audit check [url] [options]
+  seo-audit report [baseline] [options]
 
 Commands:
   <url>   Shortcut for scan.
@@ -45,9 +45,9 @@ Commands:
   report  Generate HTML from an existing baseline without crawling.
 
 Options:
-  --baseline <file>       Baseline file for check (default: .seo-guard.json)
-  --output <file>         Output file for scan (default: .seo-guard.json)
-  --report <file>         HTML report path (default: seo-guard-report.html)
+  --baseline <file>       Baseline file for check (default: .seo-audit.json)
+  --output <file>         Output file for scan (default: .seo-audit.json)
+  --report <file>         HTML report path (default: seo-audit-report.html)
   --no-report             Do not generate the automatic HTML report
   --no-cache              Disable scan checkpoint caching and resume
   --pages <number>        Scan an exact number of pages
@@ -301,7 +301,7 @@ async function resolveSitemap(startUrl, values, options) {
 
   const discovered = await discoverSitemapUrl(startUrl, {
     timeout: options.timeout,
-    userAgent: "seo-regression-guard/0.1.0",
+    userAgent: "seo-crawl-audit/0.1.0",
   });
   if (discovered) {
     if (!values.json) {
@@ -821,7 +821,7 @@ export async function main(args = process.argv.slice(2)) {
     console.error(`Unknown command: ${command}\n\n${HELP}`);
     return 2;
   } catch (error) {
-    console.error(`seo-guard: ${error.message}`);
+    console.error(`seo-audit: ${error.message}`);
     return 2;
   }
 }

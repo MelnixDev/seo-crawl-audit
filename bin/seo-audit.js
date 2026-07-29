@@ -7,6 +7,6 @@ main()
     process.exitCode = exitCode;
   })
   .catch((error) => {
-    console.error(`seo-guard: ${error.message}`);
+    console.error(`seo-audit: ${error.message}`);
     process.exitCode = 2;
   });

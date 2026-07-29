@@ -46,7 +46,7 @@ export function renderHtmlReport({
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${escapeHtml(reportTitle)} · SEO Regression Guard</title>
+  <title>${escapeHtml(reportTitle)} · SEO Crawl Audit</title>
   <style>
     :root {
       color-scheme: light;
@@ -218,7 +218,7 @@ export function renderHtmlReport({
   <main>
     <header>
       <div>
-        <div class="eyebrow">SEO Regression Guard</div>
+        <div class="eyebrow">SEO Crawl Audit</div>
         <h1>${escapeHtml(reportTitle)}</h1>
         <div class="meta">${escapeHtml(startUrl)}</div>
       </div>

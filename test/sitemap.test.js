@@ -39,7 +39,7 @@ test("loads page URLs from a sitemap index", async (context) => {
     siteOrigin: origin,
     maxUrls: 10,
     timeout: 5_000,
-    userAgent: "seo-regression-guard/test",
+    userAgent: "seo-crawl-audit/test",
     includeQuery: false,
   });
 
@@ -67,7 +67,7 @@ test("discovers a sitemap declared in robots.txt", async (context) => {
   const origin = `http://127.0.0.1:${address.port}`;
   const result = await discoverSitemapUrl(origin, {
     timeout: 5_000,
-    userAgent: "seo-regression-guard/test",
+    userAgent: "seo-crawl-audit/test",
   });
 
   assert.equal(result, `${origin}/custom-sitemap.xml`);
