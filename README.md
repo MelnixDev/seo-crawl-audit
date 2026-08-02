@@ -15,6 +15,7 @@ your computer in readable JSON and self-contained HTML files.
 - a live progress indicator;
 - automatic recovery after an interrupted scan without requesting completed
   pages again;
+- configurable spacing between request starts to reduce load on the site;
 - a partial HTML report that remains useful even if the process is stopped;
 - a saved baseline for later regression checks;
 - exit codes suitable for CI and pull-request checks.
@@ -239,6 +240,7 @@ are worth reviewing but do not fail a normal check.
 --all                   Scan every URL found in the sitemap
 --max-pages <number>    Deprecated alias for --pages
 --concurrency <number>  Concurrent requests (default: 5)
+--delay <ms>            Delay between request starts (default: 100)
 --timeout <ms>          Per-request timeout (default: 10000)
 --sitemap <url>         Use a specific sitemap or sitemap index
 --no-sitemap            Skip sitemap discovery and crawl internal links
@@ -258,9 +260,11 @@ in advance.
 
 ### Baseline JSON
 
-The baseline records the source configuration, sitemap and robots metadata, and
-the extracted SEO state of every scanned page. It is deterministic enough to
-review and commit when a team wants versioned regression protection.
+The baseline records the source configuration, including the request delay,
+sitemap and robots metadata, and the extracted SEO state of every scanned page.
+`check` reuses that delay unless `--delay` overrides it. The file is
+deterministic enough to review and commit when a team wants versioned regression
+protection.
 
 ### Checkpoint NDJSON
 
@@ -320,8 +324,27 @@ when a human-readable CI report is useful.
 ## Responsible crawling
 
 The crawler respects `robots.txt` by default, stays on the starting origin,
-limits concurrency to five requests, and applies a ten-second timeout. Increase
-concurrency carefully and only on sites you are allowed to test.
+starts requests at least 100 milliseconds apart, limits concurrency to five
+in-flight requests, and applies a ten-second timeout. The same request gate is
+used for `robots.txt`, sitemap discovery, sitemap files, and HTML pages.
+
+Use a longer delay for a smaller site or a server you do not control:
+
+```bash
+seo-audit https://example.com/ --delay 500
+```
+
+`--delay 500` allows at most two new request starts per second. The default
+`--delay 100` allows at most ten. A value of `0` disables the delay and is best
+reserved for a local or otherwise trusted environment:
+
+```bash
+seo-audit http://localhost:3000/ --delay 0
+```
+
+A very short value such as `--delay 10` can start up to 100 requests per second,
+so it is not a polite default for a public website. Increase concurrency or
+reduce the delay only on sites you are allowed to test.
 
 ## Current scope
 
