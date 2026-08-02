@@ -66,6 +66,7 @@ export function renderHtmlReport({
       --shadow: 0 12px 36px rgba(31, 42, 68, 0.08);
     }
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     body {
       margin: 0;
       background: var(--bg);
@@ -203,7 +204,9 @@ export function renderHtmlReport({
       color: #344054;
       font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
-    .empty { display: none; padding: 48px 20px; color: var(--muted); text-align: center; }
+    .empty { padding: 48px 20px; color: var(--muted); text-align: center; }
+    .empty strong { display: block; margin-bottom: 4px; color: var(--text); font-size: 16px; }
+    .empty button { margin-top: 14px; }
     footer { margin-top: 18px; color: var(--muted); text-align: center; }
     @media (max-width: 900px) {
       main { width: min(100% - 20px, 1440px); margin-top: 20px; }
@@ -269,14 +272,14 @@ export function renderHtmlReport({
         <span><strong>Info</strong> is useful context.</span>
       </div>
       <div class="results-bar">
-        <span id="result-count"></span>
-        <div class="pagination">
+        <span id="result-count" aria-live="polite"></span>
+        <div id="pagination" class="pagination">
           <button id="previous" type="button">Previous</button>
-          <span id="page-info"></span>
+          <span id="page-info" aria-live="polite"></span>
           <button id="next" type="button">Next</button>
         </div>
       </div>
-      <div class="table-wrap">
+      <div id="table-wrap" class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -290,7 +293,11 @@ export function renderHtmlReport({
           <tbody id="issues"></tbody>
         </table>
       </div>
-      <div id="empty" class="empty">No issues match the selected filters.</div>
+      <div id="empty" class="empty" role="status" hidden>
+        <strong id="empty-title"></strong>
+        <span id="empty-message"></span>
+        <button id="clear-filters" type="button">Clear filters</button>
+      </div>
     </section>
     <footer>Generated locally. No report data was uploaded.</footer>
   </main>
@@ -303,7 +310,12 @@ export function renderHtmlReport({
     const pageSize = document.querySelector("#page-size");
     const tbody = document.querySelector("#issues");
     const empty = document.querySelector("#empty");
+    const emptyTitle = document.querySelector("#empty-title");
+    const emptyMessage = document.querySelector("#empty-message");
+    const clearFilters = document.querySelector("#clear-filters");
+    const tableWrap = document.querySelector("#table-wrap");
     const resultCount = document.querySelector("#result-count");
+    const pagination = document.querySelector("#pagination");
     const previous = document.querySelector("#previous");
     const next = document.querySelector("#next");
     const pageInfo = document.querySelector("#page-info");
@@ -397,11 +409,22 @@ export function renderHtmlReport({
         tbody.append(row);
       }
 
-      resultCount.textContent = filtered.length.toLocaleString() + " of " + report.issues.length.toLocaleString() + " issue(s)";
+      const issueLabel = report.issues.length === 1 ? "issue" : "issues";
+      resultCount.textContent = filtered.length.toLocaleString() + " of " + report.issues.length.toLocaleString() + " " + issueLabel;
       pageInfo.textContent = "Page " + currentPage.toLocaleString() + " of " + pageCount.toLocaleString();
       previous.disabled = currentPage === 1;
       next.disabled = currentPage === pageCount;
-      empty.style.display = filtered.length === 0 ? "block" : "none";
+      pagination.hidden = filtered.length === 0 || pageCount === 1;
+      tableWrap.hidden = filtered.length === 0;
+      empty.hidden = filtered.length !== 0;
+      if (filtered.length === 0) {
+        const reportIsClean = report.issues.length === 0;
+        emptyTitle.textContent = reportIsClean ? "No SEO issues found" : "No matching issues";
+        emptyMessage.textContent = reportIsClean
+          ? "The scanned pages passed all current checks."
+          : "Try a different search or clear the selected filters.";
+        clearFilters.hidden = reportIsClean;
+      }
     }
 
     for (const element of [search, severity, rule, pageSize]) {
@@ -418,6 +441,13 @@ export function renderHtmlReport({
     });
     next.addEventListener("click", () => {
       currentPage += 1;
+      render();
+    });
+    clearFilters.addEventListener("click", () => {
+      search.value = "";
+      severity.value = "";
+      rule.value = "";
+      currentPage = 1;
       render();
     });
     render();

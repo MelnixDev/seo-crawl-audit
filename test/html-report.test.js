@@ -26,6 +26,10 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /id="page-size"/);
   assert.match(html, /id="previous"/);
   assert.match(html, /id="next"/);
+  assert.match(html, /id="clear-filters"/);
+  assert.match(html, /No SEO issues found/);
+  assert.match(html, /No matching issues/);
+  assert.match(html, /report\.issues\.length === 1 \? "issue" : "issues"/);
   assert.match(html, /SEO baseline audit/);
   assert.doesNotMatch(
     html,
