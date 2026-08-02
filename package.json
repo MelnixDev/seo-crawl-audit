@@ -4,7 +4,7 @@
   "description": "Local-first CLI for SEO audits, resumable crawls, HTML reports, and regression checks.",
   "type": "module",
   "bin": {
-    "seo-audit": "./bin/seo-audit.js"
+    "seo-audit": "bin/seo-audit.js"
   },
   "files": [
     "bin",
