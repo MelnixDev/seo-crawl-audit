@@ -56,9 +56,10 @@ This scans ten internal pages, writes a JSON baseline, and creates a filterable
 HTML report. In the current demo scan, the tool finds missing descriptions and
 canonical URLs while the pages themselves remain reachable.
 
-[View the included example report](examples/quotes-toscrape-report.html). GitHub
-may show the HTML source; download the file and open it in any browser to use
-the filters.
+[Open the interactive report demo](https://melnixdev.github.io/seo-crawl-audit/)
+or [view the included HTML file](examples/quotes-toscrape-report.html). GitHub
+shows the source of the repository file, while the Pages version can be used
+directly in a browser.
 
 Run a fresh comparison later:
 
