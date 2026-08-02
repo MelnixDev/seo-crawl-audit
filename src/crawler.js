@@ -9,7 +9,7 @@ import {
   normalizeUrl,
 } from "./urls.js";
 
-const DEFAULT_USER_AGENT = "seo-crawl-audit/0.1.1";
+const DEFAULT_USER_AGENT = "seo-crawl-audit/0.1.2";
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
 const MAX_ROBOTS_BYTES = 512 * 1024;
 

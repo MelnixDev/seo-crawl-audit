@@ -1,6 +1,6 @@
 {
   "name": "seo-crawl-audit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local-first CLI for SEO audits, resumable crawls, HTML reports, and regression checks.",
   "type": "module",
   "bin": {

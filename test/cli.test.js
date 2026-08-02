@@ -78,7 +78,7 @@ test("--version prints the package version", async (context) => {
   });
 
   assert.equal(await main(["--version"]), 0);
-  assert.deepEqual(messages, ["0.1.1"]);
+  assert.deepEqual(messages, ["0.1.2"]);
 });
 
 test("--delay rejects negative values before crawling", async (context) => {

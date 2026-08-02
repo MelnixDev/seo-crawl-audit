@@ -25,7 +25,7 @@ import {
 import { mapUrlToBaseline, mapUrlToTarget } from "./target.js";
 import { normalizeUrl } from "./urls.js";
 
-const VERSION = "0.1.1";
+const VERSION = "0.1.2";
 const DEFAULT_BASELINE = ".seo-audit.json";
 const DEFAULT_REPORT = "seo-audit-report.html";
 
@@ -321,7 +321,7 @@ async function resolveSitemap(startUrl, values, options) {
 
   const discovered = await discoverSitemapUrl(startUrl, {
     timeout: options.timeout,
-    userAgent: "seo-crawl-audit/0.1.1",
+    userAgent: "seo-crawl-audit/0.1.2",
     requestGate: options.requestGate,
   });
   if (discovered) {
