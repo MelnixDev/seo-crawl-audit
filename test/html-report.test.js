@@ -26,6 +26,8 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /id="page-size"/);
   assert.match(html, /id="previous"/);
   assert.match(html, /id="next"/);
+  assert.match(html, /<time id="generated-at" datetime="2026-07-30T00:00:00\.000Z">/);
+  assert.match(html, /Intl\.DateTimeFormat/);
   assert.match(html, /id="clear-filters"/);
   assert.match(html, /No SEO issues found/);
   assert.match(html, /No matching issues/);

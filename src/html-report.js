@@ -212,6 +212,7 @@ export function renderHtmlReport({
       main { width: min(100% - 20px, 1440px); margin-top: 20px; }
       header { display: block; }
       .cards { grid-template-columns: repeat(2, 1fr); }
+      .card:last-child { grid-column: 1 / -1; }
       .filters { grid-template-columns: 1fr; }
       .results-bar { align-items: flex-start; flex-direction: column; }
     }
@@ -225,7 +226,7 @@ export function renderHtmlReport({
         <h1>${escapeHtml(reportTitle)}</h1>
         <div class="meta">${escapeHtml(startUrl)}</div>
       </div>
-      <div class="meta">Generated ${escapeHtml(generatedAt)}</div>
+      <div class="meta">Generated <time id="generated-at" datetime="${escapeHtml(generatedAt)}">${escapeHtml(generatedAt)}</time></div>
     </header>
 
     ${partial ? `<div class="notice"><strong>Partial results.</strong> This report contains the pages saved so far. Run the same scan command again to resume without requesting them twice.</div>` : ""}
@@ -304,6 +305,7 @@ export function renderHtmlReport({
 
   <script>
     const report = ${data};
+    const generatedAt = document.querySelector("#generated-at");
     const search = document.querySelector("#search");
     const severity = document.querySelector("#severity");
     const rule = document.querySelector("#rule");
@@ -320,6 +322,14 @@ export function renderHtmlReport({
     const next = document.querySelector("#next");
     const pageInfo = document.querySelector("#page-info");
     let currentPage = 1;
+
+    const generatedDate = new Date(generatedAt.dateTime);
+    if (!Number.isNaN(generatedDate.getTime())) {
+      generatedAt.textContent = new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(generatedDate);
+    }
 
     const rules = [...new Set(report.issues.map((issue) => issue.rule))].sort();
     for (const value of rules) {
