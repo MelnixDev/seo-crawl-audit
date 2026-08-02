@@ -74,7 +74,7 @@ test("--version prints the package version", async (context) => {
   });
 
   assert.equal(await main(["--version"]), 0);
-  assert.deepEqual(messages, ["0.1.0"]);
+  assert.deepEqual(messages, ["0.1.1"]);
 });
 
 test("parses interactive scan menu choices and custom limits", () => {
