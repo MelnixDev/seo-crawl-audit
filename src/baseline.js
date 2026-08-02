@@ -27,6 +27,7 @@ export function createBaseline(scan) {
     source: {
       startUrl: scan.startUrl,
       maxPages: scan.options.maxPages,
+      requestDelay: scan.options.requestDelay,
       includeQuery: scan.options.includeQuery,
       respectRobots: scan.options.respectRobots,
       sitemap: scan.options.sitemap,

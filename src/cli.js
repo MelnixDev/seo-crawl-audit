@@ -17,6 +17,7 @@ import { compareBaselines } from "./compare.js";
 import { crawlSite, fetchPages } from "./crawler.js";
 import { writeHtmlReport } from "./html-report.js";
 import { printIssues, summarizeIssues } from "./report.js";
+import { createRequestGate } from "./request-gate.js";
 import {
   discoverSitemapUrl,
   loadSitemapUrls,
@@ -54,6 +55,7 @@ Options:
   --all                   Scan every URL found in the sitemap
   --max-pages <number>    Deprecated alias for --pages
   --concurrency <number>  Concurrent requests (default: 5)
+  --delay <ms>            Delay between request starts (default: 100)
   --timeout <ms>          Request timeout in milliseconds (default: 10000)
   --sitemap <url>         Seed the crawl from a sitemap or sitemap index
   --no-sitemap            Skip sitemap discovery and crawl internal links
@@ -82,6 +84,18 @@ function positiveInteger(value, name, fallback) {
   return parsed;
 }
 
+function nonNegativeInteger(value, name, fallback) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${name} must be a non-negative integer`);
+  }
+  return parsed;
+}
+
 function parseCliArgs(args) {
   return parseArgs({
     args,
@@ -97,6 +111,7 @@ function parseCliArgs(args) {
       all: { type: "boolean" },
       "max-pages": { type: "string" },
       concurrency: { type: "string" },
+      delay: { type: "string" },
       timeout: { type: "string" },
       sitemap: { type: "string" },
       "no-sitemap": { type: "boolean" },
@@ -147,6 +162,11 @@ function crawlerOptions(values, baseline) {
       baseline?.source.maxPages ?? 100,
     ),
     concurrency: positiveInteger(values.concurrency, "--concurrency", 5),
+    requestDelay: nonNegativeInteger(
+      values.delay,
+      "--delay",
+      baseline?.source.requestDelay ?? 100,
+    ),
     timeout: positiveInteger(values.timeout, "--timeout", 10_000),
     includeQuery:
       values["include-query"] ?? baseline?.source.includeQuery ?? false,
@@ -302,6 +322,7 @@ async function resolveSitemap(startUrl, values, options) {
   const discovered = await discoverSitemapUrl(startUrl, {
     timeout: options.timeout,
     userAgent: "seo-crawl-audit/0.1.1",
+    requestGate: options.requestGate,
   });
   if (discovered) {
     if (!values.json) {
@@ -327,6 +348,7 @@ async function scanCommand(url, values) {
 
   const output = resolve(values.output ?? DEFAULT_BASELINE);
   const options = crawlerOptions(values);
+  options.requestGate = createRequestGate(options.requestDelay);
   const normalizedStartUrl = normalizeUrl(url, undefined, {
     includeQuery: options.includeQuery,
   });
@@ -632,6 +654,7 @@ async function checkCommand(url, values) {
   const baseline = await readBaseline(baselinePath);
   const startUrl = url ?? baseline.source.startUrl;
   const options = crawlerOptions(values, baseline);
+  options.requestGate = createRequestGate(options.requestDelay);
   if (options.sitemap) {
     options.sitemap = mapUrlToTarget(
       options.sitemap,

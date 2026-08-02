@@ -5,6 +5,7 @@ import { once } from "node:events";
 import { crawlSite } from "../src/crawler.js";
 
 test("crawls same-origin HTML pages and respects robots.txt", async (context) => {
+  let requestSlots = 0;
   const server = createServer((request, response) => {
     if (request.url === "/robots.txt") {
       response.writeHead(200, { "content-type": "text/plain" });
@@ -43,6 +44,10 @@ test("crawls same-origin HTML pages and respects robots.txt", async (context) =>
   const scan = await crawlSite(startUrl, {
     maxPages: 10,
     concurrency: 2,
+    requestDelay: 0,
+    requestGate: async () => {
+      requestSlots += 1;
+    },
   });
 
   assert.equal(scan.pages.length, 3);
@@ -55,6 +60,7 @@ test("crawls same-origin HTML pages and respects robots.txt", async (context) =>
     scan.pages.find((page) => page.url.endsWith("/private")).blockedByRobots,
     true,
   );
+  assert.equal(requestSlots, 3);
 });
 
 test("reuses cached page results without requesting those URLs again", async (context) => {
@@ -81,6 +87,7 @@ test("reuses cached page results without requesting those URLs again", async (co
   const scan = await crawlSite(startUrl, {
     maxPages: 2,
     concurrency: 1,
+    requestDelay: 0,
     cachedPages: [
       {
         url: startUrl,

@@ -8,6 +8,7 @@ import {
 } from "../src/sitemap.js";
 
 test("loads page URLs from a sitemap index", async (context) => {
+  let requestSlots = 0;
   const server = createServer((request, response) => {
     response.writeHead(200, { "content-type": "application/xml" });
 
@@ -41,13 +42,18 @@ test("loads page URLs from a sitemap index", async (context) => {
     timeout: 5_000,
     userAgent: "seo-crawl-audit/test",
     includeQuery: false,
+    requestGate: async () => {
+      requestSlots += 1;
+    },
   });
 
   assert.equal(result.sitemapCount, 2);
   assert.deepEqual(result.urls, [`${origin}/first`, `${origin}/second`]);
+  assert.equal(requestSlots, 2);
 });
 
 test("discovers a sitemap declared in robots.txt", async (context) => {
+  let requestSlots = 0;
   const server = createServer((request, response) => {
     if (request.url === "/robots.txt") {
       response.writeHead(200, { "content-type": "text/plain" });
@@ -68,7 +74,11 @@ test("discovers a sitemap declared in robots.txt", async (context) => {
   const result = await discoverSitemapUrl(origin, {
     timeout: 5_000,
     userAgent: "seo-crawl-audit/test",
+    requestGate: async () => {
+      requestSlots += 1;
+    },
   });
 
   assert.equal(result, `${origin}/custom-sitemap.xml`);
+  assert.equal(requestSlots, 1);
 });

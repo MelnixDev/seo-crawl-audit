@@ -72,6 +72,8 @@ test("interrupted scan leaves a report and resumes without refetching saved page
     "--all",
     "--concurrency",
     "1",
+    "--delay",
+    "0",
     "--output",
     baselinePath,
     "--report",

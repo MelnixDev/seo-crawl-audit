@@ -30,6 +30,7 @@ function extractLocations(xml) {
 }
 
 async function fetchSitemap(url, options) {
+  await options.requestGate?.();
   const response = await fetch(url, {
     headers: {
       accept: "application/xml,text/xml,text/plain;q=0.9,*/*;q=0.1",
@@ -54,6 +55,7 @@ async function fetchSitemap(url, options) {
 
 async function isSitemapResponse(url, options) {
   try {
+    await options.requestGate?.();
     const response = await fetch(url, {
       method: "GET",
       headers: {
@@ -91,6 +93,7 @@ export async function discoverSitemapUrl(inputUrl, options) {
   const robotsUrl = new URL("/robots.txt", origin).href;
 
   try {
+    await options.requestGate?.();
     const response = await fetch(robotsUrl, {
       headers: {
         accept: "text/plain,*/*;q=0.1",

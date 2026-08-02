@@ -50,6 +50,8 @@ test("scan creates a baseline and check fails on a new noindex", async (context)
     baseline,
     "--max-pages",
     "5",
+    "--delay",
+    "0",
   ]);
   noindex = true;
   const checkExitCode = await main([
@@ -59,6 +61,8 @@ test("scan creates a baseline and check fails on a new noindex", async (context)
     baseline,
     "--max-pages",
     "5",
+    "--delay",
+    "0",
   ]);
 
   assert.equal(scanExitCode, 0);
@@ -75,6 +79,21 @@ test("--version prints the package version", async (context) => {
 
   assert.equal(await main(["--version"]), 0);
   assert.deepEqual(messages, ["0.1.1"]);
+});
+
+test("--delay rejects negative values before crawling", async (context) => {
+  const messages = [];
+  const originalError = console.error;
+  console.error = (message) => messages.push(message);
+  context.after(() => {
+    console.error = originalError;
+  });
+
+  assert.equal(
+    await main(["scan", "https://example.com/", "--delay=-1"]),
+    2,
+  );
+  assert.match(messages[0], /--delay must be a non-negative integer/);
 });
 
 test("parses interactive scan menu choices and custom limits", () => {
@@ -146,10 +165,13 @@ test("--all scans every URL from a discovered sitemap", async (context) => {
     "--all",
     "--output",
     baselinePath,
+    "--delay",
+    "0",
   ]);
   const baseline = JSON.parse(await readFile(baselinePath, "utf8"));
 
   assert.equal(exitCode, 0);
   assert.equal(baseline.pages.length, 3);
   assert.equal(baseline.truncated, false);
+  assert.equal(baseline.source.requestDelay, 0);
 });

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { extractSeoData } from "./html.js";
+import { createRequestGate } from "./request-gate.js";
 import { isAllowedByRobots, parseRobots } from "./robots.js";
 import { loadSitemapUrls } from "./sitemap.js";
 import {
@@ -42,6 +43,7 @@ async function loadRobots(startUrl, options) {
   const robotsUrl = new URL("/robots.txt", startUrl).href;
 
   try {
+    await options.requestGate();
     const response = await fetch(robotsUrl, {
       headers: {
         accept: "text/plain,*/*;q=0.1",
@@ -98,6 +100,7 @@ async function fetchPage(requestUrl, options) {
   }
 
   try {
+    await options.requestGate();
     const response = await fetch(requestUrl, {
       headers: {
         accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.1",
@@ -181,6 +184,8 @@ async function fetchPage(requestUrl, options) {
 }
 
 function withDefaults(options = {}) {
+  const requestDelay = options.requestDelay ?? 100;
+
   return {
     maxPages: options.maxPages ?? 100,
     concurrency: options.concurrency ?? 5,
@@ -190,6 +195,9 @@ function withDefaults(options = {}) {
     sitemap: options.sitemap ?? null,
     sitemapData: options.sitemapData ?? null,
     userAgent: options.userAgent ?? DEFAULT_USER_AGENT,
+    requestDelay,
+    requestGate:
+      options.requestGate ?? createRequestGate(requestDelay),
   };
 }
 
