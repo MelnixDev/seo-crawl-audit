@@ -23,6 +23,7 @@
       --shadow: 0 12px 36px rgba(31, 42, 68, 0.08);
     }
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     body {
       margin: 0;
       background: var(--bg);
@@ -160,12 +161,15 @@
       color: #344054;
       font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
-    .empty { display: none; padding: 48px 20px; color: var(--muted); text-align: center; }
+    .empty { padding: 48px 20px; color: var(--muted); text-align: center; }
+    .empty strong { display: block; margin-bottom: 4px; color: var(--text); font-size: 16px; }
+    .empty button { margin-top: 14px; }
     footer { margin-top: 18px; color: var(--muted); text-align: center; }
     @media (max-width: 900px) {
       main { width: min(100% - 20px, 1440px); margin-top: 20px; }
       header { display: block; }
       .cards { grid-template-columns: repeat(2, 1fr); }
+      .card:last-child { grid-column: 1 / -1; }
       .filters { grid-template-columns: 1fr; }
       .results-bar { align-items: flex-start; flex-direction: column; }
     }
@@ -179,7 +183,7 @@
         <h1>SEO baseline audit</h1>
         <div class="meta">https://quotes.toscrape.com/</div>
       </div>
-      <div class="meta">Generated 2026-07-29T22:47:54.589Z</div>
+      <div class="meta">Generated <time id="generated-at" datetime="2026-08-02T15:16:04.770Z">2026-08-02T15:16:04.770Z</time></div>
     </header>
 
     
@@ -226,14 +230,14 @@
         <span><strong>Info</strong> is useful context.</span>
       </div>
       <div class="results-bar">
-        <span id="result-count"></span>
-        <div class="pagination">
+        <span id="result-count" aria-live="polite"></span>
+        <div id="pagination" class="pagination">
           <button id="previous" type="button">Previous</button>
-          <span id="page-info"></span>
+          <span id="page-info" aria-live="polite"></span>
           <button id="next" type="button">Next</button>
         </div>
       </div>
-      <div class="table-wrap">
+      <div id="table-wrap" class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -247,24 +251,42 @@
           <tbody id="issues"></tbody>
         </table>
       </div>
-      <div id="empty" class="empty">No issues match the selected filters.</div>
+      <div id="empty" class="empty" role="status" hidden>
+        <strong id="empty-title"></strong>
+        <span id="empty-message"></span>
+        <button id="clear-filters" type="button">Clear filters</button>
+      </div>
     </section>
     <footer>Generated locally. No report data was uploaded.</footer>
   </main>
 
   <script>
     const report = {"mode":"scan","issues":[{"severity":"warning","rule":"missing-canonical","url":"https://quotes.toscrape.com/","message":"Page does not declare a canonical URL","after":null},{"severity":"warning","rule":"missing-description","url":"https://quotes.toscrape.com/","message":"Page does not have a meta description","after":null},{"severity":"warning","rule":"missing-canonical","url":"https://quotes.toscrape.com/author/Albert-Einstein","message":"Page does not declare a canonical URL","after":null},{"severity":"warning","rule":"missing-description","url":"https://quotes.toscrape.com/author/Albert-Einstein","message":"Page does not have a meta description","after":null},{"severity":"warning","rule":"missing-canonical","url":"https://quotes.toscrape.com/author/J-K-Rowling","message":"Page does not declare a canonical URL","after":null},{"severity":"warning","rule":"missing-description","url":"https://quotes.toscrape.com/author/J-K-Rowling","message":"Page does not have a meta description","after":null},{"severity":"warning","rule":"missing-canonical","url":"https://quotes.toscrape.com/login","message":"Page does not declare a canonical URL","after":null},{"severity":"warning","rule":"missing-description","url":"https://quotes.toscrape.com/login","message":"Page does not have a meta description","after":null},{"severity":"warning","rule":"missing-canonical","url":"https://quotes.toscrape.com/tag/abilities/page/1","message":"Page does not declare a canonical URL","after":null},{"severity":"warning","rule":"missing-description","url":"https://quotes.toscrape.com/tag/abilities/page/1","message":"Page does not have a meta description","after":null},{"severity":"warning","rule":"missing-canonical","url":"https://quotes.toscrape.com/tag/change/page/1","message":"Page does not declare a canonical URL","after":null},{"severity":"warning","rule":"missing-description","url":"https://quotes.toscrape.com/tag/change/page/1","message":"Page does not have a meta description","after":null},{"severity":"warning","rule":"missing-canonical","url":"https://quotes.toscrape.com/tag/choices/page/1","message":"Page does not declare a canonical URL","after":null},{"severity":"warning","rule":"missing-description","url":"https://quotes.toscrape.com/tag/choices/page/1","message":"Page does not have a meta description","after":null},{"severity":"warning","rule":"missing-canonical","url":"https://quotes.toscrape.com/tag/deep-thoughts/page/1","message":"Page does not declare a canonical URL","after":null},{"severity":"warning","rule":"missing-description","url":"https://quotes.toscrape.com/tag/deep-thoughts/page/1","message":"Page does not have a meta description","after":null},{"severity":"warning","rule":"missing-canonical","url":"https://quotes.toscrape.com/tag/thinking/page/1","message":"Page does not declare a canonical URL","after":null},{"severity":"warning","rule":"missing-description","url":"https://quotes.toscrape.com/tag/thinking/page/1","message":"Page does not have a meta description","after":null},{"severity":"warning","rule":"missing-canonical","url":"https://quotes.toscrape.com/tag/world/page/1","message":"Page does not declare a canonical URL","after":null},{"severity":"warning","rule":"missing-description","url":"https://quotes.toscrape.com/tag/world/page/1","message":"Page does not have a meta description","after":null}]};
+    const generatedAt = document.querySelector("#generated-at");
     const search = document.querySelector("#search");
     const severity = document.querySelector("#severity");
     const rule = document.querySelector("#rule");
     const pageSize = document.querySelector("#page-size");
     const tbody = document.querySelector("#issues");
     const empty = document.querySelector("#empty");
+    const emptyTitle = document.querySelector("#empty-title");
+    const emptyMessage = document.querySelector("#empty-message");
+    const clearFilters = document.querySelector("#clear-filters");
+    const tableWrap = document.querySelector("#table-wrap");
     const resultCount = document.querySelector("#result-count");
+    const pagination = document.querySelector("#pagination");
     const previous = document.querySelector("#previous");
     const next = document.querySelector("#next");
     const pageInfo = document.querySelector("#page-info");
     let currentPage = 1;
+
+    const generatedDate = new Date(generatedAt.dateTime);
+    if (!Number.isNaN(generatedDate.getTime())) {
+      generatedAt.textContent = new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(generatedDate);
+    }
 
     const rules = [...new Set(report.issues.map((issue) => issue.rule))].sort();
     for (const value of rules) {
@@ -354,11 +376,22 @@
         tbody.append(row);
       }
 
-      resultCount.textContent = filtered.length.toLocaleString() + " of " + report.issues.length.toLocaleString() + " issue(s)";
+      const issueLabel = report.issues.length === 1 ? "issue" : "issues";
+      resultCount.textContent = filtered.length.toLocaleString() + " of " + report.issues.length.toLocaleString() + " " + issueLabel;
       pageInfo.textContent = "Page " + currentPage.toLocaleString() + " of " + pageCount.toLocaleString();
       previous.disabled = currentPage === 1;
       next.disabled = currentPage === pageCount;
-      empty.style.display = filtered.length === 0 ? "block" : "none";
+      pagination.hidden = filtered.length === 0 || pageCount === 1;
+      tableWrap.hidden = filtered.length === 0;
+      empty.hidden = filtered.length !== 0;
+      if (filtered.length === 0) {
+        const reportIsClean = report.issues.length === 0;
+        emptyTitle.textContent = reportIsClean ? "No SEO issues found" : "No matching issues";
+        emptyMessage.textContent = reportIsClean
+          ? "The scanned pages passed all current checks."
+          : "Try a different search or clear the selected filters.";
+        clearFilters.hidden = reportIsClean;
+      }
     }
 
     for (const element of [search, severity, rule, pageSize]) {
@@ -375,6 +408,13 @@
     });
     next.addEventListener("click", () => {
       currentPage += 1;
+      render();
+    });
+    clearFilters.addEventListener("click", () => {
+      search.value = "";
+      severity.value = "";
+      rule.value = "";
+      currentPage = 1;
       render();
     });
     render();
