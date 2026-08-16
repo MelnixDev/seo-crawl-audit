@@ -1,4 +1,4 @@
-import { audit, createIssue, type RuleSet } from "./audit.js";
+import { applyRulePolicy, audit, createIssue, type RuleSet } from "./audit.js";
 import { createBaseline } from "./baseline.js";
 import type { DiffResult, Issue, PageSnapshot, Severity, SnapshotV2 } from "./types.js";
 
@@ -30,7 +30,11 @@ function sortIssues(issues: Issue[]): Issue[] {
   return issues.sort((left, right) => severityOrder[left.severity] - severityOrder[right.severity] || left.url.localeCompare(right.url) || left.ruleId.localeCompare(right.ruleId));
 }
 
-export function compareBaselines(baselineInput: SnapshotV2 | any, currentInput: SnapshotV2 | any): Issue[] {
+export function compareBaselines(
+  baselineInput: SnapshotV2 | any,
+  currentInput: SnapshotV2 | any,
+  ruleSet: RuleSet = {},
+): Issue[] {
   const baseline = snapshot(baselineInput);
   const current = snapshot(currentInput);
   const issues: Issue[] = [];
@@ -71,7 +75,7 @@ export function compareBaselines(baselineInput: SnapshotV2 | any, currentInput: 
       issues.push(candidate);
     }
   }
-  return sortIssues(issues);
+  return applyRulePolicy(sortIssues(issues), current, ruleSet);
 }
 
 function lifecycle(issue: Issue, value: Issue["lifecycle"]): Issue {
@@ -102,7 +106,7 @@ export function diff(
     if (!currentIssues.has(fingerprint)) resolvedIssues.push(lifecycle(candidate, "resolved"));
   }
   const known = new Set(newIssues.map((candidate) => candidate.fingerprint));
-  for (const regression of compareBaselines(previous, current)) {
+  for (const regression of compareBaselines(previous, current, ruleSet)) {
     if (!known.has(regression.fingerprint)) newIssues.push(lifecycle(regression, "new"));
   }
 

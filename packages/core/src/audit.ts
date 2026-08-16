@@ -104,6 +104,24 @@ function activeSuppression(issue: Issue, suppressions: Suppression[], now: Date)
   }) ?? null;
 }
 
+export function applyRulePolicy(
+  issues: Issue[],
+  snapshot: SnapshotV2,
+  ruleSet: RuleSet = {},
+): Issue[] {
+  const enabled = ruleSet.enabledRules ?? snapshot.config.enabledRules;
+  const enabledSet = enabled ? new Set(enabled) : null;
+  const overrides = { ...snapshot.config.severityOverrides, ...(ruleSet.severityOverrides ?? {}) };
+  const suppressions = ruleSet.suppressions ?? snapshot.config.suppressions;
+  const now = new Date(ruleSet.now ?? Date.now());
+
+  return issues
+    .filter((candidate) => !enabledSet || enabledSet.has(candidate.ruleId))
+    .map((candidate) => ({ ...candidate, severity: overrides[candidate.ruleId] ?? candidate.severity }))
+    .filter((candidate) => !activeSuppression(candidate, suppressions, now))
+    .sort((left, right) => severityOrder[left.severity] - severityOrder[right.severity] || left.url.localeCompare(right.url) || left.ruleId.localeCompare(right.ruleId) || left.fingerprint.localeCompare(right.fingerprint));
+}
+
 export function createIssue(
   ruleId: string,
   url: string,
@@ -160,13 +178,8 @@ function asSnapshot(input: SnapshotV2 | { pages: PageSnapshot[]; [key: string]: 
 
 export function audit(snapshotInput: SnapshotV2 | { pages: PageSnapshot[]; [key: string]: any }, ruleSet: RuleSet = {}): Issue[] {
   const snapshot = asSnapshot(snapshotInput);
-  const enabled = ruleSet.enabledRules ?? snapshot.config.enabledRules;
-  const enabledSet = enabled ? new Set(enabled) : null;
-  const overrides = { ...snapshot.config.severityOverrides, ...(ruleSet.severityOverrides ?? {}) };
-  const suppressions = ruleSet.suppressions ?? snapshot.config.suppressions;
-  const now = new Date(ruleSet.now ?? Date.now());
   const issues: Issue[] = [];
-  const add = (candidate: Issue) => { if (!enabledSet || enabledSet.has(candidate.ruleId)) issues.push(candidate); };
+  const add = (candidate: Issue) => { issues.push(candidate); };
   const pageByUrl = new Map(snapshot.pages.map((page) => [page.url, page]));
   const sitemapUrls = new Set(snapshot.sitemap?.urls ?? []);
   const titles = duplicateMap(snapshot.pages, (page) => page.title);
@@ -224,10 +237,7 @@ export function audit(snapshotInput: SnapshotV2 | { pages: PageSnapshot[]; [key:
     if (page.wordCount < 200) add(createIssue("low-word-count", page.url, `Page contains approximately ${page.wordCount} visible words`, { actual: page.wordCount }));
   }
 
-  return issues
-    .map((candidate) => ({ ...candidate, severity: overrides[candidate.ruleId] ?? candidate.severity }))
-    .filter((candidate) => !activeSuppression(candidate, suppressions, now))
-    .sort((left, right) => severityOrder[left.severity] - severityOrder[right.severity] || left.url.localeCompare(right.url) || left.ruleId.localeCompare(right.ruleId) || left.fingerprint.localeCompare(right.fingerprint));
+  return applyRulePolicy(issues, snapshot, ruleSet);
 }
 
 export const auditBaseline = audit;
