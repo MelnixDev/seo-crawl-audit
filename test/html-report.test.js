@@ -61,3 +61,16 @@ test("marks an in-progress scan as partial and shows its target", () => {
   assert.match(html, /What was found/);
   assert.doesNotMatch(html, /<th>Before<\/th>/);
 });
+
+test("labels a coverage-aware partial diff as an incomplete comparison", () => {
+  const html = renderHtmlReport({
+    mode: "check",
+    startUrl: "https://example.com/",
+    pages: [{ url: "https://example.com/" }],
+    issues: [],
+    complete: false,
+  });
+
+  assert.match(html, /Incomplete comparison/);
+  assert.match(html, /unchecked pages are not marked missing or resolved/);
+});
