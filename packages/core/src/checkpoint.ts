@@ -1,4 +1,3 @@
-// @ts-nocheck -- NDJSON compatibility code accepts legacy checkpoint records.
 import {
   appendFile,
   readFile,
@@ -6,10 +5,22 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { extname } from "node:path";
+import type { PageSnapshot } from "./types.js";
 
 const SCHEMA_VERSION = 1;
 
-function header(source) {
+interface LegacyCheckpointHeader {
+  type: "seo-audit-checkpoint";
+  schemaVersion: 1;
+  source: Record<string, unknown>;
+}
+
+interface LegacyCheckpointResult {
+  pages: Array<Partial<PageSnapshot> & Pick<PageSnapshot, "url">>;
+  resumed: boolean;
+}
+
+function header(source: Record<string, unknown>): LegacyCheckpointHeader {
   return {
     type: "seo-audit-checkpoint",
     schemaVersion: SCHEMA_VERSION,
@@ -17,15 +28,17 @@ function header(source) {
   };
 }
 
-function isCompatible(value, source) {
+function isCompatible(value: unknown, source: Record<string, unknown>): boolean {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<LegacyCheckpointHeader>;
   return (
-    value?.type === "seo-audit-checkpoint" &&
-    value.schemaVersion === SCHEMA_VERSION &&
-    JSON.stringify(value.source) === JSON.stringify(source)
+    candidate.type === "seo-audit-checkpoint" &&
+    candidate.schemaVersion === SCHEMA_VERSION &&
+    JSON.stringify(candidate.source) === JSON.stringify(source)
   );
 }
 
-export function checkpointPathForOutput(output) {
+export function checkpointPathForOutput(output: string): string {
   const extension = extname(output);
   if (!extension) {
     return `${output}.checkpoint.ndjson`;
@@ -34,22 +47,22 @@ export function checkpointPathForOutput(output) {
   return `${output.slice(0, -extension.length)}.checkpoint.ndjson`;
 }
 
-export async function initializeCheckpoint(path, source) {
+export async function initializeCheckpoint(path: string, source: Record<string, unknown>): Promise<LegacyCheckpointResult> {
   try {
     const lines = (await readFile(path, "utf8")).split("\n");
     const savedHeader = JSON.parse(lines[0]);
 
     if (isCompatible(savedHeader, source)) {
-      const pages = [];
+      const pages: LegacyCheckpointResult["pages"] = [];
       for (const line of lines.slice(1)) {
         if (!line.trim()) {
           continue;
         }
 
         try {
-          const record = JSON.parse(line);
-          if (record?.type === "page" && record.page?.url) {
-            pages.push(record.page);
+          const record = JSON.parse(line) as { type?: unknown; page?: Partial<PageSnapshot> };
+          if (record.type === "page" && typeof record.page?.url === "string") {
+            pages.push(record.page as Partial<PageSnapshot> & Pick<PageSnapshot, "url">);
           }
         } catch {
           // A process can stop halfway through its final line. Earlier records
@@ -60,7 +73,7 @@ export async function initializeCheckpoint(path, source) {
       return { pages, resumed: pages.length > 0 };
     }
   } catch (error) {
-    if (error.code !== "ENOENT" && !(error instanceof SyntaxError)) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT" && !(error instanceof SyntaxError)) {
       throw error;
     }
   }
@@ -69,7 +82,10 @@ export async function initializeCheckpoint(path, source) {
   return { pages: [], resumed: false };
 }
 
-export async function appendCheckpointPages(path, pages) {
+export async function appendCheckpointPages(
+  path: string,
+  pages: ReadonlyArray<Partial<PageSnapshot> & Pick<PageSnapshot, "url">>,
+): Promise<void> {
   if (pages.length === 0) {
     return;
   }
@@ -80,11 +96,11 @@ export async function appendCheckpointPages(path, pages) {
   await appendFile(path, `${records}\n`, "utf8");
 }
 
-export async function removeCheckpoint(path) {
+export async function removeCheckpoint(path: string): Promise<void> {
   try {
     await unlink(path);
   } catch (error) {
-    if (error.code !== "ENOENT") {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
       throw error;
     }
   }

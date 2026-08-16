@@ -1,9 +1,12 @@
-// @ts-nocheck -- public overloads are declared by generated TypeScript output.
 const SKIPPED_EXTENSIONS =
   /\.(?:avif|bmp|css|csv|docx?|eot|gif|gz|ico|jpe?g|js|json|map|mp3|mp4|mov|ogg|otf|pdf|png|pptx?|rar|rss|svg|tar|tiff?|ttf|txt|wav|webm|webp|woff2?|xlsx?|xml|zip)$/i;
 
-export function normalizeUrl(input, base, { includeQuery = false } = {}) {
-  let url;
+export function normalizeUrl(
+  input: string,
+  base?: string,
+  { includeQuery = false }: { includeQuery?: boolean } = {},
+): string | null {
+  let url: URL;
 
   try {
     url = base ? new URL(input, base) : new URL(input);
@@ -28,7 +31,7 @@ export function normalizeUrl(input, base, { includeQuery = false } = {}) {
   return url.href;
 }
 
-export function isSameOrigin(url, origin) {
+export function isSameOrigin(url: string, origin: string): boolean {
   try {
     return new URL(url).origin === origin;
   } catch {
@@ -36,7 +39,7 @@ export function isSameOrigin(url, origin) {
   }
 }
 
-export function isCrawlableUrl(url) {
+export function isCrawlableUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     return !SKIPPED_EXTENSIONS.test(parsed.pathname);
