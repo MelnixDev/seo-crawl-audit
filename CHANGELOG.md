@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 — 2026-08-02
+## 0.5.0 — 2026-08-16
 
 - migrated the engine and CLI to TypeScript npm workspaces;
 - added the stable core API, SnapshotV2, v1 migration, config schema, and
