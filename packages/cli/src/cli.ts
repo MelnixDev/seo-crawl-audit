@@ -22,10 +22,11 @@ import {
   removeCheckpoint,
   writeHtmlReport,
   writeBaseline,
+  ENGINE_VERSION,
 } from "@seo-crawl-audit/core";
 import { printIssues, summarizeIssues } from "./report.js";
 
-const VERSION = "0.5.0";
+const VERSION = ENGINE_VERSION;
 const DEFAULT_BASELINE = ".seo-audit.json";
 const DEFAULT_REPORT = "seo-audit-report.html";
 

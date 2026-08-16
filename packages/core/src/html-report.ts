@@ -1,5 +1,6 @@
 import { rename, writeFile } from "node:fs/promises";
 import type { Issue, ReportBranding } from "./types.js";
+import { ENGINE_VERSION, RULE_SET_VERSION } from "./version.js";
 
 function escapeHtml(value: unknown): string {
   return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
@@ -83,7 +84,7 @@ export function renderHtmlReport(input: ReportInput, options: { branding?: Repor
   </style>
 </head>
 <body><main>
-  <header><div class="brand">${logo}<div><div class="eyebrow">${escapeHtml(branding.agencyName ?? "SEO Crawl Audit")}</div><h1>${escapeHtml(reportTitle)}</h1><div class="meta">${escapeHtml(startUrl)}</div></div></div><div class="meta">Generated <time id="generated-at" datetime="${escapeHtml(generatedAt)}">${escapeHtml(generatedAt)}</time><br>Engine ${escapeHtml(input.engineVersion ?? "0.5.0")} · Rules ${escapeHtml(input.ruleSetVersion ?? "1.0.0")}</div></header>
+  <header><div class="brand">${logo}<div><div class="eyebrow">${escapeHtml(branding.agencyName ?? "SEO Crawl Audit")}</div><h1>${escapeHtml(reportTitle)}</h1><div class="meta">${escapeHtml(startUrl)}</div></div></div><div class="meta">Generated <time id="generated-at" datetime="${escapeHtml(generatedAt)}">${escapeHtml(generatedAt)}</time><br>Engine ${escapeHtml(input.engineVersion ?? ENGINE_VERSION)} · Rules ${escapeHtml(input.ruleSetVersion ?? RULE_SET_VERSION)}</div></header>
 ${partial ? `  <div class="notice"><strong>Partial results.</strong> This report contains the pages saved so far. Run the same scan command again to resume without requesting them twice.</div>` : ""}
   <section class="cards"><div class="card"><strong>${pages.length.toLocaleString("en-US")}${targetPages ? ` / ${targetPages.toLocaleString("en-US")}` : ""}</strong><span>Pages checked</span></div><div class="card error"><strong>${counts.error}</strong><span>Errors</span></div><div class="card warning"><strong>${counts.warning}</strong><span>Warnings</span></div><div class="card info"><strong>${counts.info}</strong><span>Info</span></div><div class="card"><strong>${affectedPages.toLocaleString("en-US")}</strong><span>Affected pages</span></div></section>
   <section class="panel">

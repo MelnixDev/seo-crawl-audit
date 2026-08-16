@@ -7,9 +7,7 @@ import type {
   ScanConfigV1,
   SnapshotV2,
 } from "./types.js";
-
-export const ENGINE_VERSION = "0.5.0";
-export const RULE_SET_VERSION = "1.0.0";
+import { ENGINE_VERSION, RULE_SET_VERSION } from "./version.js";
 
 const DEFAULT_OPEN_GRAPH = { title: null, description: null, image: null };
 const DEFAULT_TWITTER = { card: null, title: null, description: null, image: null };

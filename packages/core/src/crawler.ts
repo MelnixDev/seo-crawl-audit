@@ -7,8 +7,8 @@ import { isAllowedByRobots, parseRobots, type RobotsRule } from "./robots.js";
 import { loadSitemapUrls } from "./sitemap.js";
 import type { PageSnapshot, ScanEvent, ScanOptions, ScanResult } from "./types.js";
 import { isCrawlableUrl, isSameOrigin, normalizeUrl } from "./urls.js";
+import { DEFAULT_USER_AGENT } from "./version.js";
 
-const DEFAULT_USER_AGENT = "seo-crawl-audit/0.5.0";
 const MAX_ROBOTS_BYTES = 512 * 1024;
 
 interface InternalOptions extends ScanOptions {
