@@ -1,4 +1,3 @@
-import { rename, writeFile } from "node:fs/promises";
 import type { Issue, ReportBranding } from "./types.js";
 import { ENGINE_VERSION, RULE_SET_VERSION } from "./version.js";
 
@@ -107,9 +106,3 @@ ${partial ? `  <div class="notice"><strong>Partial results.</strong> This report
 }
 
 export const renderReport = renderHtmlReport;
-
-export async function writeHtmlReport(path: string, data: ReportInput, options: { branding?: ReportBranding } = {}): Promise<void> {
-  const temporaryPath = `${path}.${process.pid}.tmp`;
-  await writeFile(temporaryPath, renderHtmlReport(data, options), "utf8");
-  await rename(temporaryPath, path);
-}

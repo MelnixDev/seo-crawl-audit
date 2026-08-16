@@ -1,14 +1,13 @@
-export { findConfigFile, loadConfig } from "./config.js";
 export {
+  findConfigFile,
+  loadConfig,
   readBaseline,
-  readBaseline as readSnapshot,
+  readSnapshot,
   writeBaseline,
-  writeBaseline as writeSnapshot,
-} from "./baseline.js";
-export {
+  writeSnapshot,
   writeHtmlReport,
-  writeHtmlReport as writeReport,
-} from "./html-report.js";
+  writeReport,
+} from "./node-files.js";
 export {
   FileCheckpointStore,
   createFileCheckpointStore,

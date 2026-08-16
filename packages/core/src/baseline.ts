@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
 import type {
   CrawlStatistics,
   LinkGraphSummary,
@@ -189,22 +188,4 @@ export function migrateSnapshot(input: unknown): SnapshotV2 {
     return createBaseline(value);
   }
   throw new Error(`unsupported snapshot schema version: ${String(value.schemaVersion)}`);
-}
-
-export async function writeBaseline(path: string, baseline: SnapshotV2): Promise<void> {
-  await writeFile(path, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
-}
-
-export async function readBaseline(path: string): Promise<SnapshotV2> {
-  try {
-    return migrateSnapshot(JSON.parse(await readFile(path, "utf8")));
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new Error(`invalid snapshot JSON: ${path}`, { cause: error });
-    }
-    if (error instanceof Error && error.message.startsWith("unsupported")) {
-      throw new Error(`unsupported or invalid baseline: ${path}`, { cause: error });
-    }
-    throw error;
-  }
 }

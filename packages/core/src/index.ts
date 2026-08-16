@@ -17,4 +17,7 @@ export * from "./sitemap.js";
 export * from "./target.js";
 export * from "./urls.js";
 
+// Compatibility exports for the pre-0.6 CLI. File APIs move to ./node.
+export * from "./node-files.js";
+
 export { auditBaseline as audit } from "./audit.js";

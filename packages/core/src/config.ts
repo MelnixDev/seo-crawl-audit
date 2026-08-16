@@ -1,5 +1,3 @@
-import { access, readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import type { ScanConfigV1, Severity } from "./types.js";
 
 export const DEFAULT_CONFIG_FILE = "seo-audit.config.json";
@@ -128,26 +126,6 @@ export function validateConfig(input: unknown): Partial<ScanConfigV1> {
     result.report = Object.fromEntries(Object.entries(branding).filter(([, child]) => child !== undefined));
   }
   return result;
-}
-
-export async function findConfigFile(cwd = process.cwd()): Promise<string | null> {
-  const path = resolve(cwd, DEFAULT_CONFIG_FILE);
-  try {
-    await access(path);
-    return path;
-  } catch {
-    return null;
-  }
-}
-
-export async function loadConfig(path?: string | null): Promise<Partial<ScanConfigV1>> {
-  const resolvedPath = path ? resolve(path) : await findConfigFile();
-  if (!resolvedPath) return {};
-  try {
-    return validateConfig(JSON.parse(await readFile(resolvedPath, "utf8")));
-  } catch (error) {
-    throw new Error(`invalid config ${resolvedPath}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
-  }
 }
 
 export function resolveConfig(
