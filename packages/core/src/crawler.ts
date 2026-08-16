@@ -2,14 +2,13 @@ import { createHash } from "node:crypto";
 import { createBaseline } from "./baseline.js";
 import { fetchWithRetry, readResponseBody, RequestFailure } from "./fetcher.js";
 import { extractSeoData } from "./html.js";
+import { NOOP_LOGGER } from "./logger.js";
 import { createPerOriginRequestGate } from "./request-gate.js";
 import { fetchRobots, isAllowedByRobots, type RobotsData } from "./robots.js";
 import { loadSitemapUrls } from "./sitemap.js";
 import type { PageSnapshot, ReportBranding, ScanEvent, ScanOptions, ScanResult, Severity, SitemapState, Suppression } from "./types.js";
 import { isCrawlableUrl, isSameOrigin, normalizeUrl } from "./urls.js";
 import { DEFAULT_USER_AGENT } from "./version.js";
-
-const noopLogger = { debug() {}, info() {}, warn() {}, error() {} };
 
 interface CrawlerOptions extends ScanOptions {
   maxPages?: number;
@@ -184,7 +183,7 @@ function withDefaults(raw: CrawlerOptions = {}): InternalOptions {
     maxResponseBytes: raw.maxResponseBytes ?? 5 * 1024 * 1024,
     retries: raw.retries ?? 2,
     fetch: raw.fetch ?? globalThis.fetch,
-    logger: raw.logger ?? noopLogger,
+    logger: raw.logger ?? NOOP_LOGGER,
   };
 }
 

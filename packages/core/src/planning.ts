@@ -1,4 +1,5 @@
 import { resolveConfig } from "./config.js";
+import { NOOP_LOGGER } from "./logger.js";
 import { createPerOriginRequestGate } from "./request-gate.js";
 import { fetchRobots } from "./robots.js";
 import { discoverSitemapUrl, loadSitemapUrls } from "./sitemap.js";
@@ -11,8 +12,6 @@ import type {
 } from "./types.js";
 import { normalizeUrl } from "./urls.js";
 import { DEFAULT_USER_AGENT } from "./version.js";
-
-const noopLogger = { debug() {}, info() {}, warn() {}, error() {} };
 
 async function emit(options: PlanScanOptions, event: ScanEvent): Promise<void> {
   await options.onEvent?.(event);
@@ -28,7 +27,7 @@ export async function planScan(
   const origin = new URL(startUrl).origin;
   const fetch = options.fetch ?? globalThis.fetch;
   const requestGate = createPerOriginRequestGate(config.delay);
-  const logger = options.logger ?? noopLogger;
+  const logger = options.logger ?? NOOP_LOGGER;
   await emit(options, { type: "plan-start", url: startUrl });
 
   const robots = await fetchRobots(startUrl, {
