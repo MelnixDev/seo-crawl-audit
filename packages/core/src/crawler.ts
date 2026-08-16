@@ -231,39 +231,54 @@ export async function crawlSite(inputUrl: string, rawOptions: ScanOptions & Reco
     }
   }
   const seeds = [...new Set([startUrl, ...(sitemap?.urls ?? [])])];
-  const queue: Array<{ url: string; depth: number }> = seeds.slice(0, options.maxPages).map((url) => ({ url, depth: 0 }));
-  const scheduled = new Set(queue.map((item) => item.url));
+  let frontier: Array<{ url: string; depth: number }> = seeds
+    .slice(0, options.maxPages)
+    .map((url) => ({ url, depth: 0 }));
+  const scheduled = new Set(frontier.map((item) => item.url));
   const cached = new Map((rawOptions.cachedPages ?? []).map((page: PageSnapshot) => [page.url, page]));
   const pages = new Map<string, PageSnapshot>();
   const maxQueueSize = Math.max(options.maxPages * 10, options.maxPages);
-  let cursor = 0;
+  let hasMore = false;
 
-  await runPool(options.concurrency, async () => {
-    if (options.signal?.aborted || pages.size >= options.maxPages || cursor >= queue.length) return null;
-    const item = queue[cursor++];
-    const page = cached.get(item.url) ?? await fetchPage(item.url, item.depth, origin, options, robots);
-    pages.set(item.url, page);
-    if (!cached.has(item.url)) {
-      await rawOptions.onBatch?.([page]);
-      await options.storage?.saveCheckpoint?.(startUrl, page);
-      await emit(options, { type: "checkpoint", page, completed: pages.size, total: options.maxPages });
+  while (frontier.length > 0 && pages.size < options.maxPages && !options.signal?.aborted) {
+    frontier.sort((left, right) => left.url.localeCompare(right.url));
+    const remaining = options.maxPages - pages.size;
+    const current = frontier.slice(0, remaining);
+    if (frontier.length > current.length) hasMore = true;
+    let cursor = 0;
+    const completed = await runPool(options.concurrency, async () => {
+      if (options.signal?.aborted || cursor >= current.length) return null;
+      const item = current[cursor++];
+      const page = cached.get(item.url) ?? await fetchPage(item.url, item.depth, origin, options, robots);
+      pages.set(item.url, page);
+      if (!cached.has(item.url)) {
+        await rawOptions.onBatch?.([page]);
+        await options.storage?.saveCheckpoint?.(startUrl, page);
+        await emit(options, { type: "checkpoint", page, completed: pages.size, total: options.maxPages });
+      }
+      rawOptions.onProgress?.(pages.size, options.maxPages);
+      await emit(options, { type: "page", completed: pages.size, total: options.maxPages, page });
+      await emit(options, { type: "progress", completed: pages.size, total: options.maxPages, page });
+      return { item, page };
+    });
+
+    const next = new Map<string, { url: string; depth: number }>();
+    for (const { item, page } of completed.sort((left, right) => left.item.url.localeCompare(right.item.url))) {
+      const discoveredLinks = page.internalLinks?.length
+        ? page.internalLinks
+        : (page.links ?? []).filter((link) => isSameOrigin(link, origin));
+      for (const link of [...discoveredLinks].sort()) {
+        if (scheduled.size >= maxQueueSize || scheduled.has(link) || !isCrawlableUrl(link)) continue;
+        scheduled.add(link);
+        next.set(link, { url: link, depth: item.depth + 1 });
+      }
     }
-    const discoveredLinks = page.internalLinks?.length
-      ? page.internalLinks
-      : (page.links ?? []).filter((link) => isSameOrigin(link, origin));
-    for (const link of [...discoveredLinks].sort()) {
-      if (scheduled.size >= maxQueueSize || scheduled.has(link) || !isCrawlableUrl(link)) continue;
-      scheduled.add(link);
-      queue.push({ url: link, depth: item.depth + 1 });
-    }
-    rawOptions.onProgress?.(pages.size, options.maxPages);
-    await emit(options, { type: "progress", completed: pages.size, total: options.maxPages, page });
-    return page;
-  });
+    frontier = [...next.values()];
+  }
 
   const sortedPages = [...pages.values()].sort((left, right) => left.url.localeCompare(right.url));
   const partial = Boolean(options.signal?.aborted);
-  const truncated = partial || cursor < queue.length || (sitemap ? sitemap.urls.length > sortedPages.length : false) || (sitemap?.truncated ?? false);
+  const truncated = partial || hasMore || frontier.length > 0 || (sitemap ? sitemap.urls.length > sortedPages.length : false) || (sitemap?.truncated ?? false);
   const result: Omit<ScanResult, "snapshot"> & { snapshot?: ScanResult["snapshot"]; partial: boolean; durationMs: number } = {
     startUrl,
     pages: sortedPages,
