@@ -84,15 +84,22 @@ export class FileCheckpointStore implements CheckpointStore {
 
     this.#identity = identity;
     const pages = new Map<string, PageSnapshot>();
-    for (const line of lines.slice(1)) {
+    const records = lines.slice(1);
+    let lastRecordIndex = records.length - 1;
+    while (lastRecordIndex >= 0 && !records[lastRecordIndex]?.trim()) lastRecordIndex -= 1;
+    for (const [index, line] of records.entries()) {
       if (!line.trim()) continue;
       try {
         const record = JSON.parse(line) as { type?: unknown; page?: Partial<PageSnapshot> };
         if (record.type === "page" && typeof record.page?.url === "string") {
           pages.set(record.page.url, record.page as PageSnapshot);
         }
-      } catch {
-        // The last append may be interrupted. All complete records remain valid.
+      } catch (error) {
+        if (index !== lastRecordIndex) {
+          throw new Error(`corrupt checkpoint record ${index + 2} in ${this.path}`, { cause: error });
+        }
+        // The process may stop halfway through its final append. Complete
+        // records before that unfinished tail remain valid.
       }
     }
     return { identity, pages: [...pages.values()] };

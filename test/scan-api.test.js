@@ -8,6 +8,31 @@ import { join } from "node:path";
 import { planScan, scan } from "../packages/core/dist/index.js";
 import { createFileCheckpointStore } from "../packages/core/dist/node.js";
 
+test("scan returns an empty partial result when cancelled during planning", async () => {
+  const controller = new AbortController();
+  controller.abort(new Error("stop before robots"));
+  const events = [];
+  let flushed = false;
+  const checkpointStore = {
+    async load() { return null; },
+    async append() {},
+    async clear() {},
+    async flush() { flushed = true; },
+  };
+  const result = await scan({ url: "https://example.com/" }, {
+    signal: controller.signal,
+    checkpointStore,
+    async fetch() { throw new Error("fetch must not start after cancellation"); },
+    onEvent(event) { events.push(event.type); },
+  });
+
+  assert.equal(result.partial, true);
+  assert.equal(result.snapshot.partial, true);
+  assert.equal(result.pages.length, 0);
+  assert.equal(flushed, true);
+  assert.equal(events.at(-1), "cancelled");
+});
+
 test("scan returns partial data and resumes successful pages through the checkpoint store", async (context) => {
   const requests = new Map();
   let origin;

@@ -58,3 +58,19 @@ test("file checkpoint store reads compatible v1 headers", async () => {
   const resumed = await createFileCheckpointStore(path).load(identity);
   assert.equal(resumed.pages[0].url, "https://example.com/legacy");
 });
+
+test("file checkpoint store rejects corruption before the final record", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-node-corrupt-"));
+  const path = join(directory, "checkpoint.ndjson");
+  const store = createFileCheckpointStore(path);
+  await store.load(identity);
+  await store.append(identity, page("https://example.com/valid"));
+  await store.flush();
+  const [header, record] = (await readFile(path, "utf8")).split("\n");
+  await writeFile(path, `${header}\n{"type":"page"\n${record}\n`, "utf8");
+
+  await assert.rejects(
+    createFileCheckpointStore(path).load(identity),
+    /corrupt checkpoint record 2/,
+  );
+});

@@ -1,14 +1,21 @@
 import { crawlSite } from "./crawler.js";
+import { createBaseline } from "./baseline.js";
+import { resolveConfig } from "./config.js";
 import { createPerOriginRequestGate } from "./request-gate.js";
 import { planScan } from "./planning.js";
 import type {
   CheckpointIdentity,
   PageSnapshot,
+  RobotsState,
   ScanConfigInput,
+  ScanEvent,
   ScanOptions,
   ScanPlan,
   ScanResult,
+  SitemapState,
 } from "./types.js";
+import { normalizeUrl } from "./urls.js";
+import { DEFAULT_USER_AGENT } from "./version.js";
 
 function isPlan(input: ScanConfigInput | ScanPlan): input is ScanPlan {
   return "planVersion" in input;
@@ -43,7 +50,53 @@ export async function scan(
   input: ScanConfigInput | ScanPlan,
   options: ScanOptions = {},
 ): Promise<ScanResult> {
-  const plan = isPlan(input) ? input : await planScan(input, options);
+  let plannedRobots: RobotsState | null = null;
+  let plannedSitemap: SitemapState | null = null;
+  let plan: ScanPlan;
+  try {
+    plan = isPlan(input) ? input : await planScan(input, {
+      ...options,
+      async onEvent(event: ScanEvent) {
+        if (event.type === "robots") plannedRobots = event.robots;
+        if (event.type === "sitemap") plannedSitemap = event.sitemap;
+        await options.onEvent?.(event);
+      },
+    });
+  } catch (error) {
+    if (isPlan(input) || !options.signal?.aborted) throw error;
+    const config = resolveConfig(input);
+    const startUrl = normalizeUrl(config.url, undefined, { includeQuery: config.includeQuery });
+    if (!startUrl) throw new Error(`invalid start URL: ${config.url}`, { cause: error });
+    const robots = plannedRobots ?? {
+      url: new URL("/robots.txt", startUrl).href,
+      status: null,
+      sha256: null,
+      error: "Scan cancelled before robots.txt planning completed",
+      denyAll: false,
+    };
+    const snapshot = createBaseline({
+      startUrl,
+      pages: [],
+      robots,
+      sitemap: plannedSitemap,
+      options: config,
+      partial: true,
+      truncated: true,
+    });
+    await options.checkpointStore?.flush?.();
+    await options.onEvent?.({ type: "cancelled", completed: 0, total: config.maxPages, partial: true });
+    return {
+      snapshot,
+      startUrl,
+      pages: [],
+      robots,
+      sitemap: plannedSitemap,
+      truncated: true,
+      partial: true,
+      durationMs: 0,
+      options: config,
+    };
+  }
   if (plan.planVersion !== 1) throw new Error(`unsupported scan plan version: ${String(plan.planVersion)}`);
   const limit = options.limit ?? plan.config.maxPages;
   if (!Number.isInteger(limit) || limit <= 0) throw new Error("scan limit must be a positive integer");
