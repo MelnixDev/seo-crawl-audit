@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { createBaseline } from "./baseline.js";
+import { createBaseline, type BaselineInput } from "./baseline.js";
 import type { Issue, IssueOwner, IssueScope, PageSnapshot, Severity, SnapshotV2, Suppression } from "./types.js";
 
 export interface RuleDefinition {
@@ -164,10 +164,13 @@ function duplicateMap(pages: PageSnapshot[], select: (page: PageSnapshot) => str
   return new Map([...groups].filter(([, urls]) => urls.length > 1));
 }
 
-function asSnapshot(input: SnapshotV2 | { pages: PageSnapshot[]; [key: string]: any }): SnapshotV2 {
+function asSnapshot(input: SnapshotV2 | BaselineInput): SnapshotV2 {
   if ((input as SnapshotV2).schemaVersion === 2) return input as SnapshotV2;
-  const legacy = input as { pages: PageSnapshot[]; [key: string]: any };
-  const firstUrl = input.pages[0]?.url ?? "https://invalid.local/";
+  const legacy = input as BaselineInput;
+  const firstPage = legacy.pages?.[0];
+  const firstUrl = firstPage && typeof firstPage === "object" && typeof (firstPage as { url?: unknown }).url === "string"
+    ? (firstPage as { url: string }).url
+    : "https://invalid.local/";
   return createBaseline({
     ...input,
     startUrl: legacy.siteUrl ?? legacy.source?.startUrl ?? firstUrl,
@@ -176,7 +179,7 @@ function asSnapshot(input: SnapshotV2 | { pages: PageSnapshot[]; [key: string]: 
   });
 }
 
-export function audit(snapshotInput: SnapshotV2 | { pages: PageSnapshot[]; [key: string]: any }, ruleSet: RuleSet = {}): Issue[] {
+export function audit(snapshotInput: SnapshotV2 | BaselineInput, ruleSet: RuleSet = {}): Issue[] {
   const snapshot = asSnapshot(snapshotInput);
   const issues: Issue[] = [];
   const add = (candidate: Issue) => { issues.push(candidate); };

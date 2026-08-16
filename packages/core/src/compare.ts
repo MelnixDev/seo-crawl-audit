@@ -1,5 +1,5 @@
 import { applyRulePolicy, audit, createIssue, type RuleSet } from "./audit.js";
-import { createBaseline } from "./baseline.js";
+import { createBaseline, type BaselineInput } from "./baseline.js";
 import type { DiffResult, Issue, PageSnapshot, Severity, SnapshotV2 } from "./types.js";
 
 const severityOrder: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
@@ -8,14 +8,17 @@ function hasDirective(value: string | null | undefined, directive: string): bool
   return new RegExp(`(^|[\\s,])${directive}($|[\\s,])`, "i").test(value ?? "");
 }
 
-function snapshot(input: SnapshotV2 | any): SnapshotV2 {
-  if (input?.schemaVersion === 2) return input;
-  const firstUrl = input?.pages?.[0]?.url ?? input?.source?.startUrl ?? "https://invalid.local/";
+function snapshot(input: SnapshotV2 | BaselineInput): SnapshotV2 {
+  if (input.schemaVersion === 2) return input as SnapshotV2;
+  const legacy = input as BaselineInput;
+  const firstPage = legacy.pages?.[0];
+  const firstPageUrl = firstPage && typeof firstPage === "object" ? (firstPage as { url?: unknown }).url : undefined;
+  const firstUrl = typeof firstPageUrl === "string" ? firstPageUrl : legacy.source?.startUrl ?? "https://invalid.local/";
   return createBaseline({
-    ...input,
-    startUrl: input?.siteUrl ?? input?.source?.startUrl ?? firstUrl,
-    robots: input?.robots ?? { url: new URL("/robots.txt", firstUrl).href, status: null, sha256: null, error: null },
-    options: input?.config ?? input?.options ?? {},
+    ...legacy,
+    startUrl: legacy.siteUrl ?? legacy.source?.startUrl ?? firstUrl,
+    robots: legacy.robots ?? { url: new URL("/robots.txt", firstUrl).href, status: null, sha256: null, error: null },
+    options: legacy.config ?? legacy.options ?? {},
   });
 }
 
@@ -31,8 +34,8 @@ function sortIssues(issues: Issue[]): Issue[] {
 }
 
 export function compareBaselines(
-  baselineInput: SnapshotV2 | any,
-  currentInput: SnapshotV2 | any,
+  baselineInput: SnapshotV2 | BaselineInput,
+  currentInput: SnapshotV2 | BaselineInput,
   ruleSet: RuleSet = {},
 ): Issue[] {
   const baseline = snapshot(baselineInput);
@@ -87,8 +90,8 @@ function lifecycle(issue: Issue, value: Issue["lifecycle"]): Issue {
 }
 
 export function diff(
-  previousInput: SnapshotV2 | any,
-  currentInput: SnapshotV2 | any,
+  previousInput: SnapshotV2 | BaselineInput,
+  currentInput: SnapshotV2 | BaselineInput,
   ruleSet: RuleSet = {},
 ): DiffResult {
   const previous = snapshot(previousInput);
