@@ -254,7 +254,7 @@ export async function crawlSite(inputUrl: string, rawOptions: ScanOptions & Reco
   const startUrl = normalizeUrl(inputUrl, undefined, { includeQuery: options.includeQuery });
   if (!startUrl) throw new Error(`invalid start URL: ${inputUrl}`);
   const origin = new URL(startUrl).origin;
-  await emit(options, { type: "start", url: startUrl, total: options.maxPages });
+  await emit(options, { type: "scan-start", url: startUrl, total: options.maxPages });
 
   const robots = await loadRobots(startUrl, options);
   let sitemap = options.sitemapData;
