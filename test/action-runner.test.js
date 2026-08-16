@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { runAction, thresholdBlocks } from "../packages/action/dist/runner.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
 
-function snapshot({ description = null, budgets = {}, partial = false } = {}) {
+function snapshot({ description = null, budgets = {}, partial = false, status = 200 } = {}) {
   return migrateSnapshot({
     schemaVersion: 1,
     startUrl: "https://example.com/",
@@ -14,7 +14,7 @@ function snapshot({ description = null, budgets = {}, partial = false } = {}) {
     pages: [{
       url: "https://example.com/",
       finalUrl: "https://example.com/",
-      status: 200,
+      status,
       title: "A stable example title",
       description,
       canonical: "https://example.com/",
@@ -42,7 +42,7 @@ function scanResult(current) {
 }
 
 function adapters(current, baseline = null) {
-  const state = { failed: [], outputs: {}, reports: [], json: [], annotations: [] };
+  const state = { failed: [], outputs: {}, reports: [], json: [], annotations: [], summaries: [], info: [] };
   return {
     state,
     value: {
@@ -51,11 +51,15 @@ function adapters(current, baseline = null) {
       async writeReport(path, data) { state.reports.push({ path, data }); },
       async writeJson(path, data) { state.json.push({ path, data }); },
       resolvePath(path) { return `/workspace/${path}`; },
-      async scan() { return scanResult(current); },
-      info() {},
+      async scan(_config, options) {
+        await options.onEvent?.({ type: "progress", completed: 25, total: 50, page: current.pages[0] });
+        return scanResult(current);
+      },
+      info(message) { state.info.push(message); },
       annotateError(issue) { state.annotations.push(issue); },
       setOutput(name, value) { state.outputs[name] = value; },
       setFailed(message) { state.failed.push(message); },
+      async writeSummary(summary) { state.summaries.push(summary); },
     },
   };
 }
@@ -97,5 +101,30 @@ test("runAction rejects invalid inputs before starting a scan", async () => {
   await assert.rejects(
     runAction({ url: "https://example.com/", failOn: "critical" }, fixture.value),
     /fail-on must be error, warning, or none/,
+  );
+});
+
+test("runAction tolerates an absent default config and emits annotations and summary", async () => {
+  const fixture = adapters(snapshot({ status: 500 }));
+  fixture.value.loadConfig = async () => {
+    throw new Error("ENOENT: config not found", { cause: { code: "ENOENT" } });
+  };
+  const result = await runAction({ url: "https://example.com/", failOn: "none" }, fixture.value);
+
+  assert.equal(result.blocked, false);
+  assert.ok(fixture.state.annotations.length > 0);
+  assert.equal(fixture.state.summaries.length, 1);
+  assert.match(fixture.state.info[0], /Scanned 25\/50/);
+});
+
+test("runAction rejects missing URL and propagates explicit config failures", async () => {
+  const missingUrl = adapters(snapshot());
+  await assert.rejects(runAction({}, missingUrl.value), /Provide the url input/);
+
+  const invalidConfig = adapters(snapshot());
+  invalidConfig.value.loadConfig = async () => { throw new Error("invalid explicit config"); };
+  await assert.rejects(
+    runAction({ config: "custom.json", url: "https://example.com/" }, invalidConfig.value),
+    /invalid explicit config/,
   );
 });

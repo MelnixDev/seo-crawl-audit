@@ -45,6 +45,10 @@ test("locks the documented core function surface", () => {
     "scan",
     "validateConfig",
   ]);
+  const definitions = core.getRuleDefinitions();
+  assert.ok(definitions.length >= 25);
+  assert.equal(Object.isFrozen(definitions), true);
+  assert.equal(Object.isFrozen(definitions[0]), true);
 });
 
 test("locks SnapshotV2 normalization, configuration hash, and issue fingerprints", () => {
