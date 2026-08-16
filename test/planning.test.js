@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { planScan } from "../packages/core/dist/index.js";
+import { planScan, scan } from "../packages/core/dist/index.js";
 
 test("planScan reads robots and sitemap once without fetching HTML pages", async (context) => {
   const requests = [];
@@ -28,4 +28,9 @@ test("planScan reads robots and sitemap once without fetching HTML pages", async
   assert.equal(plan.mode, "sitemap");
   assert.equal(plan.candidateCount, 3);
   assert.deepEqual(plan.candidateUrls, [`${origin}/`, `${origin}/a`, `${origin}/b`]);
+
+  const result = await scan(plan, { limit: 3 });
+  assert.equal(result.pages.length, 3);
+  assert.equal(requests.filter((url) => url === "/robots.txt").length, 1);
+  assert.equal(requests.filter((url) => url === "/sitemap.xml").length, 1);
 });

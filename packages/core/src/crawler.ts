@@ -249,7 +249,15 @@ export async function crawlSite(inputUrl: string, rawOptions: ScanOptions & Reco
     const completed = await runPool(options.concurrency, async () => {
       if (options.signal?.aborted || cursor >= current.length) return null;
       const item = current[cursor++];
-      const page = cached.get(item.url) ?? await fetchPage(item.url, item.depth, origin, options, robots);
+      let page = cached.get(item.url);
+      if (!page) {
+        try {
+          page = await fetchPage(item.url, item.depth, origin, options, robots);
+        } catch (error) {
+          if (options.signal?.aborted) return null;
+          throw error;
+        }
+      }
       pages.set(item.url, page);
       if (!cached.has(item.url)) {
         await rawOptions.onBatch?.([page]);
@@ -291,6 +299,7 @@ export async function crawlSite(inputUrl: string, rawOptions: ScanOptions & Reco
   };
   result.snapshot = createBaseline(result);
   if (!partial) await options.storage?.removeCheckpoint?.(startUrl);
-  await emit(options, { type: "complete", completed: sortedPages.length, total: options.maxPages });
+  if (partial) await emit(options, { type: "cancelled", completed: sortedPages.length, total: options.maxPages, partial: true });
+  else await emit(options, { type: "complete", completed: sortedPages.length, total: options.maxPages });
   return result as ScanResult;
 }
