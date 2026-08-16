@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
-import { audit, createBaseline, diff, renderReport } from "../packages/core/dist/index.js";
+import { audit, diff, renderReport } from "../packages/core/dist/index.js";
+import { createBaseline } from "../packages/core/dist/baseline.js";
 
 const url = "https://quotes.toscrape.com/";
 const basePage = (path, title, overrides = {}) => ({

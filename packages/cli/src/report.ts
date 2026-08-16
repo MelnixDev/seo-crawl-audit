@@ -1,21 +1,28 @@
-// @ts-nocheck -- accepts Issue-compatible payloads from old and new snapshots.
+import type { Issue, Severity } from "@seo-crawl-audit/core";
+
 const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
 
-function color(code, value) {
+export interface IssueSummary {
+  error: number;
+  warning: number;
+  info: number;
+}
+
+function color(code: string, value: string): string {
   return useColor ? `\u001b[${code}m${value}\u001b[0m` : value;
 }
 
-export function summarizeIssues(issues) {
+export function summarizeIssues(issues: readonly Issue[]): IssueSummary {
   return issues.reduce(
     (summary, issue) => {
-      summary[issue.severity] = (summary[issue.severity] ?? 0) + 1;
+      summary[issue.severity] += 1;
       return summary;
     },
-    { error: 0, warning: 0, info: 0 },
+    { error: 0, warning: 0, info: 0 } satisfies Record<Severity, number>,
   );
 }
 
-export function printIssues(issues) {
+export function printIssues(issues: readonly Issue[]): void {
   if (issues.length === 0) {
     console.log(color("32", "✓ No SEO regressions detected."));
     return;

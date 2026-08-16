@@ -1,5 +1,5 @@
-import { rename, writeFile } from "node:fs/promises";
-import type { Issue, ReportBranding } from "./types.js";
+import type { Issue, ReportData, ReportOptions } from "./types.js";
+import { ENGINE_VERSION, RULE_SET_VERSION } from "./version.js";
 
 function escapeHtml(value: unknown): string {
   return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
@@ -7,23 +7,6 @@ function escapeHtml(value: unknown): string {
 
 function safeJson(value: unknown): string {
   return JSON.stringify(value).replaceAll("<", "\\u003c").replaceAll(">", "\\u003e").replaceAll("&", "\\u0026");
-}
-
-interface ReportInput {
-  mode?: "scan" | "check";
-  startUrl?: string;
-  generatedAt?: string;
-  pages?: Array<{ url: string }>;
-  issues?: Partial<Issue>[];
-  newIssues?: Partial<Issue>[];
-  ongoingIssues?: Partial<Issue>[];
-  resolvedIssues?: Partial<Issue>[];
-  unchangedIssues?: Partial<Issue>[];
-  partial?: boolean;
-  targetPages?: number | null;
-  engineVersion?: string;
-  ruleSetVersion?: string;
-  branding?: ReportBranding;
 }
 
 function normalizeIssue(candidate: Partial<Issue>, fallbackLifecycle = "current") {
@@ -45,7 +28,7 @@ function normalizeIssue(candidate: Partial<Issue>, fallbackLifecycle = "current"
   };
 }
 
-export function renderHtmlReport(input: ReportInput, options: { branding?: ReportBranding } = {}): string {
+export function renderHtmlReport(input: ReportData, options: ReportOptions = {}): string {
   const mode = input.mode ?? "scan";
   const pages = input.pages ?? [];
   const current = (input.issues ?? []).map((item) => normalizeIssue(item));
@@ -59,6 +42,7 @@ export function renderHtmlReport(input: ReportInput, options: { branding?: Repor
   const counts = issues.reduce((summary, item) => { summary[item.severity] += 1; return summary; }, { error: 0, warning: 0, info: 0 });
   const affectedPages = new Set(issues.map((item) => item.url)).size;
   const partial = input.partial ?? false;
+  const incompleteComparison = mode === "check" && input.complete === false;
   const reportTitle = partial ? "Partial SEO scan report" : mode === "check" ? "SEO regression report" : "SEO baseline audit";
   const branding = { ...(input.branding ?? {}), ...(options.branding ?? {}) };
   const primaryColor = /^#[0-9a-f]{6}$/i.test(branding.primaryColor ?? "") ? branding.primaryColor : "#3157d5";
@@ -83,8 +67,9 @@ export function renderHtmlReport(input: ReportInput, options: { branding?: Repor
   </style>
 </head>
 <body><main>
-  <header><div class="brand">${logo}<div><div class="eyebrow">${escapeHtml(branding.agencyName ?? "SEO Crawl Audit")}</div><h1>${escapeHtml(reportTitle)}</h1><div class="meta">${escapeHtml(startUrl)}</div></div></div><div class="meta">Generated <time id="generated-at" datetime="${escapeHtml(generatedAt)}">${escapeHtml(generatedAt)}</time><br>Engine ${escapeHtml(input.engineVersion ?? "0.5.0")} · Rules ${escapeHtml(input.ruleSetVersion ?? "1.0.0")}</div></header>
+  <header><div class="brand">${logo}<div><div class="eyebrow">${escapeHtml(branding.agencyName ?? "SEO Crawl Audit")}</div><h1>${escapeHtml(reportTitle)}</h1><div class="meta">${escapeHtml(startUrl)}</div></div></div><div class="meta">Generated <time id="generated-at" datetime="${escapeHtml(generatedAt)}">${escapeHtml(generatedAt)}</time><br>Engine ${escapeHtml(input.engineVersion ?? ENGINE_VERSION)} · Rules ${escapeHtml(input.ruleSetVersion ?? RULE_SET_VERSION)}</div></header>
 ${partial ? `  <div class="notice"><strong>Partial results.</strong> This report contains the pages saved so far. Run the same scan command again to resume without requesting them twice.</div>` : ""}
+${incompleteComparison ? `  <div class="notice"><strong>Incomplete comparison.</strong> Regressions found on checked pages are shown, but unchecked pages are not marked missing or resolved.</div>` : ""}
   <section class="cards"><div class="card"><strong>${pages.length.toLocaleString("en-US")}${targetPages ? ` / ${targetPages.toLocaleString("en-US")}` : ""}</strong><span>Pages checked</span></div><div class="card error"><strong>${counts.error}</strong><span>Errors</span></div><div class="card warning"><strong>${counts.warning}</strong><span>Warnings</span></div><div class="card info"><strong>${counts.info}</strong><span>Info</span></div><div class="card"><strong>${affectedPages.toLocaleString("en-US")}</strong><span>Affected pages</span></div></section>
   <section class="panel">
     <nav class="tabs" aria-label="Issue lifecycle"><button data-tab="" aria-selected="true">Current / all</button><button data-tab="new">New</button><button data-tab="ongoing">Ongoing</button><button data-tab="resolved">Resolved</button><button data-tab="unchanged">Unchanged</button></nav>
@@ -106,9 +91,3 @@ ${partial ? `  <div class="notice"><strong>Partial results.</strong> This report
 }
 
 export const renderReport = renderHtmlReport;
-
-export async function writeHtmlReport(path: string, data: ReportInput, options: { branding?: ReportBranding } = {}): Promise<void> {
-  const temporaryPath = `${path}.${process.pid}.tmp`;
-  await writeFile(temporaryPath, renderHtmlReport(data, options), "utf8");
-  await rename(temporaryPath, path);
-}

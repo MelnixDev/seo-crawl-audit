@@ -1,5 +1,6 @@
 import { performance } from "node:perf_hooks";
-import { audit, createBaseline } from "../packages/core/dist/index.js";
+import { audit } from "../packages/core/dist/index.js";
+import { createBaseline } from "../packages/core/dist/baseline.js";
 
 const pages = Array.from({ length: 10_000 }, (_, index) => ({
   url: `https://example.com/page-${index}`,

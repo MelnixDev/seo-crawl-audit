@@ -12,10 +12,10 @@ export interface FetchPolicy {
   timeout: number;
   maxRedirects: number;
   retries: number;
-  signal?: AbortSignal;
-  gate?: (url: string) => Promise<void>;
-  onEvent?: (event: ScanEvent) => void | Promise<void>;
-  random?: () => number;
+  signal?: AbortSignal | undefined;
+  gate?: ((url: string) => Promise<void>) | undefined;
+  onEvent?: ((event: ScanEvent) => void | Promise<void>) | undefined;
+  random?: (() => number) | undefined;
 }
 
 export class RequestFailure extends Error {

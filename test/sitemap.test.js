@@ -6,7 +6,7 @@ import { gzipSync } from "node:zlib";
 import {
   discoverSitemapUrl,
   loadSitemapUrls,
-} from "../packages/core/dist/index.js";
+} from "../packages/core/dist/sitemap.js";
 
 test("loads page URLs from a sitemap index", async (context) => {
   let requestSlots = 0;

@@ -9,6 +9,28 @@ interface RobotsGroup {
   hasRules: boolean;
 }
 
+export interface RobotsData {
+  url: string;
+  status: number | null;
+  body: string;
+  sha256: string | null;
+  rules: RobotsRule[];
+  denyAll: boolean;
+  error: string | null;
+}
+
+export interface RobotsFetchOptions {
+  userAgent: string;
+  timeout: number;
+  maxRedirects: number;
+  retries: number;
+  fetch: typeof globalThis.fetch;
+  signal?: AbortSignal | undefined;
+  requestGate?: ((url: string) => Promise<void>) | undefined;
+  onEvent?: ((event: ScanEvent) => void | Promise<void>) | undefined;
+  logger?: EngineLogger | undefined;
+}
+
 function patternMatches(pathWithQuery: string, pattern: string): boolean {
   if (!pattern) return false;
   const anchored = pattern.endsWith("$");
@@ -52,5 +74,48 @@ export function isAllowedByRobots(url: string, robots: { denyAll?: boolean; rule
   const matches = (robots.rules ?? [])
     .filter((rule) => patternMatches(pathWithQuery, rule.path))
     .sort((left, right) => right.path.length - left.path.length || (left.type === "allow" ? -1 : 1));
-  return matches.length === 0 || matches[0].type === "allow";
+  return matches.length === 0 || matches[0]?.type === "allow";
 }
+
+export async function fetchRobots(startUrl: string, options: RobotsFetchOptions): Promise<RobotsData> {
+  const robotsUrl = new URL("/robots.txt", startUrl).href;
+  try {
+    const { response } = await fetchWithRetry(robotsUrl, {
+      headers: { accept: "text/plain,*/*;q=0.1", "user-agent": options.userAgent },
+    }, {
+      fetch: options.fetch,
+      timeout: options.timeout,
+      maxRedirects: options.maxRedirects,
+      retries: options.retries,
+      signal: options.signal,
+      gate: options.requestGate,
+      onEvent: options.onEvent,
+    });
+    const { text: body } = await readResponseBody(response, MAX_ROBOTS_BYTES);
+    return {
+      url: robotsUrl,
+      status: response.status,
+      body,
+      sha256: createHash("sha256").update(body).digest("hex"),
+      rules: response.ok ? parseRobots(body, options.userAgent) : [],
+      denyAll: response.status === 401 || response.status === 403,
+      error: null,
+    };
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    return {
+      url: robotsUrl,
+      status: null,
+      body: "",
+      sha256: null,
+      rules: [],
+      denyAll: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+import { createHash } from "node:crypto";
+import { fetchWithRetry, readResponseBody } from "./fetcher.js";
+import type { EngineLogger, ScanEvent } from "./types.js";
+
+const MAX_ROBOTS_BYTES = 512 * 1024;

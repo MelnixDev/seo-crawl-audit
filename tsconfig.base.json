@@ -9,8 +9,9 @@
     "declarationMap": true,
     "sourceMap": true,
     "strict": true,
-    "noUncheckedIndexedAccess": false,
-    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   }

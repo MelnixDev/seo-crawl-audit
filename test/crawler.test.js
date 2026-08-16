@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { crawlSite } from "../packages/core/dist/index.js";
+import { crawlSite } from "../packages/core/dist/crawler.js";
 
 test("crawls same-origin HTML pages and respects robots.txt", async (context) => {
   let requestSlots = 0;
@@ -186,4 +186,35 @@ test("stops gracefully after AbortSignal cancellation and marks the snapshot par
   assert.equal(result.pages.length, 1);
   assert.equal(result.snapshot.partial, true);
   assert.equal(result.snapshot.statistics.partial, true);
+});
+
+test("link discovery uses bounded concurrency and deterministic frontier ordering", async (context) => {
+  let active = 0;
+  let peak = 0;
+  const server = createServer((request, response) => {
+    if (request.url === "/robots.txt") return response.end("");
+    if (request.url === "/") {
+      response.setHeader("content-type", "text/html");
+      return response.end(Array.from({ length: 6 }, (_, index) => `<a href="/page-${6 - index}">Page</a>`).join(""));
+    }
+    active += 1;
+    peak = Math.max(peak, active);
+    setTimeout(() => {
+      active -= 1;
+      response.setHeader("content-type", "text/html");
+      response.end(`<title>${request.url}</title><h1>Page</h1>`);
+    }, 20);
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  context.after(() => server.close());
+  const origin = `http://127.0.0.1:${server.address().port}`;
+
+  const concurrent = await crawlSite(origin, { maxPages: 7, concurrency: 5, requestDelay: 0 });
+  const sequential = await crawlSite(origin, { maxPages: 7, concurrency: 1, requestDelay: 0 });
+  assert.ok(peak > 1 && peak <= 5, `expected peak concurrency between 2 and 5, got ${peak}`);
+  assert.deepEqual(
+    concurrent.pages.map((page) => page.url),
+    sequential.pages.map((page) => page.url),
+  );
 });

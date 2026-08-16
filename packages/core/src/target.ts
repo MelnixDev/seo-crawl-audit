@@ -1,5 +1,7 @@
-// @ts-nocheck -- compatibility helpers accept nullable legacy values.
-export function mapUrlToTarget(url, baselineStartUrl, targetStartUrl) {
+export function mapUrlToTarget(url: string, baselineStartUrl: string, targetStartUrl: string): string;
+export function mapUrlToTarget(url: null, baselineStartUrl: string, targetStartUrl: string): null;
+export function mapUrlToTarget(url: undefined, baselineStartUrl: string, targetStartUrl: string): undefined;
+export function mapUrlToTarget(url: string | null | undefined, baselineStartUrl: string, targetStartUrl: string): string | null | undefined {
   if (!url) {
     return url;
   }
@@ -17,7 +19,10 @@ export function mapUrlToTarget(url, baselineStartUrl, targetStartUrl) {
   return mapped.href;
 }
 
-export function mapUrlToBaseline(url, baselineStartUrl, targetStartUrl) {
+export function mapUrlToBaseline(url: string, baselineStartUrl: string, targetStartUrl: string): string;
+export function mapUrlToBaseline(url: null, baselineStartUrl: string, targetStartUrl: string): null;
+export function mapUrlToBaseline(url: undefined, baselineStartUrl: string, targetStartUrl: string): undefined;
+export function mapUrlToBaseline(url: string | null | undefined, baselineStartUrl: string, targetStartUrl: string): string | null | undefined {
   if (!url) {
     return url;
   }

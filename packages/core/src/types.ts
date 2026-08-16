@@ -2,6 +2,9 @@ export type Severity = "error" | "warning" | "info";
 export type IssueScope = "page" | "site";
 export type IssueOwner = "seo" | "content" | "developer";
 
+export type ScanConfigInput = Partial<ScanConfigV1> & Pick<ScanConfigV1, "url">;
+export type EngineLogger = Pick<Console, "debug" | "info" | "warn" | "error">;
+
 export interface ScanConfigV1 {
   schemaVersion: 1;
   url: string;
@@ -32,6 +35,28 @@ export interface ReportBranding {
   agencyName?: string;
   logo?: string;
   primaryColor?: string;
+}
+
+export interface ReportData {
+  mode?: "scan" | "check";
+  startUrl?: string;
+  generatedAt?: string;
+  pages?: Array<{ url: string }>;
+  issues?: Partial<Issue>[];
+  newIssues?: Partial<Issue>[];
+  ongoingIssues?: Partial<Issue>[];
+  resolvedIssues?: Partial<Issue>[];
+  unchangedIssues?: Partial<Issue>[];
+  partial?: boolean;
+  complete?: boolean;
+  targetPages?: number | null;
+  engineVersion?: string;
+  ruleSetVersion?: string;
+  branding?: ReportBranding;
+}
+
+export interface ReportOptions {
+  branding?: ReportBranding;
 }
 
 export interface PageSnapshot {
@@ -145,6 +170,7 @@ export interface Issue {
 }
 
 export interface DiffResult {
+  complete: boolean;
   newIssues: Issue[];
   ongoingIssues: Issue[];
   resolvedIssues: Issue[];
@@ -153,32 +179,79 @@ export interface DiffResult {
   budgetExceeded: Array<{ budget: string; allowed: number; actual: number }>;
 }
 
+export interface CheckpointIdentity {
+  schemaVersion: 2;
+  pageSchemaVersion: 1;
+  siteUrl: string;
+  sitemapUrl: string | null;
+  includeQuery: boolean;
+  respectRobots: boolean;
+  timeout: number;
+  maxRedirects: number;
+  maxResponseBytes: number;
+  userAgent: string;
+}
+
+export interface CheckpointState {
+  identity: CheckpointIdentity;
+  pages: PageSnapshot[];
+}
+
+export interface CheckpointStore {
+  load(identity: CheckpointIdentity): Promise<CheckpointState | null>;
+  append(identity: CheckpointIdentity, page: PageSnapshot): Promise<void>;
+  clear(identity: CheckpointIdentity): Promise<void>;
+  flush?(): Promise<void>;
+}
+
 export interface StorageAdapter {
   loadCheckpoint?(key: string): Promise<unknown | null>;
   saveCheckpoint?(key: string, value: unknown): Promise<void>;
   removeCheckpoint?(key: string): Promise<void>;
 }
 
-export interface ScanEvent {
-  type: "start" | "page" | "progress" | "checkpoint" | "complete" | "retry";
-  completed?: number;
-  total?: number;
-  page?: PageSnapshot;
-  url?: string;
-  attempt?: number;
-  delayMs?: number;
+export type ScanEvent =
+  | { type: "plan-start"; url: string }
+  | { type: "robots"; robots: RobotsState }
+  | { type: "sitemap"; sitemap: SitemapState | null; candidateCount: number | null }
+  | { type: "scan-start"; url: string; total: number }
+  | { type: "resume"; completed: number; total: number }
+  | { type: "page"; page: PageSnapshot; completed: number; total: number }
+  | { type: "retry"; url: string; attempt: number; delayMs: number }
+  | { type: "checkpoint"; page: PageSnapshot; completed: number; total: number }
+  | { type: "progress"; page: PageSnapshot; completed: number; total: number }
+  | { type: "complete"; completed: number; total: number; partial?: false }
+  | { type: "cancelled"; completed: number; total: number; partial: true };
+
+export interface PlanScanOptions {
+  signal?: AbortSignal | undefined;
+  fetch?: typeof globalThis.fetch | undefined;
+  logger?: EngineLogger | undefined;
+  onEvent?: ((event: ScanEvent) => void | Promise<void>) | undefined;
 }
 
-export interface ScanOptions {
-  storage?: StorageAdapter;
-  onEvent?: (event: ScanEvent) => void | Promise<void>;
-  onProgress?: (completed: number, total: number) => void;
-  signal?: AbortSignal;
-  fetch?: typeof globalThis.fetch;
-  logger?: Pick<Console, "debug" | "info" | "warn" | "error">;
-  cachedPages?: PageSnapshot[];
-  onBatch?: (pages: PageSnapshot[]) => void | Promise<void>;
-  [key: string]: unknown;
+export interface ScanPlan {
+  planVersion: 1;
+  config: ScanConfigV1;
+  startUrl: string;
+  origin: string;
+  userAgent: string;
+  robots: RobotsState & { body: string; denyAll: boolean; rules: Array<{ type: "allow" | "disallow"; path: string }> };
+  sitemap: SitemapState | null;
+  candidateUrls: string[];
+  candidateCount: number | null;
+  mode: "sitemap" | "links";
+}
+
+export interface ScanOptions extends PlanScanOptions {
+  storage?: StorageAdapter | undefined;
+  checkpointStore?: CheckpointStore | undefined;
+  resume?: boolean | undefined;
+  limit?: number | undefined;
+  retainCheckpoint?: boolean | undefined;
+  onProgress?: ((completed: number, total: number) => void) | undefined;
+  cachedPages?: PageSnapshot[] | undefined;
+  onBatch?: ((pages: PageSnapshot[]) => void | Promise<void>) | undefined;
 }
 
 export interface ScanResult {
@@ -188,5 +261,8 @@ export interface ScanResult {
   robots: RobotsState & { rules?: unknown[]; body?: string };
   sitemap: SitemapState | null;
   truncated: boolean;
-  options: Record<string, unknown>;
+  partial?: boolean;
+  durationMs?: number;
+  /** Compatibility view; resolved scan settings live in snapshot.config. */
+  options: object;
 }

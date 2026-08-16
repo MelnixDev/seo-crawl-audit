@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.6.0 — 2026-08-16
+
+- added reusable two-phase `planScan()` and `scan()` workflows without
+  repeating robots or sitemap requests;
+- made breadth-first crawl scheduling deterministic across concurrency levels;
+- moved config, snapshot, report, and durable NDJSON checkpoint files behind
+  the `@seo-crawl-audit/core/node` subpath;
+- narrowed the core root to a stable typed application API and immutable rule
+  metadata;
+- split current and regression evaluators while preserving rule IDs and issue
+  fingerprints;
+- made partial diffs coverage-aware through `DiffResult.complete`;
+- made cancellation return valid partial snapshots, flush checkpoints, and use
+  CLI exit code `130` after SIGINT or SIGTERM;
+- split the CLI into typed parser, UI, and command handlers that use only public
+  core APIs;
+- isolated a testable GitHub Action runner and kept the Action repository-only;
+- enabled strict TypeScript, ESLint boundaries, coverage thresholds, clean
+  package smoke tests, and a nine-combination platform compatibility matrix;
+- kept SnapshotV2, config precedence, CLI flags, normal exit codes, HTML/JSON
+  contracts, and all existing local SEO checks compatible.
+
 ## 0.5.0 — 2026-08-16
 
 - migrated the engine and CLI to TypeScript npm workspaces;

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { audit, createBaseline } from "../packages/core/dist/index.js";
+import { audit } from "../packages/core/dist/index.js";
+import { createBaseline } from "../packages/core/dist/baseline.js";
 
 test("normalizes and audits a 10k-page snapshot within a bounded memory envelope", { timeout: 30_000 }, () => {
   const before = process.memoryUsage().heapUsed;

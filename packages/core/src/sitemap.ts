@@ -1,6 +1,7 @@
 import { gunzipSync } from "node:zlib";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
 import { fetchWithRetry, readResponseBody } from "./fetcher.js";
+import type { ScanEvent, SitemapState } from "./types.js";
 import { isCrawlableUrl, isSameOrigin, normalizeUrl } from "./urls.js";
 
 const MAX_SITEMAP_BYTES = 10 * 1024 * 1024;
@@ -9,22 +10,33 @@ const DEFAULT_SITEMAP_LIMIT = 50_000;
 
 interface SitemapOptions {
   siteOrigin: string;
-  includeQuery?: boolean;
-  maxUrls?: number;
+  includeQuery?: boolean | undefined;
+  maxUrls?: number | undefined;
   timeout: number;
-  maxRedirects?: number;
-  retries?: number;
+  maxRedirects?: number | undefined;
+  retries?: number | undefined;
   userAgent: string;
-  fetch?: typeof globalThis.fetch;
-  signal?: AbortSignal;
-  requestGate?: ((url: string) => Promise<void>);
-  onEvent?: any;
+  fetch?: typeof globalThis.fetch | undefined;
+  signal?: AbortSignal | undefined;
+  requestGate?: ((url: string) => Promise<void>) | undefined;
+  onEvent?: ((event: ScanEvent) => void | Promise<void>) | undefined;
+  robotsBody?: string | undefined;
 }
 
 const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true, trimValues: true });
 
-function array<T>(value: T | T[] | undefined): T[] {
-  return value === undefined ? [] : Array.isArray(value) ? value : [value];
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function locations(value: unknown): string[] {
+  const entries = value === undefined ? [] : Array.isArray(value) ? value : [value];
+  return entries.flatMap((entry) => {
+    const location = record(entry)?.loc;
+    return typeof location === "string" ? [location] : [];
+  });
 }
 
 function decodeSitemap(buffer: Buffer, url: string, contentType: string): string {
@@ -37,12 +49,14 @@ function decodeSitemap(buffer: Buffer, url: string, contentType: string): string
 function parseSitemap(xml: string, url: string): { kind: "index" | "urlset"; locations: string[] } {
   const validation = XMLValidator.validate(xml);
   if (validation !== true) throw new Error(`invalid sitemap XML at ${url}: ${validation.err.msg}`);
-  const data = parser.parse(xml);
-  if (data.sitemapindex) {
-    return { kind: "index", locations: array(data.sitemapindex.sitemap).map((entry: any) => entry?.loc).filter((loc): loc is string => typeof loc === "string") };
+  const data = record(parser.parse(xml));
+  const sitemapIndex = record(data?.sitemapindex);
+  if (sitemapIndex) {
+    return { kind: "index", locations: locations(sitemapIndex.sitemap) };
   }
-  if (data.urlset) {
-    return { kind: "urlset", locations: array(data.urlset.url).map((entry: any) => entry?.loc).filter((loc): loc is string => typeof loc === "string") };
+  const urlSet = record(data?.urlset);
+  if (urlSet) {
+    return { kind: "urlset", locations: locations(urlSet.url) };
   }
   throw new Error(`XML is not a sitemap urlset or sitemapindex: ${url}`);
 }
@@ -81,22 +95,33 @@ async function isSitemapResponse(url: string, options: SitemapOptions): Promise<
   }
 }
 
-export async function discoverSitemapUrl(inputUrl: string, options: Omit<SitemapOptions, "siteOrigin"> & { siteOrigin?: string }): Promise<string | null> {
+export async function discoverSitemapUrl(inputUrl: string, options: Omit<SitemapOptions, "siteOrigin"> & { siteOrigin?: string | undefined }): Promise<string | null> {
   const startUrl = normalizeUrl(inputUrl, undefined);
   if (!startUrl) throw new Error(`invalid start URL: ${inputUrl}`);
   const origin = new URL(startUrl).origin;
   const robotsUrl = new URL("/robots.txt", origin).href;
   try {
+    if (options.robotsBody !== undefined) {
+      for (const match of options.robotsBody.matchAll(/^sitemap:\s*(\S+)\s*$/gim)) {
+        const location = match[1];
+        if (!location) continue;
+        const candidate = normalizeUrl(location, robotsUrl, { includeQuery: true });
+        if (candidate && isSameOrigin(candidate, origin)) return candidate;
+      }
+    } else {
     const { response } = await fetchWithRetry(robotsUrl, {
       headers: { accept: "text/plain,*/*;q=0.1", "user-agent": options.userAgent },
     }, policy({ ...options, siteOrigin: origin }));
     if (response.ok) {
       const { text } = await readResponseBody(response, 512 * 1024);
       for (const match of text.matchAll(/^sitemap:\s*(\S+)\s*$/gim)) {
-        const candidate = normalizeUrl(match[1], robotsUrl, { includeQuery: true });
+        const location = match[1];
+        if (!location) continue;
+        const candidate = normalizeUrl(location, robotsUrl, { includeQuery: true });
         if (candidate && isSameOrigin(candidate, origin)) return candidate;
       }
-    } else await response.body?.cancel();
+      } else await response.body?.cancel();
+    }
   } catch {
     // Fall through to conventional sitemap locations.
   }
@@ -107,7 +132,7 @@ export async function discoverSitemapUrl(inputUrl: string, options: Omit<Sitemap
   return null;
 }
 
-export async function loadSitemapUrls(inputUrl: string, options: SitemapOptions) {
+export async function loadSitemapUrls(inputUrl: string, options: SitemapOptions): Promise<SitemapState> {
   const sitemapUrl = normalizeUrl(inputUrl, undefined, { includeQuery: true });
   if (!sitemapUrl) throw new Error(`invalid sitemap URL: ${inputUrl}`);
   const sitemapOrigin = new URL(sitemapUrl).origin;
@@ -132,7 +157,7 @@ export async function loadSitemapUrls(inputUrl: string, options: SitemapOptions)
       continue;
     }
     for (const location of parsed.locations) {
-      const pageUrl = normalizeUrl(location, currentUrl, { includeQuery: options.includeQuery });
+      const pageUrl = normalizeUrl(location, currentUrl, { includeQuery: options.includeQuery ?? false });
       if (!pageUrl || pageSet.has(pageUrl) || !isSameOrigin(pageUrl, options.siteOrigin) || !isCrawlableUrl(pageUrl)) continue;
       pageSet.add(pageUrl);
       pageUrls.push(pageUrl);

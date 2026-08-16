@@ -1,18 +1,55 @@
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
 import type {
   CrawlStatistics,
   LinkGraphSummary,
   PageSnapshot,
+  RobotsState,
   ScanConfigV1,
+  SitemapState,
   SnapshotV2,
 } from "./types.js";
-
-export const ENGINE_VERSION = "0.5.0";
-export const RULE_SET_VERSION = "1.0.0";
+import { ENGINE_VERSION, RULE_SET_VERSION } from "./version.js";
 
 const DEFAULT_OPEN_GRAPH = { title: null, description: null, image: null };
 const DEFAULT_TWITTER = { card: null, title: null, description: null, image: null };
+
+type PageInput = Partial<PageSnapshot> & Pick<PageSnapshot, "url">;
+type ConfigInput = Partial<ScanConfigV1> & { requestDelay?: number };
+
+export interface BaselineInput {
+  schemaVersion?: unknown;
+  engineVersion?: string;
+  ruleSetVersion?: string;
+  generatedAt?: string;
+  siteUrl?: string;
+  startUrl?: string;
+  pages?: unknown[];
+  source?: Partial<SnapshotV2["source"]>;
+  options?: ConfigInput;
+  config?: Partial<ScanConfigV1>;
+  robots?: Partial<RobotsState>;
+  sitemap?: Partial<SitemapState> | null;
+  linkGraph?: LinkGraphSummary;
+  statistics?: CrawlStatistics;
+  requested?: number;
+  durationMs?: number;
+  truncated?: boolean;
+  partial?: boolean;
+}
+
+function baselineInput(value: unknown): BaselineInput {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("snapshot must be an object");
+  }
+  return value as BaselineInput;
+}
+
+function pageInput(value: unknown): PageInput {
+  if (!value || typeof value !== "object" || typeof (value as { url?: unknown }).url !== "string") {
+    throw new Error("snapshot page URL must be a string");
+  }
+  return value as PageInput;
+}
 
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) {
@@ -63,12 +100,18 @@ export function normalizePage(page: Partial<PageSnapshot> & { url: string }): Pa
   };
 }
 
-function defaultConfig(input: any): ScanConfigV1 {
+function defaultConfig(input: BaselineInput): ScanConfigV1 {
   const source = input.source ?? {};
   const options = input.options ?? {};
+  const firstPage = input.pages?.[0];
+  const firstPageUrl = firstPage && typeof firstPage === "object"
+    ? (firstPage as { url?: unknown }).url
+    : undefined;
+  const url = input.siteUrl ?? input.startUrl ?? source.startUrl ?? (typeof firstPageUrl === "string" ? firstPageUrl : undefined);
+  if (!url) throw new Error("snapshot site URL must be a string");
   return {
     schemaVersion: 1,
-    url: input.siteUrl ?? input.startUrl ?? source.startUrl,
+    url,
     sitemap: options.sitemap ?? source.sitemap ?? "auto",
     maxPages: options.maxPages ?? source.maxPages ?? 100,
     concurrency: options.concurrency ?? 5,
@@ -103,7 +146,7 @@ function createLinkGraph(pages: PageSnapshot[], sitemapUrls: string[]): LinkGrap
   };
 }
 
-function createStatistics(input: any, pages: PageSnapshot[]): CrawlStatistics {
+function createStatistics(input: BaselineInput, pages: PageSnapshot[]): CrawlStatistics {
   const blockedByRobots = pages.filter((page) => page.blockedByRobots).length;
   const failed = pages.filter((page) => page.error || (page.status ?? 500) >= 400).length;
   return {
@@ -119,16 +162,18 @@ function createStatistics(input: any, pages: PageSnapshot[]): CrawlStatistics {
   };
 }
 
-export function createBaseline(scan: any): SnapshotV2 {
+export function createBaseline(scanInput: unknown): SnapshotV2 {
+  const scan = baselineInput(scanInput);
   const config = defaultConfig(scan);
-  const pages = (scan.pages ?? []).map(normalizePage).sort((left: PageSnapshot, right: PageSnapshot) => left.url.localeCompare(right.url));
+  const pages = (scan.pages ?? []).map((page) => normalizePage(pageInput(page))).sort((left, right) => left.url.localeCompare(right.url));
   const sitemapUrls = scan.sitemap?.urls ?? [];
+  if (scan.sitemap && !scan.sitemap.url) throw new Error("snapshot sitemap URL must be a string");
   const sitemap = scan.sitemap
     ? {
-        url: scan.sitemap.url,
+        url: scan.sitemap.url!,
         urls: [...sitemapUrls].sort(),
-        sitemapCount: scan.sitemap.sitemapCount,
-        truncated: scan.sitemap.truncated,
+        sitemapCount: scan.sitemap.sitemapCount ?? 0,
+        truncated: scan.sitemap.truncated ?? false,
         error: scan.sitemap.error ?? null,
       }
     : null;
@@ -168,10 +213,7 @@ export function createBaseline(scan: any): SnapshotV2 {
 }
 
 export function migrateSnapshot(input: unknown): SnapshotV2 {
-  if (!input || typeof input !== "object") {
-    throw new Error("snapshot must be an object");
-  }
-  const value = input as any;
+  const value = baselineInput(input);
   if (!Array.isArray(value.pages)) {
     throw new Error("snapshot pages must be an array");
   }
@@ -191,22 +233,4 @@ export function migrateSnapshot(input: unknown): SnapshotV2 {
     return createBaseline(value);
   }
   throw new Error(`unsupported snapshot schema version: ${String(value.schemaVersion)}`);
-}
-
-export async function writeBaseline(path: string, baseline: SnapshotV2): Promise<void> {
-  await writeFile(path, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
-}
-
-export async function readBaseline(path: string): Promise<SnapshotV2> {
-  try {
-    return migrateSnapshot(JSON.parse(await readFile(path, "utf8")));
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new Error(`invalid snapshot JSON: ${path}`, { cause: error });
-    }
-    if (error instanceof Error && error.message.startsWith("unsupported")) {
-      throw new Error(`unsupported or invalid baseline: ${path}`, { cause: error });
-    }
-    throw error;
-  }
 }

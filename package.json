@@ -1,6 +1,6 @@
 {
   "name": "seo-crawl-audit-workspace",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -9,9 +9,13 @@
   "scripts": {
     "build": "tsc -b && npm run bundle --workspace seo-crawl-audit && npm run bundle --workspace @seo-crawl-audit/action",
     "clean": "tsc -b --clean",
+    "lint": "eslint packages/*/src --max-warnings=0",
     "test": "npm run build && node --test",
-    "check": "npm run build && node --test && npm run pack:check",
-    "pack:check": "npm pack --workspace seo-crawl-audit --dry-run",
+    "test:coverage:core": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=75 --test-coverage-functions=90 --test-coverage-include='packages/core/dist/**/*.js'",
+    "test:coverage:apps": "node --test --experimental-test-coverage --test-coverage-lines=80 --test-coverage-branches=65 --test-coverage-functions=75 --test-coverage-include='packages/cli/dist/**/*.js' --test-coverage-include='packages/action/dist/runner.js'",
+    "test:coverage": "npm run test:coverage:core && npm run test:coverage:apps",
+    "check": "npm run lint && npm run build && npm run test:coverage && npm run pack:check",
+    "pack:check": "node scripts/package-contracts.mjs",
     "benchmark:10k": "npm run build && node scripts/benchmark-10k.mjs",
     "demo:generate": "npm run build && node scripts/generate-demo.mjs",
     "seo-audit": "node bin/seo-audit.js"
@@ -20,8 +24,11 @@
     "node": ">=20.19"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^24.0.0",
     "esbuild": "^0.25.0",
-    "typescript": "^5.9.0"
+    "eslint": "^9.39.5",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.67.0"
   }
 }

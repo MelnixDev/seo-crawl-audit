@@ -3,7 +3,9 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "tsBuildInfoFile": "dist/.tsbuildinfo"
+    "declarationMap": false,
+    "sourceMap": false,
+    "tsBuildInfoFile": "../../node_modules/.cache/seo-crawl-audit-core.tsbuildinfo"
   },
   "include": ["src/**/*.ts"]
 }
