@@ -33,3 +33,12 @@ Inputs:
 The Action writes HTML and JSON, adds error annotations for critical findings,
 creates a job summary, and returns a failing exit status at the configured
 threshold. `actions/upload-artifact` retains the two local output files.
+
+The Action uses only the public core root and `/node` file adapters. A partial
+scan produces an incomplete comparison: regressions found on checked pages are
+kept, but unchecked pages are not marked resolved or missing.
+
+Use `MelnixDev/seo-crawl-audit@v0` for the latest compatible `0.x` Action
+release. `v0` is moved only after the corresponding versioned release has
+passed its clean-install verification. The Action bundle is committed to the
+repository and is not published as a separate npm package.

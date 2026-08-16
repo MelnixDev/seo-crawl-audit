@@ -23,7 +23,7 @@ or [view its source file](examples/quotes-toscrape-report.html).
 - filters, CSV export, print layout, and local report branding;
 - configuration, suppressions with expiry, severity overrides, and budgets;
 - a self-contained GitHub Action that runs inside the GitHub runner;
-- typed engine API with injectable `fetch`, storage, events, logger, and
+- typed engine API with injectable `fetch`, checkpoints, events, logger, and
   `AbortSignal`.
 
 The project intentionally does not calculate an opaque overall SEO score.
@@ -119,6 +119,8 @@ seo-audit check --baseline production-seo.json --strict
 Without `url`, the saved site URL is used. A different origin supports
 production-to-preview comparison while keeping paths comparable. New
 error-level findings return exit code `1`; `--strict` also blocks on warnings.
+If `scan` receives SIGINT or SIGTERM, it flushes completed pages, writes the
+partial snapshot/report, keeps the checkpoint, and exits with code `130`.
 
 ### `seo-audit report [baseline]`
 
@@ -226,10 +228,16 @@ Issues use a stable 24-character fingerprint. A comparison separates:
 - `resolvedIssues` — present before but absent now;
 - `unchangedIssues` — same identity and evidence.
 
+`DiffResult.complete` is `false` for partial or truncated comparisons. Findings
+on checked pages are still reported, while unchecked pages are not falsely
+classified as missing or resolved.
+
 During `scan`, completed normalized page results are appended to
 `.seo-audit.checkpoint.ndjson`. Full HTML is not cached. Running the same
 compatible command resumes without requesting saved pages again. The checkpoint
-is removed after completion and retained after interruption.
+is removed after completion and retained after interruption. Successful pages
+are reused; transient failures and HTTP 5xx results are refreshed. Only an
+unfinished final NDJSON record is recoverable—earlier corruption is reported.
 
 ## HTML and CSV report
 
@@ -293,23 +301,23 @@ packages/action  @seo-crawl-audit/action — GitHub runner entry point
 ```
 
 ```ts
-import { audit, diff, migrateSnapshot, renderReport, scan } from "@seo-crawl-audit/core";
+import { audit, planScan, scan } from "@seo-crawl-audit/core";
+import { createFileCheckpointStore } from "@seo-crawl-audit/core/node";
 
-const result = await scan(
-  { url: "https://example.com/", maxPages: 100 },
-  {
-    signal: controller.signal,
-    fetch: globalThis.fetch,
-    storage,
-    logger: console,
-    onEvent: (event) => console.log(event.type, event.completed),
+const plan = await planScan({ url: "https://example.com/", maxPages: 100 });
+const result = await scan(plan, {
+  signal: controller.signal,
+  checkpointStore: createFileCheckpointStore(".seo-audit.checkpoint.ndjson"),
+  onEvent(event) {
+    if (event.type === "progress") console.log(event.completed, event.total);
   },
-);
+});
 
 const issues = audit(result.snapshot);
 ```
 
-[Read the typed public API guide](docs/public-api.md).
+[Read the typed public API guide](docs/public-api.md) and the
+[architecture notes](docs/architecture.md).
 
 ## Responsible crawling and safe defaults
 
