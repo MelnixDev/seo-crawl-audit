@@ -12,7 +12,7 @@
     "lint": "eslint packages/*/src --max-warnings=0",
     "test": "npm run build && node --test",
     "check": "npm run lint && npm run build && node --test && npm run pack:check",
-    "pack:check": "npm pack --workspace seo-crawl-audit --dry-run",
+    "pack:check": "node scripts/package-contracts.mjs",
     "benchmark:10k": "npm run build && node scripts/benchmark-10k.mjs",
     "demo:generate": "npm run build && node scripts/generate-demo.mjs",
     "seo-audit": "node bin/seo-audit.js"
