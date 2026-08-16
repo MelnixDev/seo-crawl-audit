@@ -3,13 +3,11 @@ import { createBaseline } from "./baseline.js";
 import { fetchWithRetry, readResponseBody, RequestFailure } from "./fetcher.js";
 import { extractSeoData } from "./html.js";
 import { createPerOriginRequestGate } from "./request-gate.js";
-import { isAllowedByRobots, parseRobots, type RobotsRule } from "./robots.js";
+import { fetchRobots, isAllowedByRobots, type RobotsData } from "./robots.js";
 import { loadSitemapUrls } from "./sitemap.js";
 import type { PageSnapshot, ScanEvent, ScanOptions, ScanResult } from "./types.js";
 import { isCrawlableUrl, isSameOrigin, normalizeUrl } from "./urls.js";
 import { DEFAULT_USER_AGENT } from "./version.js";
-
-const MAX_ROBOTS_BYTES = 512 * 1024;
 
 interface InternalOptions extends ScanOptions {
   maxPages: number;
@@ -27,16 +25,6 @@ interface InternalOptions extends ScanOptions {
   retries: number;
   fetch: typeof globalThis.fetch;
   logger: Pick<Console, "debug" | "info" | "warn" | "error">;
-}
-
-interface RobotsData {
-  url: string;
-  status: number | null;
-  body: string;
-  sha256: string | null;
-  rules: RobotsRule[];
-  denyAll: boolean;
-  error: string | null;
 }
 
 function emptyPage(url: string, depth: number): PageSnapshot {
@@ -73,40 +61,6 @@ function emptyPage(url: string, depth: number): PageSnapshot {
 
 async function emit(options: InternalOptions, event: ScanEvent): Promise<void> {
   await options.onEvent?.(event);
-}
-
-async function loadRobots(startUrl: string, options: InternalOptions): Promise<RobotsData> {
-  const robotsUrl = new URL("/robots.txt", startUrl).href;
-  try {
-    const { response } = await fetchWithRetry(robotsUrl, {
-      headers: { accept: "text/plain,*/*;q=0.1", "user-agent": options.userAgent },
-    }, {
-      ...options,
-      gate: options.requestGate,
-      onEvent: options.onEvent,
-    });
-    const { text: body } = await readResponseBody(response, MAX_ROBOTS_BYTES);
-    return {
-      url: robotsUrl,
-      status: response.status,
-      body,
-      sha256: createHash("sha256").update(body).digest("hex"),
-      rules: response.ok ? parseRobots(body, options.userAgent) : [],
-      denyAll: response.status === 401 || response.status === 403,
-      error: null,
-    };
-  } catch (error) {
-    if (options.signal?.aborted) throw error;
-    return {
-      url: robotsUrl,
-      status: null,
-      body: "",
-      sha256: null,
-      rules: [],
-      denyAll: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
 }
 
 async function fetchPage(
@@ -227,7 +181,7 @@ async function runPool<T>(
 export async function fetchPages(urls: string[], rawOptions: ScanOptions & Record<string, any> = {}): Promise<{ pages: PageSnapshot[]; robots: RobotsData }> {
   const options = withDefaults(rawOptions);
   if (urls.length === 0) throw new Error("fetchPages requires at least one URL");
-  const robots: RobotsData = rawOptions.robots ?? await loadRobots(urls[0], options);
+  const robots: RobotsData = rawOptions.robots ?? await fetchRobots(urls[0], options);
   const cached = new Map((rawOptions.cachedPages ?? []).map((page: PageSnapshot) => [page.url, page]));
   const pages = new Map<string, PageSnapshot>();
   let cursor = 0;
@@ -256,7 +210,7 @@ export async function crawlSite(inputUrl: string, rawOptions: ScanOptions & Reco
   const origin = new URL(startUrl).origin;
   await emit(options, { type: "scan-start", url: startUrl, total: options.maxPages });
 
-  const robots = await loadRobots(startUrl, options);
+  const robots = rawOptions.robots ?? await fetchRobots(startUrl, options);
   let sitemap = options.sitemapData;
   if (!sitemap && options.sitemap) {
     try {

@@ -19,6 +19,7 @@ interface SitemapOptions {
   signal?: AbortSignal;
   requestGate?: ((url: string) => Promise<void>);
   onEvent?: any;
+  robotsBody?: string;
 }
 
 const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true, trimValues: true });
@@ -87,6 +88,12 @@ export async function discoverSitemapUrl(inputUrl: string, options: Omit<Sitemap
   const origin = new URL(startUrl).origin;
   const robotsUrl = new URL("/robots.txt", origin).href;
   try {
+    if (options.robotsBody !== undefined) {
+      for (const match of options.robotsBody.matchAll(/^sitemap:\s*(\S+)\s*$/gim)) {
+        const candidate = normalizeUrl(match[1], robotsUrl, { includeQuery: true });
+        if (candidate && isSameOrigin(candidate, origin)) return candidate;
+      }
+    } else {
     const { response } = await fetchWithRetry(robotsUrl, {
       headers: { accept: "text/plain,*/*;q=0.1", "user-agent": options.userAgent },
     }, policy({ ...options, siteOrigin: origin }));
@@ -96,7 +103,8 @@ export async function discoverSitemapUrl(inputUrl: string, options: Omit<Sitemap
         const candidate = normalizeUrl(match[1], robotsUrl, { includeQuery: true });
         if (candidate && isSameOrigin(candidate, origin)) return candidate;
       }
-    } else await response.body?.cancel();
+      } else await response.body?.cancel();
+    }
   } catch {
     // Fall through to conventional sitemap locations.
   }

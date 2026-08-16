@@ -1,6 +1,7 @@
 export * from "./types.js";
 export * from "./version.js";
 export * from "./api.js";
+export * from "./planning.js";
 export * from "./baseline.js";
 export * from "./checkpoint.js";
 export * from "./config.js";

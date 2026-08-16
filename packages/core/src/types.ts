@@ -214,7 +214,7 @@ export interface ScanPlan {
   startUrl: string;
   origin: string;
   userAgent: string;
-  robots: RobotsState & { rules: Array<{ type: "allow" | "disallow"; path: string }> };
+  robots: RobotsState & { body: string; rules: Array<{ type: "allow" | "disallow"; path: string }> };
   sitemap: SitemapState | null;
   candidateUrls: string[];
   candidateCount: number | null;
