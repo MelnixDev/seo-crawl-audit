@@ -1,16 +1,53 @@
-import type * as ActionCore from "@actions/core";
-import { writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import {
   audit,
   diff,
   resolveConfig,
-  scan,
+  scan as coreScan,
   type Issue,
+  type ReportData,
   type ScanConfigV1,
+  type ScanResult,
   type Severity,
+  type SnapshotV2,
 } from "@seo-crawl-audit/core";
-import { loadConfig, readSnapshot, writeReport } from "@seo-crawl-audit/core/node";
+
+export interface ActionInputs {
+  url?: string;
+  baseline?: string;
+  config?: string;
+  failOn?: string;
+  report?: string;
+}
+
+export interface ActionSummary {
+  url: string;
+  pages: number;
+  counts: Record<Severity, number>;
+  issues: Issue[];
+}
+
+export interface ActionAdapters {
+  loadConfig(path: string): Promise<Partial<ScanConfigV1>>;
+  readSnapshot(path: string): Promise<SnapshotV2>;
+  writeReport(path: string, data: ReportData): Promise<void>;
+  writeJson(path: string, value: unknown): Promise<void>;
+  resolvePath(path: string): string;
+  scan?: typeof coreScan;
+  info(message: string): void;
+  annotateError(issue: Issue): void;
+  setOutput(name: "report" | "summary", value: string): void;
+  setFailed(message: string): void;
+  writeSummary?(summary: ActionSummary): Promise<void>;
+}
+
+export interface ActionRunResult {
+  reportPath: string;
+  summaryPath: string;
+  scan: ScanResult;
+  issues: Issue[];
+  blocked: boolean;
+  complete: boolean;
+}
 
 export function thresholdBlocks(severity: Severity, threshold: string): boolean {
   if (threshold === "none") return false;
@@ -18,74 +55,89 @@ export function thresholdBlocks(severity: Severity, threshold: string): boolean 
   return severity === "error";
 }
 
-export async function runAction(action: typeof ActionCore): Promise<void> {
-  const configPath = action.getInput("config") || "seo-audit.config.json";
-  const configFile: Partial<ScanConfigV1> = await loadConfig(configPath).catch((error: unknown) => {
-    if (configPath === "seo-audit.config.json" && error instanceof Error && /ENOENT/.test(String(error.cause))) return {};
+function isMissingDefaultConfig(error: unknown, path: string): boolean {
+  return path === "seo-audit.config.json"
+    && error instanceof Error
+    && /ENOENT/.test(`${error.message} ${String(error.cause)}`);
+}
+
+export async function runAction(inputs: ActionInputs, adapters: ActionAdapters): Promise<ActionRunResult> {
+  const threshold = inputs.failOn || "error";
+  if (!["error", "warning", "none"].includes(threshold)) {
+    throw new Error("fail-on must be error, warning, or none");
+  }
+
+  const configPath = inputs.config || "seo-audit.config.json";
+  const configFile = await adapters.loadConfig(configPath).catch<Partial<ScanConfigV1>>((error: unknown) => {
+    if (isMissingDefaultConfig(error, configPath)) return {};
     throw error;
   });
-  const baselinePath = action.getInput("baseline") || null;
-  const baseline = baselinePath ? await readSnapshot(baselinePath) : null;
-  const url = action.getInput("url") || configFile.url || baseline?.siteUrl;
+  const baselinePath = inputs.baseline || null;
+  const baseline = baselinePath ? await adapters.readSnapshot(baselinePath) : null;
+  const url = inputs.url || configFile.url || baseline?.siteUrl;
   if (!url) throw new Error("Provide the url input, config url, or a baseline containing siteUrl.");
+
   const config = resolveConfig({ schemaVersion: 1, url }, configFile, baseline?.config ?? {});
-  const result = await scan(config, {
+  const runScan = adapters.scan ?? coreScan;
+  const result = await runScan(config, {
     onEvent(event) {
       if (event.type === "progress" && (event.completed === event.total || event.completed % 25 === 0)) {
-        action.info(`Scanned ${event.completed}/${event.total} pages`);
+        adapters.info(`Scanned ${event.completed}/${event.total} pages`);
       }
     },
   });
   const currentIssues = audit(result.snapshot);
   const comparison = baseline ? diff(baseline, result.snapshot) : null;
   const issues = comparison?.newIssues ?? currentIssues;
-  const reportPath = resolve(action.getInput("report") || "seo-audit-report.html");
+  const reportPath = adapters.resolvePath(inputs.report || "seo-audit-report.html");
   const summaryPath = `${reportPath}.json`;
-  const reportData = {
-    mode: baseline ? "check" as const : "scan" as const,
+  const reportData: ReportData = {
+    mode: baseline ? "check" : "scan",
     startUrl: url,
     generatedAt: result.snapshot.generatedAt,
     pages: result.snapshot.pages,
     issues,
     ...(comparison ?? {}),
     partial: result.snapshot.partial,
+    complete: comparison?.complete ?? !result.snapshot.partial,
     engineVersion: result.snapshot.engineVersion,
     ruleSetVersion: result.snapshot.ruleSetVersion,
     branding: config.report,
   };
+  const counts = issues.reduce<Record<Severity, number>>((summary, issue) => {
+    summary[issue.severity] += 1;
+    return summary;
+  }, { error: 0, warning: 0, info: 0 });
   const summary = {
     url,
     generatedAt: result.snapshot.generatedAt,
     pages: result.snapshot.pages.length,
     partial: result.snapshot.partial,
     complete: comparison?.complete ?? !result.snapshot.partial,
-    counts: issues.reduce((counts, issue) => ({ ...counts, [issue.severity]: counts[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 }),
+    counts,
     issues,
     lifecycle: comparison,
   };
-  await writeReport(reportPath, reportData);
-  await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
-  action.setOutput("report", reportPath);
-  action.setOutput("summary", summaryPath);
 
+  await adapters.writeReport(reportPath, reportData);
+  await adapters.writeJson(summaryPath, summary);
+  adapters.setOutput("report", reportPath);
+  adapters.setOutput("summary", summaryPath);
   for (const issue of issues.filter((candidate) => candidate.severity === "error")) {
-    action.error(`${issue.ruleId}: ${issue.message} (${issue.url})`, { title: `SEO regression · ${issue.ruleId}` });
+    adapters.annotateError(issue);
   }
-  if (process.env.GITHUB_STEP_SUMMARY) {
-    await action.summary
-      .addHeading("SEO Crawl Audit")
-      .addRaw(`Scanned **${result.snapshot.pages.length}** page(s). Found **${summary.counts.error}** error(s), **${summary.counts.warning}** warning(s), and **${summary.counts.info}** informational finding(s).`)
-      .addTable([
-        [{ data: "Severity", header: true }, { data: "Rule", header: true }, { data: "URL", header: true }],
-        ...issues.slice(0, 25).map((issue: Issue) => [issue.severity, issue.ruleId, issue.url]),
-      ])
-      .write();
-  }
+  await adapters.writeSummary?.({ url, pages: result.snapshot.pages.length, counts, issues });
+  adapters.info("HTML and JSON outputs are ready. Use actions/upload-artifact with the report and summary outputs to retain them.");
 
-  action.info("HTML and JSON outputs are ready. Use actions/upload-artifact with the report and summary outputs to retain them.");
-  const threshold = action.getInput("fail-on") || "error";
-  if (!["error", "warning", "none"].includes(threshold)) throw new Error("fail-on must be error, warning, or none");
-  if (issues.some((issue) => thresholdBlocks(issue.severity, threshold)) || (comparison?.budgetExceeded.length ?? 0) > 0) {
-    action.setFailed(`SEO Crawl Audit found findings at or above the ${threshold} threshold.`);
-  }
+  const blocked = issues.some((issue) => thresholdBlocks(issue.severity, threshold))
+    || (comparison?.budgetExceeded.length ?? 0) > 0;
+  if (blocked) adapters.setFailed(`SEO Crawl Audit found findings at or above the ${threshold} threshold.`);
+  return {
+    reportPath,
+    summaryPath,
+    scan: result,
+    issues,
+    blocked,
+    complete: summary.complete,
+  };
 }
