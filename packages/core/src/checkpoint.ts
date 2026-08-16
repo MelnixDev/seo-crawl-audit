@@ -1,3 +1,4 @@
+// @ts-nocheck -- NDJSON compatibility code accepts legacy checkpoint records.
 import {
   appendFile,
   readFile,

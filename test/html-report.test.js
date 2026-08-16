@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { renderHtmlReport } from "../src/html-report.js";
+import { renderHtmlReport } from "../packages/core/dist/index.js";
 
 test("renders a self-contained filterable report and escapes embedded data", () => {
   const html = renderHtmlReport({

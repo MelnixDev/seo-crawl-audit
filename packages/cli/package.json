@@ -1,0 +1,48 @@
+{
+  "name": "seo-crawl-audit",
+  "version": "0.5.0",
+  "description": "Free, open-source, local-first SEO crawler and regression audit tool.",
+  "type": "module",
+  "bin": {
+    "seo-audit": "bin/seo-audit.js"
+  },
+  "exports": {
+    ".": "./bundle/cli.js"
+  },
+  "files": [
+    "bin",
+    "bundle",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "bundle": "esbuild dist/cli.js --bundle --platform=node --target=node20 --format=esm --minify-whitespace --outfile=bundle/cli.js"
+  },
+  "keywords": [
+    "seo",
+    "seo-audit",
+    "crawler",
+    "regression-testing",
+    "sitemap",
+    "html-report",
+    "cli",
+    "ci"
+  ],
+  "author": "MelnixDev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MelnixDev/seo-crawl-audit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MelnixDev/seo-crawl-audit/issues"
+  },
+  "homepage": "https://github.com/MelnixDev/seo-crawl-audit#readme",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "devDependencies": {
+    "@seo-crawl-audit/core": "0.5.0"
+  }
+}

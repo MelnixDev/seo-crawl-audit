@@ -1,0 +1,24 @@
+{
+  "name": "@seo-crawl-audit/action",
+  "version": "0.5.0",
+  "description": "GitHub Action for local SEO Crawl Audit checks.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "bundle": "esbuild dist/index.js --bundle --platform=node --target=node24 --format=cjs --minify-whitespace --outfile=action-dist/index.cjs"
+  },
+  "dependencies": {
+    "@actions/core": "^3.0.1"
+  },
+  "devDependencies": {
+    "@seo-crawl-audit/core": "0.5.0"
+  },
+  "author": "MelnixDev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MelnixDev/seo-crawl-audit.git",
+    "directory": "packages/action"
+  },
+  "engines": { "node": ">=20.19" }
+}

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mapUrlToBaseline, mapUrlToTarget } from "../src/target.js";
+import { mapUrlToBaseline, mapUrlToTarget } from "../packages/core/dist/index.js";
 
 test("maps production pages to a preview origin", () => {
   assert.equal(

@@ -1,0 +1,17 @@
+{
+  "$schema": "./packages/core/config.schema.json",
+  "sitemap": "auto",
+  "maxPages": 100,
+  "concurrency": 5,
+  "delay": 100,
+  "timeout": 10000,
+  "respectRobots": true,
+  "includeQuery": false,
+  "maxRedirects": 10,
+  "maxResponseBytes": 5242880,
+  "enabledRules": null,
+  "severityOverrides": {},
+  "suppressions": [],
+  "regressionBudgets": {},
+  "report": {}
+}

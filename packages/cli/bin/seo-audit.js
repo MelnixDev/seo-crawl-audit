@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { main } from "../packages/cli/bundle/cli.js";
+import { main } from "../bundle/cli.js";
 
 main()
   .then((exitCode) => {

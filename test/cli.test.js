@@ -5,7 +5,7 @@ import { once } from "node:events";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { main, parseScanMenuSelection } from "../src/cli.js";
+import { main, parseScanMenuSelection } from "../packages/cli/dist/cli.js";
 
 test("scan creates a baseline and check fails on a new noindex", async (context) => {
   let noindex = false;
@@ -78,7 +78,7 @@ test("--version prints the package version", async (context) => {
   });
 
   assert.equal(await main(["--version"]), 0);
-  assert.deepEqual(messages, ["0.1.2"]);
+  assert.deepEqual(messages, ["0.5.0"]);
 });
 
 test("--delay rejects negative values before crawling", async (context) => {

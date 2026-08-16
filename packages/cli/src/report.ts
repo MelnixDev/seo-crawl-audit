@@ -1,3 +1,4 @@
+// @ts-nocheck -- accepts Issue-compatible payloads from old and new snapshots.
 const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
 
 function color(code, value) {

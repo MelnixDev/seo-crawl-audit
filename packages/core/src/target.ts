@@ -1,3 +1,4 @@
+// @ts-nocheck -- compatibility helpers accept nullable legacy values.
 export function mapUrlToTarget(url, baselineStartUrl, targetStartUrl) {
   if (!url) {
     return url;

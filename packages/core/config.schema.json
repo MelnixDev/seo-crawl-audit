@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://melnixdev.github.io/seo-crawl-audit/config.schema.json",
+  "title": "SEO Crawl Audit configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "url": { "type": "string", "format": "uri", "pattern": "^https?://" },
+    "sitemap": { "oneOf": [{ "enum": ["auto", "none"] }, { "type": "string", "format": "uri" }] },
+    "maxPages": { "type": "integer", "minimum": 1 },
+    "concurrency": { "type": "integer", "minimum": 1, "maximum": 50 },
+    "delay": { "type": "integer", "minimum": 0 },
+    "timeout": { "type": "integer", "minimum": 1 },
+    "respectRobots": { "type": "boolean" },
+    "includeQuery": { "type": "boolean" },
+    "maxRedirects": { "type": "integer", "minimum": 0, "maximum": 50 },
+    "maxResponseBytes": { "type": "integer", "minimum": 1024 },
+    "enabledRules": { "type": ["array", "null"], "items": { "type": "string" }, "uniqueItems": true },
+    "severityOverrides": {
+      "type": "object",
+      "additionalProperties": { "enum": ["error", "warning", "info"] }
+    },
+    "suppressions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule", "urlPattern", "reason"],
+        "properties": {
+          "rule": { "type": "string" },
+          "urlPattern": { "type": "string" },
+          "reason": { "type": "string", "minLength": 1 },
+          "expiresAt": { "type": "string", "format": "date" }
+        }
+      }
+    },
+    "regressionBudgets": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agencyName": { "type": "string" },
+        "logo": { "type": "string" },
+        "primaryColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+      }
+    }
+  }
+}

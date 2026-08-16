@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { compareBaselines } from "../src/compare.js";
+import { compareBaselines } from "../packages/core/dist/index.js";
 
 function snapshot(page) {
   return {

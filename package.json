@@ -1,46 +1,27 @@
 {
-  "name": "seo-crawl-audit",
-  "version": "0.1.2",
-  "description": "Local-first CLI for SEO audits, resumable crawls, HTML reports, and regression checks.",
+  "name": "seo-crawl-audit-workspace",
+  "version": "0.5.0",
+  "private": true,
   "type": "module",
-  "bin": {
-    "seo-audit": "bin/seo-audit.js"
-  },
-  "files": [
-    "bin",
-    "examples",
-    "src",
-    "README.md",
-    "LICENSE"
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "test": "node --test",
-    "check": "node --check bin/seo-audit.js && node --check src/cli.js && node --test"
+    "build": "tsc -b && npm run bundle --workspace seo-crawl-audit && npm run bundle --workspace @seo-crawl-audit/action",
+    "clean": "tsc -b --clean",
+    "test": "npm run build && node --test",
+    "check": "npm run build && node --test && npm run pack:check",
+    "pack:check": "npm pack --workspace seo-crawl-audit --dry-run",
+    "benchmark:10k": "npm run build && node scripts/benchmark-10k.mjs",
+    "demo:generate": "npm run build && node scripts/generate-demo.mjs",
+    "seo-audit": "node bin/seo-audit.js"
   },
-  "keywords": [
-    "seo",
-    "seo-audit",
-    "crawler",
-    "regression-testing",
-    "sitemap",
-    "html-report",
-    "cli",
-    "ci"
-  ],
-  "author": "MelnixDev",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/MelnixDev/seo-crawl-audit.git"
-  },
-  "bugs": {
-    "url": "https://github.com/MelnixDev/seo-crawl-audit/issues"
-  },
-  "homepage": "https://github.com/MelnixDev/seo-crawl-audit#readme",
   "engines": {
     "node": ">=20.19"
   },
-  "dependencies": {
-    "parse5": "^8.0.0"
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.0"
   }
 }

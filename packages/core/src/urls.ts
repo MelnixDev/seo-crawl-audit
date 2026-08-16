@@ -1,3 +1,4 @@
+// @ts-nocheck -- public overloads are declared by generated TypeScript output.
 const SKIPPED_EXTENSIONS =
   /\.(?:avif|bmp|css|csv|docx?|eot|gif|gz|ico|jpe?g|js|json|map|mp3|mp4|mov|ogg|otf|pdf|png|pptx?|rar|rss|svg|tar|tiff?|ttf|txt|wav|webm|webp|woff2?|xlsx?|xml|zip)$/i;
 

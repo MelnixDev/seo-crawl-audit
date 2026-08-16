@@ -1,0 +1,39 @@
+{
+  "name": "@seo-crawl-audit/core",
+  "version": "0.5.0",
+  "description": "Local-first SEO crawling, audit, diff, snapshot, and report engine.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./config.schema.json": "./config.schema.json"
+  },
+  "files": [
+    "dist",
+    "config.schema.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "keywords": ["seo", "crawler", "audit", "regression-testing"],
+  "author": "MelnixDev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MelnixDev/seo-crawl-audit.git",
+    "directory": "packages/core"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.2.5",
+    "parse5": "^8.0.0"
+  }
+}

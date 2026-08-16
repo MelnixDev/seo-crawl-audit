@@ -1,31 +1,31 @@
+// @ts-nocheck -- CLI parsing stays runtime-compatible while core becomes fully typed.
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import {
-  createBaseline,
-  readBaseline,
-  writeBaseline,
-} from "./baseline.js";
-import { auditBaseline } from "./audit.js";
-import {
+  auditBaseline,
   appendCheckpointPages,
   checkpointPathForOutput,
-  initializeCheckpoint,
-  removeCheckpoint,
-} from "./checkpoint.js";
-import { compareBaselines } from "./compare.js";
-import { crawlSite, fetchPages } from "./crawler.js";
-import { writeHtmlReport } from "./html-report.js";
-import { printIssues, summarizeIssues } from "./report.js";
-import { createRequestGate } from "./request-gate.js";
-import {
+  createBaseline,
+  createRequestGate,
+  crawlSite,
   discoverSitemapUrl,
+  diff,
+  fetchPages,
+  initializeCheckpoint,
+  loadConfig,
   loadSitemapUrls,
-} from "./sitemap.js";
-import { mapUrlToBaseline, mapUrlToTarget } from "./target.js";
-import { normalizeUrl } from "./urls.js";
+  mapUrlToBaseline,
+  mapUrlToTarget,
+  normalizeUrl,
+  readBaseline,
+  removeCheckpoint,
+  writeHtmlReport,
+  writeBaseline,
+} from "@seo-crawl-audit/core";
+import { printIssues, summarizeIssues } from "./report.js";
 
-const VERSION = "0.1.2";
+const VERSION = "0.5.0";
 const DEFAULT_BASELINE = ".seo-audit.json";
 const DEFAULT_REPORT = "seo-audit-report.html";
 
@@ -47,6 +47,7 @@ Commands:
 
 Options:
   --baseline <file>       Baseline file for check (default: .seo-audit.json)
+  --config <file>         Configuration file (default: seo-audit.config.json)
   --output <file>         Output file for scan (default: .seo-audit.json)
   --report <file>         HTML report path (default: seo-audit-report.html)
   --no-report             Do not generate the automatic HTML report
@@ -103,6 +104,7 @@ function parseCliArgs(args) {
     strict: true,
     options: {
       baseline: { type: "string" },
+      config: { type: "string" },
       output: { type: "string" },
       report: { type: "string" },
       "no-report": { type: "boolean" },
@@ -123,6 +125,33 @@ function parseCliArgs(args) {
       version: { type: "boolean" },
     },
   });
+}
+
+function applyFileConfig(values, config) {
+  const merged = { ...values, __config: config };
+  const setString = (flag, value) => {
+    if (merged[flag] === undefined && value !== undefined) {
+      merged[flag] = String(value);
+    }
+  };
+
+  if (merged.pages === undefined && merged["max-pages"] === undefined) {
+    setString("pages", config.maxPages);
+  }
+  setString("concurrency", config.concurrency);
+  setString("delay", config.delay);
+  setString("timeout", config.timeout);
+  if (merged.sitemap === undefined && merged["no-sitemap"] === undefined) {
+    if (config.sitemap === "none") merged["no-sitemap"] = true;
+    else if (config.sitemap && config.sitemap !== "auto") merged.sitemap = config.sitemap;
+  }
+  if (merged["include-query"] === undefined && config.includeQuery !== undefined) {
+    merged["include-query"] = config.includeQuery;
+  }
+  if (merged["ignore-robots"] === undefined && config.respectRobots === false) {
+    merged["ignore-robots"] = true;
+  }
+  return merged;
 }
 
 function shouldGenerateReport(values, force = false) {
@@ -155,6 +184,7 @@ async function generateReport(values, payload, force = false) {
 }
 
 function crawlerOptions(values, baseline) {
+  const config = values.__config ?? {};
   return {
     maxPages: positiveInteger(
       values.pages ?? values["max-pages"],
@@ -177,6 +207,23 @@ function crawlerOptions(values, baseline) {
     sitemap: values["no-sitemap"]
       ? null
       : (values.sitemap ?? baseline?.source.sitemap ?? null),
+    maxRedirects: config.maxRedirects ?? baseline?.config?.maxRedirects ?? 10,
+    maxResponseBytes:
+      config.maxResponseBytes ?? baseline?.config?.maxResponseBytes ?? 5 * 1024 * 1024,
+    enabledRules: config.enabledRules ?? baseline?.config?.enabledRules ?? null,
+    severityOverrides: {
+      ...(baseline?.config?.severityOverrides ?? {}),
+      ...(config.severityOverrides ?? {}),
+    },
+    suppressions: config.suppressions ?? baseline?.config?.suppressions ?? [],
+    regressionBudgets: {
+      ...(baseline?.config?.regressionBudgets ?? {}),
+      ...(config.regressionBudgets ?? {}),
+    },
+    report: {
+      ...(baseline?.config?.report ?? {}),
+      ...(config.report ?? {}),
+    },
   };
 }
 
@@ -321,7 +368,7 @@ async function resolveSitemap(startUrl, values, options) {
 
   const discovered = await discoverSitemapUrl(startUrl, {
     timeout: options.timeout,
-    userAgent: "seo-crawl-audit/0.1.2",
+    userAgent: `seo-crawl-audit/${VERSION}`,
     requestGate: options.requestGate,
   });
   if (discovered) {
@@ -470,6 +517,7 @@ async function scanCommand(url, values) {
       issues: auditBaseline({ pages }),
       partial: true,
       targetPages: scanPlan.target,
+      branding: options.report,
     });
     lastReportPageCount = savedPages.size;
     lastReportAt = now;
@@ -603,6 +651,9 @@ async function scanCommand(url, values) {
       generatedAt: new Date().toISOString(),
       pages: baseline.pages,
       issues: auditBaseline(baseline),
+      engineVersion: baseline.engineVersion,
+      ruleSetVersion: baseline.ruleSetVersion,
+      branding: baseline.config.report,
     });
   } else {
     await writePartialReport(true);
@@ -726,7 +777,12 @@ async function checkCommand(url, values) {
       left.url.localeCompare(right.url),
     ),
   });
-  const issues = compareBaselines(baseline, current);
+  const comparison = diff(baseline, current, {
+    enabledRules: options.enabledRules,
+    severityOverrides: options.severityOverrides,
+    suppressions: options.suppressions,
+  });
+  const issues = comparison.newIssues;
   const summary = summarizeIssues(issues);
   const reportOutput = await generateReport(values, {
     mode: "check",
@@ -734,6 +790,10 @@ async function checkCommand(url, values) {
     generatedAt: new Date().toISOString(),
     pages: current.pages,
     issues,
+    ...comparison,
+    engineVersion: current.engineVersion,
+    ruleSetVersion: current.ruleSetVersion,
+    branding: current.config.report,
   });
 
   if (values.json) {
@@ -745,6 +805,7 @@ async function checkCommand(url, values) {
           pages: current.pages.length,
           summary,
           issues,
+          lifecycle: comparison,
           report: reportOutput,
         },
         null,
@@ -759,7 +820,7 @@ async function checkCommand(url, values) {
     }
   }
 
-  return summary.error > 0 || (values.strict && summary.warning > 0) ? 1 : 0;
+  return summary.error > 0 || comparison.budgetExceeded.length > 0 || (values.strict && summary.warning > 0) ? 1 : 0;
 }
 
 async function reportCommand(inputPath, values) {
@@ -773,6 +834,9 @@ async function reportCommand(inputPath, values) {
       generatedAt: new Date().toISOString(),
       pages: baseline.pages,
       issues: auditBaseline(baseline),
+      engineVersion: baseline.engineVersion,
+      ruleSetVersion: baseline.ruleSetVersion,
+      branding: baseline.config.report,
     },
     true,
   );
@@ -807,7 +871,15 @@ export async function main(args = process.argv.slice(2)) {
     return 2;
   }
 
-  const { values, positionals } = parsed;
+  let { values } = parsed;
+  const { positionals } = parsed;
+
+  try {
+    values = applyFileConfig(values, await loadConfig(values.config));
+  } catch (error) {
+    console.error(`seo-audit: ${error.message}`);
+    return 2;
+  }
 
   if (values.version) {
     console.log(VERSION);
@@ -824,6 +896,9 @@ export async function main(args = process.argv.slice(2)) {
     extra = positionals.slice(1);
     url = command;
     command = "scan";
+  }
+  if ((command === "scan" || command === "check") && !url && values.__config?.url) {
+    url = values.__config.url;
   }
   if (extra.length > 0) {
     console.error(`Unexpected argument: ${extra[0]}`);

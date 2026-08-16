@@ -1,0 +1,33 @@
+name: SEO Crawl Audit
+description: Run a free, local-first SEO crawl and regression check inside a GitHub runner.
+author: MelnixDev
+branding:
+  icon: search
+  color: blue
+inputs:
+  url:
+    description: Full HTTP(S) site URL to scan. Overrides config and baseline URLs.
+    required: false
+  baseline:
+    description: Optional committed SnapshotV1 or SnapshotV2 baseline path.
+    required: false
+  config:
+    description: Optional seo-audit.config.json path.
+    required: false
+    default: seo-audit.config.json
+  fail-on:
+    description: Failure threshold — error, warning, or none.
+    required: false
+    default: error
+  report:
+    description: HTML report output path.
+    required: false
+    default: seo-audit-report.html
+outputs:
+  report:
+    description: Generated HTML report path.
+  summary:
+    description: Generated machine-readable JSON summary path.
+runs:
+  using: node24
+  main: packages/action/action-dist/index.cjs
