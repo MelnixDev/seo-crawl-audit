@@ -5,18 +5,42 @@ import { extractSeoData } from "./html.js";
 import { createPerOriginRequestGate } from "./request-gate.js";
 import { fetchRobots, isAllowedByRobots, type RobotsData } from "./robots.js";
 import { loadSitemapUrls } from "./sitemap.js";
-import type { PageSnapshot, ScanEvent, ScanOptions, ScanResult } from "./types.js";
+import type { PageSnapshot, ReportBranding, ScanEvent, ScanOptions, ScanResult, Severity, SitemapState, Suppression } from "./types.js";
 import { isCrawlableUrl, isSameOrigin, normalizeUrl } from "./urls.js";
 import { DEFAULT_USER_AGENT } from "./version.js";
 
-interface InternalOptions extends ScanOptions {
+interface CrawlerOptions extends ScanOptions {
+  maxPages?: number;
+  concurrency?: number;
+  timeout?: number;
+  includeQuery?: boolean;
+  respectRobots?: boolean;
+  sitemap?: string | null;
+  sitemapData?: SitemapState | null;
+  userAgent?: string;
+  requestDelay?: number;
+  delay?: number;
+  requestGate?: (url: string) => Promise<void>;
+  maxRedirects?: number;
+  maxResponseBytes?: number;
+  retries?: number;
+  robots?: RobotsData;
+  sitemapMaxUrls?: number;
+  enabledRules?: string[] | null;
+  severityOverrides?: Record<string, Severity>;
+  suppressions?: Suppression[];
+  regressionBudgets?: Record<string, number>;
+  report?: ReportBranding;
+}
+
+interface InternalOptions extends CrawlerOptions {
   maxPages: number;
   concurrency: number;
   timeout: number;
   includeQuery: boolean;
   respectRobots: boolean;
   sitemap: string | null;
-  sitemapData: any;
+  sitemapData: SitemapState | null;
   userAgent: string;
   requestDelay: number;
   requestGate: (url: string) => Promise<void>;
@@ -139,7 +163,7 @@ async function fetchPage(
   }
 }
 
-function withDefaults(raw: ScanOptions & Record<string, any> = {}): InternalOptions {
+function withDefaults(raw: CrawlerOptions = {}): InternalOptions {
   const requestDelay = raw.requestDelay ?? raw.delay ?? 100;
   const providedGate = raw.requestGate as ((url?: string) => Promise<void>) | undefined;
   return {
@@ -178,7 +202,7 @@ async function runPool<T>(
   return output;
 }
 
-export async function fetchPages(urls: string[], rawOptions: ScanOptions & Record<string, any> = {}): Promise<{ pages: PageSnapshot[]; robots: RobotsData }> {
+export async function fetchPages(urls: string[], rawOptions: CrawlerOptions = {}): Promise<{ pages: PageSnapshot[]; robots: RobotsData }> {
   const options = withDefaults(rawOptions);
   if (urls.length === 0) throw new Error("fetchPages requires at least one URL");
   const robots: RobotsData = rawOptions.robots ?? await fetchRobots(urls[0], options);
@@ -202,7 +226,7 @@ export async function fetchPages(urls: string[], rawOptions: ScanOptions & Recor
   return { pages: urls.map((url) => pages.get(url)).filter((page): page is PageSnapshot => Boolean(page)), robots };
 }
 
-export async function crawlSite(inputUrl: string, rawOptions: ScanOptions & Record<string, any> = {}): Promise<ScanResult> {
+export async function crawlSite(inputUrl: string, rawOptions: CrawlerOptions = {}): Promise<ScanResult> {
   const startedAt = Date.now();
   const options = withDefaults(rawOptions);
   const startUrl = normalizeUrl(inputUrl, undefined, { includeQuery: options.includeQuery });

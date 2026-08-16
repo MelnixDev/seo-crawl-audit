@@ -236,7 +236,7 @@ export interface ScanPlan {
   startUrl: string;
   origin: string;
   userAgent: string;
-  robots: RobotsState & { body: string; rules: Array<{ type: "allow" | "disallow"; path: string }> };
+  robots: RobotsState & { body: string; denyAll: boolean; rules: Array<{ type: "allow" | "disallow"; path: string }> };
   sitemap: SitemapState | null;
   candidateUrls: string[];
   candidateCount: number | null;
@@ -252,7 +252,6 @@ export interface ScanOptions extends PlanScanOptions {
   onProgress?: (completed: number, total: number) => void;
   cachedPages?: PageSnapshot[];
   onBatch?: (pages: PageSnapshot[]) => void | Promise<void>;
-  [key: string]: unknown;
 }
 
 export interface ScanResult {
@@ -264,5 +263,6 @@ export interface ScanResult {
   truncated: boolean;
   partial?: boolean;
   durationMs?: number;
-  options: Record<string, unknown>;
+  /** Compatibility view; resolved scan settings live in snapshot.config. */
+  options: object;
 }
