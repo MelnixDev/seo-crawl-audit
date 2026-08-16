@@ -145,6 +145,7 @@ export interface Issue {
 }
 
 export interface DiffResult {
+  complete: boolean;
   newIssues: Issue[];
   ongoingIssues: Issue[];
   resolvedIssues: Issue[];

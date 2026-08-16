@@ -83,4 +83,33 @@ test("diff classifies new, unchanged, and resolved issues by stable fingerprint"
   assert.equal(result.newIssues.some((issue) => issue.rule === "missing-title"), true);
   assert.equal(result.resolvedIssues.some((issue) => issue.rule === "missing-description"), true);
   assert.equal(result.newIssues.every((issue) => /^[a-f0-9]{24}$/.test(issue.fingerprint)), true);
+  assert.equal(result.complete, true);
+});
+
+test("partial diff does not invent missing or resolved issues for unchecked pages", () => {
+  const previous = createBaseline({
+    startUrl: "https://example.com/",
+    robots: { url: "https://example.com/robots.txt", status: 200, sha256: "same", error: null },
+    pages: [
+      { ...baseline("Home").pages[0], url: "https://example.com/", finalUrl: "https://example.com/", description: null },
+      { ...baseline(null).pages[0], url: "https://example.com/unchecked", finalUrl: "https://example.com/unchecked" },
+    ],
+  });
+  const current = createBaseline({
+    startUrl: "https://example.com/",
+    robots: { url: "https://example.com/robots.txt", status: 200, sha256: "same", error: null },
+    pages: [{
+      ...baseline("Home").pages[0],
+      url: "https://example.com/",
+      finalUrl: "https://example.com/",
+    }],
+    partial: true,
+    truncated: true,
+  });
+
+  const result = diff(previous, current);
+  assert.equal(result.complete, false);
+  assert.equal(result.newIssues.some((issue) => issue.ruleId === "page-missing"), false);
+  assert.equal(result.resolvedIssues.some((issue) => issue.url === "https://example.com/unchecked"), false);
+  assert.equal(result.resolvedIssues.some((issue) => issue.ruleId === "missing-description"), true);
 });

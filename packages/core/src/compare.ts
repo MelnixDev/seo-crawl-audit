@@ -37,6 +37,7 @@ export function compareBaselines(
 ): Issue[] {
   const baseline = snapshot(baselineInput);
   const current = snapshot(currentInput);
+  const complete = !current.partial && !current.truncated;
   const issues: Issue[] = [];
   const currentPages = new Map(current.pages.map((page) => [page.url, page]));
 
@@ -46,13 +47,16 @@ export function compareBaselines(
   const previousSitemapCount = baseline.sitemap?.urls.length ?? 0;
   const currentSitemapCount = current.sitemap?.urls.length ?? 0;
   const sitemapDrop = previousSitemapCount - currentSitemapCount;
-  if (previousSitemapCount > 0 && sitemapDrop >= Math.max(5, Math.ceil(previousSitemapCount * 0.2))) {
+  if (complete && previousSitemapCount > 0 && sitemapDrop >= Math.max(5, Math.ceil(previousSitemapCount * 0.2))) {
     issues.push(changedIssue("sitemap-url-count-drop", current.sitemap?.url ?? baseline.sitemap?.url ?? current.siteUrl, `Sitemap URL count dropped by ${sitemapDrop}`, previousSitemapCount, currentSitemapCount));
   }
 
   for (const before of baseline.pages) {
     const after = currentPages.get(before.url) as PageSnapshot | undefined;
-    if (!after) { issues.push(changedIssue("page-missing", before.url, "Page was not checked", before.status, null)); continue; }
+    if (!after) {
+      if (complete) issues.push(changedIssue("page-missing", before.url, "Page was not checked", before.status, null));
+      continue;
+    }
     if (after.blockedByRobots && !before.blockedByRobots) { issues.push(changedIssue("robots-blocked", before.url, "Page is now blocked by robots.txt", false, true)); continue; }
     if (after.error && !before.error) { issues.push(changedIssue(after.error.includes("redirect loop") ? "redirect-loop" : "page-unreachable", before.url, `Page request failed: ${after.error}`, before.error, after.error)); continue; }
     if (before.status !== null && before.status < 400 && (after.status === null || after.status >= 400)) issues.push(changedIssue("status-regression", before.url, `HTTP status regressed from ${before.status} to ${after.status ?? "none"}`, before.status, after.status));
@@ -89,6 +93,8 @@ export function diff(
 ): DiffResult {
   const previous = snapshot(previousInput);
   const current = snapshot(currentInput);
+  const complete = !current.partial && !current.truncated;
+  const checkedUrls = new Set(current.pages.map((page) => page.url));
   const previousIssues = new Map(audit(previous, ruleSet).map((candidate) => [candidate.fingerprint, candidate]));
   const currentIssues = new Map(audit(current, ruleSet).map((candidate) => [candidate.fingerprint, candidate]));
   const newIssues: Issue[] = [];
@@ -103,7 +109,8 @@ export function diff(
     else ongoingIssues.push(lifecycle({ ...candidate, before: before.evidence, after: candidate.evidence }, "ongoing"));
   }
   for (const [fingerprint, candidate] of previousIssues) {
-    if (!currentIssues.has(fingerprint)) resolvedIssues.push(lifecycle(candidate, "resolved"));
+    const evaluated = candidate.scope === "page" ? checkedUrls.has(candidate.url) : complete;
+    if (evaluated && !currentIssues.has(fingerprint)) resolvedIssues.push(lifecycle(candidate, "resolved"));
   }
   const known = new Set(newIssues.map((candidate) => candidate.fingerprint));
   for (const regression of compareBaselines(previous, current, ruleSet)) {
@@ -120,6 +127,7 @@ export function diff(
   sortIssues(unchangedIssues);
   sortIssues(resolvedIssues);
   return {
+    complete,
     newIssues,
     ongoingIssues,
     resolvedIssues,
