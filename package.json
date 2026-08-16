@@ -9,8 +9,9 @@
   "scripts": {
     "build": "tsc -b && npm run bundle --workspace seo-crawl-audit && npm run bundle --workspace @seo-crawl-audit/action",
     "clean": "tsc -b --clean",
+    "lint": "eslint packages/*/src --max-warnings=0",
     "test": "npm run build && node --test",
-    "check": "npm run build && node --test && npm run pack:check",
+    "check": "npm run lint && npm run build && node --test && npm run pack:check",
     "pack:check": "npm pack --workspace seo-crawl-audit --dry-run",
     "benchmark:10k": "npm run build && node scripts/benchmark-10k.mjs",
     "demo:generate": "npm run build && node scripts/generate-demo.mjs",
@@ -20,8 +21,11 @@
     "node": ">=20.19"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^24.0.0",
     "esbuild": "^0.25.0",
-    "typescript": "^5.9.0"
+    "eslint": "^9.39.5",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.67.0"
   }
 }

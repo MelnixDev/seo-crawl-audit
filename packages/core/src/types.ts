@@ -224,10 +224,10 @@ export type ScanEvent =
   | { type: "cancelled"; completed: number; total: number; partial: true };
 
 export interface PlanScanOptions {
-  signal?: AbortSignal;
-  fetch?: typeof globalThis.fetch;
-  logger?: EngineLogger;
-  onEvent?: (event: ScanEvent) => void | Promise<void>;
+  signal?: AbortSignal | undefined;
+  fetch?: typeof globalThis.fetch | undefined;
+  logger?: EngineLogger | undefined;
+  onEvent?: ((event: ScanEvent) => void | Promise<void>) | undefined;
 }
 
 export interface ScanPlan {
@@ -244,14 +244,14 @@ export interface ScanPlan {
 }
 
 export interface ScanOptions extends PlanScanOptions {
-  storage?: StorageAdapter;
-  checkpointStore?: CheckpointStore;
-  resume?: boolean;
-  limit?: number;
-  retainCheckpoint?: boolean;
-  onProgress?: (completed: number, total: number) => void;
-  cachedPages?: PageSnapshot[];
-  onBatch?: (pages: PageSnapshot[]) => void | Promise<void>;
+  storage?: StorageAdapter | undefined;
+  checkpointStore?: CheckpointStore | undefined;
+  resume?: boolean | undefined;
+  limit?: number | undefined;
+  retainCheckpoint?: boolean | undefined;
+  onProgress?: ((completed: number, total: number) => void) | undefined;
+  cachedPages?: PageSnapshot[] | undefined;
+  onBatch?: ((pages: PageSnapshot[]) => void | Promise<void>) | undefined;
 }
 
 export interface ScanResult {

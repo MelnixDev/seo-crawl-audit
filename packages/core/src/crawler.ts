@@ -205,15 +205,17 @@ async function runPool<T>(
 export async function fetchPages(urls: string[], rawOptions: CrawlerOptions = {}): Promise<{ pages: PageSnapshot[]; robots: RobotsData }> {
   const options = withDefaults(rawOptions);
   if (urls.length === 0) throw new Error("fetchPages requires at least one URL");
-  const robots: RobotsData = rawOptions.robots ?? await fetchRobots(urls[0], options);
+  const firstUrl = urls[0]!;
+  const robots: RobotsData = rawOptions.robots ?? await fetchRobots(firstUrl, options);
   const cached = new Map((rawOptions.cachedPages ?? []).map((page: PageSnapshot) => [page.url, page]));
   const pages = new Map<string, PageSnapshot>();
   let cursor = 0;
-  const origin = new URL(urls[0]).origin;
+  const origin = new URL(firstUrl).origin;
 
   await runPool(options.concurrency, async () => {
     if (options.signal?.aborted || cursor >= urls.length) return null;
     const url = urls[cursor++];
+    if (!url) return null;
     const page = cached.get(url) ?? await fetchPage(url, 0, origin, options, robots);
     pages.set(url, page);
     if (!cached.has(url)) await rawOptions.onBatch?.([page]);
@@ -273,6 +275,7 @@ export async function crawlSite(inputUrl: string, rawOptions: CrawlerOptions = {
     const completed = await runPool(options.concurrency, async () => {
       if (options.signal?.aborted || cursor >= current.length) return null;
       const item = current[cursor++];
+      if (!item) return null;
       let page = cached.get(item.url);
       if (!page) {
         try {

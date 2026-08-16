@@ -50,7 +50,7 @@ export function checkpointPathForOutput(output: string): string {
 export async function initializeCheckpoint(path: string, source: Record<string, unknown>): Promise<LegacyCheckpointResult> {
   try {
     const lines = (await readFile(path, "utf8")).split("\n");
-    const savedHeader = JSON.parse(lines[0]);
+    const savedHeader = JSON.parse(lines[0] ?? "");
 
     if (isCompatible(savedHeader, source)) {
       const pages: LegacyCheckpointResult["pages"] = [];

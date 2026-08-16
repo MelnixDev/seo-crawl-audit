@@ -10,17 +10,17 @@ const DEFAULT_SITEMAP_LIMIT = 50_000;
 
 interface SitemapOptions {
   siteOrigin: string;
-  includeQuery?: boolean;
-  maxUrls?: number;
+  includeQuery?: boolean | undefined;
+  maxUrls?: number | undefined;
   timeout: number;
-  maxRedirects?: number;
-  retries?: number;
+  maxRedirects?: number | undefined;
+  retries?: number | undefined;
   userAgent: string;
-  fetch?: typeof globalThis.fetch;
-  signal?: AbortSignal;
-  requestGate?: ((url: string) => Promise<void>);
-  onEvent?: (event: ScanEvent) => void | Promise<void>;
-  robotsBody?: string;
+  fetch?: typeof globalThis.fetch | undefined;
+  signal?: AbortSignal | undefined;
+  requestGate?: ((url: string) => Promise<void>) | undefined;
+  onEvent?: ((event: ScanEvent) => void | Promise<void>) | undefined;
+  robotsBody?: string | undefined;
 }
 
 const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true, trimValues: true });
@@ -95,7 +95,7 @@ async function isSitemapResponse(url: string, options: SitemapOptions): Promise<
   }
 }
 
-export async function discoverSitemapUrl(inputUrl: string, options: Omit<SitemapOptions, "siteOrigin"> & { siteOrigin?: string }): Promise<string | null> {
+export async function discoverSitemapUrl(inputUrl: string, options: Omit<SitemapOptions, "siteOrigin"> & { siteOrigin?: string | undefined }): Promise<string | null> {
   const startUrl = normalizeUrl(inputUrl, undefined);
   if (!startUrl) throw new Error(`invalid start URL: ${inputUrl}`);
   const origin = new URL(startUrl).origin;
@@ -103,7 +103,9 @@ export async function discoverSitemapUrl(inputUrl: string, options: Omit<Sitemap
   try {
     if (options.robotsBody !== undefined) {
       for (const match of options.robotsBody.matchAll(/^sitemap:\s*(\S+)\s*$/gim)) {
-        const candidate = normalizeUrl(match[1], robotsUrl, { includeQuery: true });
+        const location = match[1];
+        if (!location) continue;
+        const candidate = normalizeUrl(location, robotsUrl, { includeQuery: true });
         if (candidate && isSameOrigin(candidate, origin)) return candidate;
       }
     } else {
@@ -113,7 +115,9 @@ export async function discoverSitemapUrl(inputUrl: string, options: Omit<Sitemap
     if (response.ok) {
       const { text } = await readResponseBody(response, 512 * 1024);
       for (const match of text.matchAll(/^sitemap:\s*(\S+)\s*$/gim)) {
-        const candidate = normalizeUrl(match[1], robotsUrl, { includeQuery: true });
+        const location = match[1];
+        if (!location) continue;
+        const candidate = normalizeUrl(location, robotsUrl, { includeQuery: true });
         if (candidate && isSameOrigin(candidate, origin)) return candidate;
       }
       } else await response.body?.cancel();
@@ -153,7 +157,7 @@ export async function loadSitemapUrls(inputUrl: string, options: SitemapOptions)
       continue;
     }
     for (const location of parsed.locations) {
-      const pageUrl = normalizeUrl(location, currentUrl, { includeQuery: options.includeQuery });
+      const pageUrl = normalizeUrl(location, currentUrl, { includeQuery: options.includeQuery ?? false });
       if (!pageUrl || pageSet.has(pageUrl) || !isSameOrigin(pageUrl, options.siteOrigin) || !isCrawlableUrl(pageUrl)) continue;
       pageSet.add(pageUrl);
       pageUrls.push(pageUrl);

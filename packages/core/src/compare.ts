@@ -16,7 +16,7 @@ export function compareBaselines(
   return applyRulePolicy(evaluateRegressionRules(baseline, current), current, ruleSet);
 }
 
-function lifecycle(issue: Issue, value: Issue["lifecycle"]): Issue {
+function lifecycle(issue: Issue, value: NonNullable<Issue["lifecycle"]>): Issue {
   return { ...issue, lifecycle: value };
 }
 

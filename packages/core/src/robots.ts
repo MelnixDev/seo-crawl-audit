@@ -25,10 +25,10 @@ export interface RobotsFetchOptions {
   maxRedirects: number;
   retries: number;
   fetch: typeof globalThis.fetch;
-  signal?: AbortSignal;
-  requestGate?: (url: string) => Promise<void>;
-  onEvent?: (event: ScanEvent) => void | Promise<void>;
-  logger?: EngineLogger;
+  signal?: AbortSignal | undefined;
+  requestGate?: ((url: string) => Promise<void>) | undefined;
+  onEvent?: ((event: ScanEvent) => void | Promise<void>) | undefined;
+  logger?: EngineLogger | undefined;
 }
 
 function patternMatches(pathWithQuery: string, pattern: string): boolean {
@@ -74,7 +74,7 @@ export function isAllowedByRobots(url: string, robots: { denyAll?: boolean; rule
   const matches = (robots.rules ?? [])
     .filter((rule) => patternMatches(pathWithQuery, rule.path))
     .sort((left, right) => right.path.length - left.path.length || (left.type === "allow" ? -1 : 1));
-  return matches.length === 0 || matches[0].type === "allow";
+  return matches.length === 0 || matches[0]?.type === "allow";
 }
 
 export async function fetchRobots(startUrl: string, options: RobotsFetchOptions): Promise<RobotsData> {

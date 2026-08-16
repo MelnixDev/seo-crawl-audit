@@ -117,9 +117,12 @@ export function validateConfig(input: unknown): Partial<ScanConfigV1> {
   if (value.report !== undefined) {
     const report = object(value.report, "report");
     const branding: ScanConfigV1["report"] = {};
-    branding.agencyName = optionalString(report.agencyName, "report.agencyName");
-    branding.logo = optionalString(report.logo, "report.logo");
-    branding.primaryColor = optionalString(report.primaryColor, "report.primaryColor");
+    const agencyName = optionalString(report.agencyName, "report.agencyName");
+    const logo = optionalString(report.logo, "report.logo");
+    const primaryColor = optionalString(report.primaryColor, "report.primaryColor");
+    if (agencyName !== undefined) branding.agencyName = agencyName;
+    if (logo !== undefined) branding.logo = logo;
+    if (primaryColor !== undefined) branding.primaryColor = primaryColor;
     if (branding.primaryColor && !/^#[0-9a-f]{6}$/i.test(branding.primaryColor)) {
       throw new Error("report.primaryColor must be a six-digit hex color");
     }
