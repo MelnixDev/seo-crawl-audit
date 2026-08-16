@@ -1,4 +1,4 @@
-import type { Issue, ReportBranding } from "./types.js";
+import type { Issue, ReportData, ReportOptions } from "./types.js";
 import { ENGINE_VERSION, RULE_SET_VERSION } from "./version.js";
 
 function escapeHtml(value: unknown): string {
@@ -7,23 +7,6 @@ function escapeHtml(value: unknown): string {
 
 function safeJson(value: unknown): string {
   return JSON.stringify(value).replaceAll("<", "\\u003c").replaceAll(">", "\\u003e").replaceAll("&", "\\u0026");
-}
-
-interface ReportInput {
-  mode?: "scan" | "check";
-  startUrl?: string;
-  generatedAt?: string;
-  pages?: Array<{ url: string }>;
-  issues?: Partial<Issue>[];
-  newIssues?: Partial<Issue>[];
-  ongoingIssues?: Partial<Issue>[];
-  resolvedIssues?: Partial<Issue>[];
-  unchangedIssues?: Partial<Issue>[];
-  partial?: boolean;
-  targetPages?: number | null;
-  engineVersion?: string;
-  ruleSetVersion?: string;
-  branding?: ReportBranding;
 }
 
 function normalizeIssue(candidate: Partial<Issue>, fallbackLifecycle = "current") {
@@ -45,7 +28,7 @@ function normalizeIssue(candidate: Partial<Issue>, fallbackLifecycle = "current"
   };
 }
 
-export function renderHtmlReport(input: ReportInput, options: { branding?: ReportBranding } = {}): string {
+export function renderHtmlReport(input: ReportData, options: ReportOptions = {}): string {
   const mode = input.mode ?? "scan";
   const pages = input.pages ?? [];
   const current = (input.issues ?? []).map((item) => normalizeIssue(item));

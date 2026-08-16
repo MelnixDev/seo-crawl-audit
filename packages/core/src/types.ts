@@ -37,6 +37,28 @@ export interface ReportBranding {
   primaryColor?: string;
 }
 
+export interface ReportData {
+  mode?: "scan" | "check";
+  startUrl?: string;
+  generatedAt?: string;
+  pages?: Array<{ url: string }>;
+  issues?: Partial<Issue>[];
+  newIssues?: Partial<Issue>[];
+  ongoingIssues?: Partial<Issue>[];
+  resolvedIssues?: Partial<Issue>[];
+  unchangedIssues?: Partial<Issue>[];
+  partial?: boolean;
+  complete?: boolean;
+  targetPages?: number | null;
+  engineVersion?: string;
+  ruleSetVersion?: string;
+  branding?: ReportBranding;
+}
+
+export interface ReportOptions {
+  branding?: ReportBranding;
+}
+
 export interface PageSnapshot {
   url: string;
   finalUrl: string | null;

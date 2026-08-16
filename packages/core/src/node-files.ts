@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { migrateSnapshot } from "./baseline.js";
 import { DEFAULT_CONFIG_FILE, validateConfig } from "./config.js";
 import { renderHtmlReport } from "./html-report.js";
-import type { ReportBranding, ScanConfigV1, SnapshotV2 } from "./types.js";
+import type { ReportData, ReportOptions, ScanConfigV1, SnapshotV2 } from "./types.js";
 
 export async function findConfigFile(cwd = process.cwd()): Promise<string | null> {
   const path = resolve(cwd, DEFAULT_CONFIG_FILE);
@@ -49,27 +49,10 @@ export async function readSnapshot(path: string): Promise<SnapshotV2> {
 
 export const readBaseline = readSnapshot;
 
-export interface ReportFileInput {
-  mode?: "scan" | "check";
-  startUrl?: string;
-  generatedAt?: string;
-  pages?: Array<{ url: string }>;
-  issues?: Array<Record<string, unknown>>;
-  newIssues?: Array<Record<string, unknown>>;
-  ongoingIssues?: Array<Record<string, unknown>>;
-  resolvedIssues?: Array<Record<string, unknown>>;
-  unchangedIssues?: Array<Record<string, unknown>>;
-  partial?: boolean;
-  targetPages?: number | null;
-  engineVersion?: string;
-  ruleSetVersion?: string;
-  branding?: ReportBranding;
-}
-
 export async function writeReport(
   path: string,
-  data: ReportFileInput,
-  options: { branding?: ReportBranding } = {},
+  data: ReportData,
+  options: ReportOptions = {},
 ): Promise<void> {
   const temporaryPath = `${path}.${process.pid}.tmp`;
   await writeFile(temporaryPath, renderHtmlReport(data, options), "utf8");
