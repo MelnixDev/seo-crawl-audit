@@ -8,7 +8,7 @@ import {
   checkpointPathForOutput,
   initializeCheckpoint,
   removeCheckpoint,
-} from "../packages/core/dist/index.js";
+} from "../packages/core/dist/checkpoint.js";
 
 test("checkpoint resumes saved pages and resets for another source", async () => {
   const directory = await mkdtemp(join(tmpdir(), "seo-audit-checkpoint-"));

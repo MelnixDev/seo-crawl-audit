@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRequestGate } from "../packages/core/dist/index.js";
+import { createRequestGate } from "../packages/core/dist/request-gate.js";
 
 test("spaces concurrent request starts by the configured interval", async () => {
   let currentTime = 1_000;

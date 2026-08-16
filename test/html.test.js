@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { extractSeoData } from "../packages/core/dist/index.js";
+import { extractSeoData } from "../packages/core/dist/html.js";
 
 test("extracts SEO metadata and links from valid HTML", () => {
   const result = extractSeoData(`

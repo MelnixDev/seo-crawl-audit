@@ -4,7 +4,7 @@ import {
   isCrawlableUrl,
   isSameOrigin,
   normalizeUrl,
-} from "../packages/core/dist/index.js";
+} from "../packages/core/dist/urls.js";
 
 test("normalizes links and strips query strings by default", () => {
   assert.equal(

@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditBaseline, createBaseline, diff } from "../packages/core/dist/index.js";
+import { diff } from "../packages/core/dist/index.js";
+import { auditBaseline } from "../packages/core/dist/audit.js";
+import { createBaseline } from "../packages/core/dist/baseline.js";
 
 test("turns current SEO problems into filterable audit issues", () => {
   const issues = auditBaseline({

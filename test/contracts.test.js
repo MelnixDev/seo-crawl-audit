@@ -1,13 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  audit,
-  createBaseline,
-  diff,
-  migrateSnapshot,
-  renderReport,
-  scan,
-} from "../packages/core/dist/index.js";
+import * as core from "../packages/core/dist/index.js";
+import { createBaseline } from "../packages/core/dist/baseline.js";
+
+const { audit, diff, migrateSnapshot, renderReport, scan } = core;
 
 const legacySnapshot = {
   schemaVersion: 1,
@@ -34,6 +30,21 @@ test("locks the documented core function surface", () => {
   for (const candidate of [audit, diff, migrateSnapshot, renderReport, scan]) {
     assert.equal(typeof candidate, "function");
   }
+  assert.deepEqual(Object.keys(core).sort(), [
+    "DEFAULT_CONFIG_FILE",
+    "DEFAULT_SCAN_CONFIG",
+    "ENGINE_VERSION",
+    "RULE_SET_VERSION",
+    "audit",
+    "diff",
+    "getRuleDefinitions",
+    "migrateSnapshot",
+    "planScan",
+    "renderReport",
+    "resolveConfig",
+    "scan",
+    "validateConfig",
+  ]);
 });
 
 test("locks SnapshotV2 normalization, configuration hash, and issue fingerprints", () => {

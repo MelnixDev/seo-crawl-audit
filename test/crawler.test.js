@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { crawlSite } from "../packages/core/dist/index.js";
+import { crawlSite } from "../packages/core/dist/crawler.js";
 
 test("crawls same-origin HTML pages and respects robots.txt", async (context) => {
   let requestSlots = 0;

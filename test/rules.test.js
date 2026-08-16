@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { audit, createBaseline } from "../packages/core/dist/index.js";
+import { audit } from "../packages/core/dist/index.js";
+import { createBaseline } from "../packages/core/dist/baseline.js";
 
 test("site and page rules use normalized crawl evidence", () => {
   const snapshot = createBaseline({
