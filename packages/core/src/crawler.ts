@@ -9,6 +9,8 @@ import type { PageSnapshot, ReportBranding, ScanEvent, ScanOptions, ScanResult, 
 import { isCrawlableUrl, isSameOrigin, normalizeUrl } from "./urls.js";
 import { DEFAULT_USER_AGENT } from "./version.js";
 
+const noopLogger = { debug() {}, info() {}, warn() {}, error() {} };
+
 interface CrawlerOptions extends ScanOptions {
   maxPages?: number;
   concurrency?: number;
@@ -182,7 +184,7 @@ function withDefaults(raw: CrawlerOptions = {}): InternalOptions {
     maxResponseBytes: raw.maxResponseBytes ?? 5 * 1024 * 1024,
     retries: raw.retries ?? 2,
     fetch: raw.fetch ?? globalThis.fetch,
-    logger: raw.logger ?? console,
+    logger: raw.logger ?? noopLogger,
   };
 }
 

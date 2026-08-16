@@ -15,7 +15,6 @@ import type {
   SitemapState,
 } from "./types.js";
 import { normalizeUrl } from "./urls.js";
-import { DEFAULT_USER_AGENT } from "./version.js";
 
 function isPlan(input: ScanConfigInput | ScanPlan): input is ScanPlan {
   return "planVersion" in input;
