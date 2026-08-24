@@ -22,6 +22,6 @@ test("manifests, user agent, and reports use centralized versions", async () => 
   assert.equal(action.devDependencies["@seo-crawl-audit/core"], ENGINE_VERSION);
   assert.equal(DEFAULT_USER_AGENT, `seo-crawl-audit/${ENGINE_VERSION}`);
   const html = renderReport({ pages: [], issues: [] });
-  assert.match(html, new RegExp(`Engine ${ENGINE_VERSION.replaceAll(".", "\\.")}`));
-  assert.match(html, new RegExp(`Rules ${RULE_SET_VERSION.replaceAll(".", "\\.")}`));
+  assert.match(html, new RegExp(`id="engine-label">Engine<\\/span> ${ENGINE_VERSION.replaceAll(".", "\\.")}`));
+  assert.match(html, new RegExp(`id="rules-label">Rules<\\/span> ${RULE_SET_VERSION.replaceAll(".", "\\.")}`));
 });

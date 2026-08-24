@@ -139,6 +139,7 @@ test("interrupted scan leaves a report and resumes without refetching saved page
   const baseline = JSON.parse(await readFile(baselinePath, "utf8"));
   const completedReport = await readFile(reportPath, "utf8");
   assert.equal(baseline.pages.length, 21);
-  assert.doesNotMatch(completedReport, /Partial SEO scan report/);
+  assert.match(completedReport, /<h1 id="report-title">SEO baseline audit<\/h1>/);
+  assert.doesNotMatch(completedReport, /<strong id="partial-title">/);
   await assert.rejects(readFile(checkpointPath, "utf8"), { code: "ENOENT" });
 });
