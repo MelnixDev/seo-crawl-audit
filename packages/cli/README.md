@@ -20,7 +20,8 @@ or [view its source file](examples/quotes-toscrape-report.html).
 - SnapshotV2 with automatic baseline v1 migration;
 - `new`, `ongoing`, `resolved`, and `unchanged` issue lifecycle;
 - resumable scans and a useful report even after interruption;
-- filters, CSV export, print layout, and local report branding;
+- English/Ukrainian report localization, filters, CSV export, print layout,
+  and local report branding;
 - configuration, suppressions with expiry, severity overrides, and budgets;
 - a self-contained GitHub Action that runs inside the GitHub runner;
 - typed engine API with injectable `fetch`, checkpoints, events, logger, and
@@ -244,6 +245,8 @@ unfinished final NDJSON record is recoverable—earlier corruption is reported.
 The portable HTML file contains no external script, font, or tracking request.
 It includes:
 
+- an `English / Українська` language selector that translates the complete
+  interface, rule names, findings, remediation, lifecycle labels, and CSV;
 - summary cards and partial-scan state;
 - current and lifecycle tabs;
 - severity, rule, owner, and URL/text filters;
