@@ -99,8 +99,13 @@ regressions are deferred.
 
 Purely returns a self-contained HTML string. It does not import `fs` or write a
 file. The report supports lifecycle tabs, filters, CSV export, print layout,
-local branding, HTML-safe embedded JSON, and an explicit incomplete-comparison
-state.
+local branding, HTML-safe embedded JSON, an explicit incomplete-comparison
+state, and an in-browser `English / Українська` selector. The selected language
+applies to the complete interface, issue text, remediation, and CSV without
+changing issue fingerprints or snapshot data. Reports also include
+dependency-free interactive statistics for severity, frequent rules, owners,
+and regression lifecycle. Chart controls are keyboard-accessible and reuse the
+same filters as the issue table.
 
 ## `migrateSnapshot(input)`
 
