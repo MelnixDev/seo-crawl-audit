@@ -22,6 +22,8 @@ or [view its source file](examples/quotes-toscrape-report.html).
 - resumable scans and a useful report even after interruption;
 - English/Ukrainian report localization, filters, CSV export, print layout,
   and local report branding;
+- interactive issue statistics for severity, frequent checks, ownership, and
+  regression lifecycle, with chart-to-table filtering;
 - configuration, suppressions with expiry, severity overrides, and budgets;
 - a self-contained GitHub Action that runs inside the GitHub runner;
 - typed engine API with injectable `fetch`, checkpoints, events, logger, and
@@ -247,6 +249,9 @@ It includes:
 
 - an `English / Українська` language selector that translates the complete
   interface, rule names, findings, remediation, lifecycle labels, and CSV;
+- dependency-free interactive charts for severity, most frequent checks, and
+  owner or regression-lifecycle distribution; selecting a chart item filters
+  the issue table and selecting it again clears that filter;
 - summary cards and partial-scan state;
 - current and lifecycle tabs;
 - severity, rule, owner, and URL/text filters;
