@@ -1,7 +1,7 @@
 import { ENGINE_VERSION } from "@seo-crawl-audit/core";
 import { loadConfig } from "@seo-crawl-audit/core/node";
 import { parseCliArgs, withFileConfig } from "./args.js";
-import { checkCommand, reportCommand, scanCommand } from "./commands.js";
+import { checkCommand, compareCommand, reportCommand, scanCommand } from "./commands.js";
 
 export { parseScanMenuSelection } from "./ui.js";
 
@@ -13,12 +13,14 @@ Usage:
   seo-audit <url> [options]
   seo-audit scan <url> [options]
   seo-audit check [url] [options]
+  seo-audit compare --production <url> --preview <url> [options]
   seo-audit report [baseline] [options]
 
 Commands:
   <url>   Shortcut for scan.
   scan    Crawl a site and save its SEO baseline.
   check   Crawl again and compare with a saved baseline.
+  compare Compare a production site with a preview deployment.
   report  Generate HTML from an existing baseline without crawling.
 
 Options:
@@ -39,6 +41,12 @@ Options:
   --include-query         Treat query-string URLs as separate pages
   --ignore-robots         Crawl URLs disallowed by robots.txt
   --strict                Fail check on warnings as well as errors
+  --production <url>      Production URL for compare
+  --preview <url>         Preview deployment URL for compare
+  --production-headers-env <name>
+                           Read production request headers from a JSON environment variable
+  --preview-headers-env <name>
+                           Read preview request headers from a JSON environment variable
   --json                  Print machine-readable command output
   --help                  Show this help
   --version               Show the version
@@ -101,6 +109,7 @@ export async function main(
   try {
     if (command === "scan") return await scanCommand(url, values, options.signal);
     if (command === "check") return await checkCommand(url, values, options.signal);
+    if (command === "compare") return await compareCommand(values, options.signal);
     if (command === "report") return await reportCommand(url, values);
     console.error(`Unknown command: ${String(command)}\n\n${HELP}`);
     return 2;

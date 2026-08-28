@@ -53,6 +53,11 @@ export interface ReportData {
   engineVersion?: string;
   ruleSetVersion?: string;
   branding?: ReportBranding;
+  comparison?: {
+    kind: "preview";
+    productionUrl: string;
+    previewUrl: string;
+  };
 }
 
 export interface ReportOptions {

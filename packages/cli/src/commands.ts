@@ -38,18 +38,73 @@ async function saveReport(values: CliValues, data: ReportData, force = false): P
 
 function mapUrl(url: string | null, fromStart: string, toStart: string): string | null {
   if (!url) return url;
-  const source = new URL(fromStart);
-  const target = new URL(toStart);
-  const candidate = new URL(url);
-  if (candidate.origin !== source.origin) return url;
-  candidate.protocol = target.protocol;
-  candidate.host = target.host;
-  const sourceRoot = source.pathname.replace(/\/$/, "");
-  const targetRoot = target.pathname.replace(/\/$/, "");
-  if (sourceRoot && candidate.pathname.startsWith(sourceRoot)) {
-    candidate.pathname = `${targetRoot}${candidate.pathname.slice(sourceRoot.length)}` || "/";
+  try {
+    const source = new URL(fromStart);
+    const target = new URL(toStart);
+    const candidate = new URL(url);
+    if (candidate.origin !== source.origin) return url;
+    candidate.protocol = target.protocol;
+    candidate.host = target.host;
+    const sourceRoot = source.pathname.replace(/\/$/, "");
+    const targetRoot = target.pathname.replace(/\/$/, "");
+    if (sourceRoot && candidate.pathname.startsWith(sourceRoot)) {
+      candidate.pathname = `${targetRoot}${candidate.pathname.slice(sourceRoot.length)}` || "/";
+    }
+    return candidate.href;
+  } catch {
+    return url;
   }
-  return candidate.href;
+}
+
+function mapPage(page: PageSnapshot, fromStart: string, toStart: string): PageSnapshot {
+  const mapList = (values: string[]) => values.map((value) => mapUrl(value, fromStart, toStart) ?? value).sort();
+  return {
+    ...page,
+    url: mapUrl(page.url, fromStart, toStart) ?? page.url,
+    finalUrl: mapUrl(page.finalUrl, fromStart, toStart),
+    canonical: mapUrl(page.canonical, fromStart, toStart),
+    canonicalRaw: mapUrl(page.canonicalRaw, fromStart, toStart),
+    links: mapList(page.links),
+    internalLinks: mapList(page.internalLinks),
+    externalLinks: mapList(page.externalLinks),
+    images: page.images.map((image) => ({ ...image, src: mapUrl(image.src, fromStart, toStart) })),
+    hreflang: page.hreflang.map((alternate) => ({ ...alternate, url: mapUrl(alternate.url, fromStart, toStart) })),
+    redirectChain: page.redirectChain.map((redirect) => ({
+      ...redirect,
+      url: mapUrl(redirect.url, fromStart, toStart) ?? redirect.url,
+      location: mapUrl(redirect.location, fromStart, toStart),
+    })),
+  };
+}
+
+export function headersFromEnvironment(variableName: string | undefined): Record<string, string> {
+  if (!variableName) return {};
+  const encoded = process.env[variableName];
+  if (!encoded) throw new Error(`environment variable ${variableName} is empty or missing`);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(encoded);
+  } catch (error) {
+    throw new Error(`environment variable ${variableName} must contain a JSON object`, { cause: error });
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`environment variable ${variableName} must contain a JSON object`);
+  }
+  const headers: Record<string, string> = {};
+  for (const [name, value] of Object.entries(parsed)) {
+    if (typeof value !== "string") throw new Error(`header ${name} in ${variableName} must be a string`);
+    headers[name] = value;
+  }
+  return headers;
+}
+
+function fetchWithHeaders(headers: Record<string, string>): typeof globalThis.fetch {
+  if (Object.keys(headers).length === 0) return globalThis.fetch;
+  return (input, init) => {
+    const merged = new Headers(init?.headers);
+    for (const [name, value] of Object.entries(headers)) merged.set(name, value);
+    return globalThis.fetch(input, { ...init, headers: merged });
+  };
 }
 
 function reportData(snapshot: SnapshotV2, mode: "scan" | "check", issues = audit(snapshot), extra: Partial<ReportData> = {}): ReportData {
@@ -234,6 +289,84 @@ export async function checkCommand(url: string | undefined, values: CliValues, s
     if (report) console.log(`HTML report saved to ${report}`);
   }
   if (result.partial) return 130;
+  return summary.error > 0 || comparison.budgetExceeded.length > 0 || (values.strict && summary.warning > 0) ? 1 : 0;
+}
+
+export async function compareCommand(values: CliValues, signal?: AbortSignal): Promise<number> {
+  const productionUrl = values.production;
+  const previewUrl = values.preview;
+  if (!productionUrl || !previewUrl) throw new Error("compare requires --production and --preview URLs");
+  const productionFetch = fetchWithHeaders(headersFromEnvironment(values["production-headers-env"]));
+  const previewFetch = fetchWithHeaders(headersFromEnvironment(values["preview-headers-env"]));
+
+  const productionPlan = await planScan(scanConfig(productionUrl, values), { signal, fetch: productionFetch });
+  const selection = await selectScan(productionPlan, values);
+  const production = await scan(productionPlan, {
+    signal,
+    fetch: productionFetch,
+    limit: selection.target,
+    onEvent(event) {
+      if (event.type === "progress" && !values.json) printProgress(event.completed, selection.target);
+    },
+  });
+  if (production.partial) return 130;
+
+  const previewBasePlan = await planScan({ ...scanConfig(previewUrl, values), sitemap: "none" }, { signal, fetch: previewFetch });
+  const targetUrls = production.snapshot.pages.map((page) => mapUrl(page.url, productionUrl, previewUrl) ?? page.url);
+  const previewPlan: ScanPlan = {
+    ...previewBasePlan,
+    mode: "sitemap",
+    candidateUrls: [...new Set(targetUrls)].sort(),
+    candidateCount: targetUrls.length,
+    sitemap: {
+      url: `${previewBasePlan.origin}/.seo-audit-preview-targets`,
+      urls: [...new Set(targetUrls)].sort(),
+      sitemapCount: 0,
+      truncated: false,
+      error: null,
+    },
+  };
+  const preview = await scan(previewPlan, {
+    signal,
+    fetch: previewFetch,
+    limit: targetUrls.length,
+    onEvent(event) {
+      if (event.type === "progress" && !values.json) printProgress(event.completed, targetUrls.length);
+    },
+  });
+  const previewPages = preview.snapshot.pages.map((page) => mapPage(page, previewUrl, productionUrl));
+  const current = migrateSnapshot({
+    ...preview.snapshot,
+    siteUrl: production.snapshot.siteUrl,
+    startUrl: production.snapshot.siteUrl,
+    config: { ...preview.snapshot.config, url: production.snapshot.siteUrl },
+    robots: {
+      ...preview.snapshot.robots,
+      url: mapUrl(preview.snapshot.robots.url, previewUrl, productionUrl) ?? preview.snapshot.robots.url,
+    },
+    sitemap: production.snapshot.sitemap,
+    pages: previewPages,
+    partial: preview.snapshot.partial,
+  });
+  const comparison = diff(production.snapshot, current, {
+    enabledRules: current.config.enabledRules,
+    severityOverrides: current.config.severityOverrides,
+    suppressions: current.config.suppressions,
+  });
+  const issues = comparison.newIssues;
+  const summary = summarizeIssues(issues);
+  const report = await saveReport(values, reportData(current, "check", issues, {
+    ...comparison,
+    comparison: { kind: "preview", productionUrl, previewUrl },
+  }), true);
+  if (values.json) {
+    console.log(JSON.stringify({ command: "compare", production: productionUrl, preview: previewUrl, pages: current.pages.length, summary, issues, lifecycle: comparison, report }, null, 2));
+  } else {
+    console.log(`Compared ${current.pages.length} production page(s) with preview.`);
+    printIssues(issues);
+    if (report) console.log(`HTML report saved to ${report}`);
+  }
+  if (preview.partial) return 130;
   return summary.error > 0 || comparison.budgetExceeded.length > 0 || (values.strict && summary.warning > 0) ? 1 : 0;
 }
 

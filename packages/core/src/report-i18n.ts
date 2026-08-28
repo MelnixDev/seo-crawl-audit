@@ -196,6 +196,9 @@ export const REPORT_COPY = {
     partialMessage: "This report contains the pages saved so far. Run the same scan command again to resume without requesting them twice.",
     incompleteTitle: "Incomplete comparison.",
     incompleteMessage: "Regressions found on checked pages are shown, but unchecked pages are not marked missing or resolved.",
+    previewTitle: "Preview deployment comparison.",
+    production: "Production",
+    preview: "Preview",
     cards: { pages: "Pages checked", error: "Errors", warning: "Warnings", info: "Info", affected: "Affected pages" },
     analytics: {
       title: "Issue statistics",
@@ -240,6 +243,9 @@ export const REPORT_COPY = {
     partialMessage: "Звіт містить уже збережені сторінки. Запустіть ту саму команду ще раз, щоб продовжити без повторних запитів.",
     incompleteTitle: "Неповне порівняння.",
     incompleteMessage: "Показано регресії на перевірених сторінках, але неперевірені сторінки не позначено як відсутні чи виправлені.",
+    previewTitle: "Порівняння production і preview.",
+    production: "Production",
+    preview: "Preview",
     cards: { pages: "Перевірено сторінок", error: "Помилки", warning: "Попередження", info: "Інформація", affected: "Сторінки з проблемами" },
     analytics: {
       title: "Статистика проблем",

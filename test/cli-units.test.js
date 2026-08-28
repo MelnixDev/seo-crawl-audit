@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scanConfig } from "../packages/cli/dist/args.js";
 import { main } from "../packages/cli/dist/cli.js";
+import { headersFromEnvironment } from "../packages/cli/dist/commands.js";
 import { printIssues, summarizeIssues } from "../packages/cli/dist/report.js";
 import { health, printHealth, printProgress } from "../packages/cli/dist/ui.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
@@ -68,6 +69,16 @@ test("CLI config mapping validates conflicts and explicit policies", () => {
   assert.equal(config.includeQuery, true);
   assert.equal(config.respectRobots, false);
   assert.throws(() => scanConfig("https://example.com/", { pages: "0" }), /positive integer/);
+});
+
+test("preview request headers are read from JSON environment variables", (context) => {
+  process.env.SEO_AUDIT_TEST_HEADERS = JSON.stringify({ Authorization: "Bearer secret", "X-Preview": "yes" });
+  context.after(() => { delete process.env.SEO_AUDIT_TEST_HEADERS; });
+  assert.deepEqual(headersFromEnvironment("SEO_AUDIT_TEST_HEADERS"), {
+    Authorization: "Bearer secret",
+    "X-Preview": "yes",
+  });
+  assert.throws(() => headersFromEnvironment("SEO_AUDIT_MISSING_HEADERS"), /empty or missing/);
 });
 
 test("CLI presentation summarizes all severities and health evidence", (context) => {
