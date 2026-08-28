@@ -48,9 +48,9 @@ try {
   await run("npm", ["install", "--ignore-scripts"], temporaryRoot);
 
   await writeFile(join(temporaryRoot, "smoke.mjs"), `
-    import { audit, diff, getRuleDefinitions, migrateSnapshot, planScan, renderReport, scan } from "@seo-crawl-audit/core";
-    import { createFileCheckpointStore, loadConfig, readSnapshot, writeReport, writeSnapshot } from "@seo-crawl-audit/core/node";
-    for (const value of [audit, diff, getRuleDefinitions, migrateSnapshot, planScan, renderReport, scan, createFileCheckpointStore, loadConfig, readSnapshot, writeReport, writeSnapshot]) {
+    import { audit, buildHistorySeries, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan } from "@seo-crawl-audit/core";
+    import { createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot } from "@seo-crawl-audit/core/node";
+    for (const value of [audit, buildHistorySeries, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan, createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot]) {
       if (typeof value !== "function") throw new Error("packed export is not callable");
     }
   `);
