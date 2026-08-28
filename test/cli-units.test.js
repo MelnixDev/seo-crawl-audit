@@ -9,6 +9,7 @@ import { headersFromEnvironment } from "../packages/cli/dist/commands.js";
 import { printIssues, summarizeIssues } from "../packages/cli/dist/report.js";
 import { health, printHealth, printProgress } from "../packages/cli/dist/ui.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
+import { writeHistorySnapshot } from "../packages/core/dist/node.js";
 
 function captureConsole(context) {
   const messages = [];
@@ -47,6 +48,22 @@ test("report command renders an existing baseline in JSON mode", async (context)
   assert.equal(await main(["report", baselinePath, "--report", reportPath, "--json"]), 0);
   assert.match(await readFile(reportPath, "utf8"), /SEO baseline audit/);
   assert.match(messages.at(-1), /"command": "report"/);
+});
+
+test("history command lists local runs and renders their trend report", async (context) => {
+  const messages = captureConsole(context);
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-history-command-"));
+  const historyDirectory = join(directory, "history");
+  const reportPath = join(directory, "history.html");
+  const first = migrateSnapshot({ schemaVersion: 1, generatedAt: "2026-01-01T00:00:00.000Z", startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200 }] });
+  const second = migrateSnapshot({ schemaVersion: 1, generatedAt: "2026-01-02T00:00:00.000Z", startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200, title: "Fixed" }] });
+  await writeHistorySnapshot(historyDirectory, first);
+  await writeHistorySnapshot(historyDirectory, second);
+
+  assert.equal(await main(["history", "https://example.com/", "--history-dir", historyDirectory, "--report", reportPath, "--json"]), 0);
+  const report = await readFile(reportPath, "utf8");
+  assert.match(report, /id="history-chart"/);
+  assert.match(messages.at(-1), /"snapshots"/);
 });
 
 test("CLI config mapping validates conflicts and explicit policies", () => {

@@ -58,6 +58,7 @@ export interface ReportData {
     productionUrl: string;
     previewUrl: string;
   };
+  history?: HistorySeries;
 }
 
 export interface ReportOptions {
@@ -184,6 +185,31 @@ export interface IssueTemplateGroup {
   owners: Record<string, number>;
   urls: string[];
   representativeUrls: string[];
+}
+
+export interface HistoryPoint {
+  generatedAt: string;
+  siteUrl: string;
+  pages: number;
+  affectedPages: number;
+  errors: number;
+  warnings: number;
+  info: number;
+  newIssues: number;
+  resolvedIssues: number;
+  sitemapUrls: number;
+  maxDepth: number;
+  partial: boolean;
+}
+
+export interface HistorySeries {
+  siteUrl: string;
+  points: HistoryPoint[];
+}
+
+export interface HistorySnapshotRecord {
+  path: string;
+  snapshot: SnapshotV2;
 }
 
 export interface DiffResult {

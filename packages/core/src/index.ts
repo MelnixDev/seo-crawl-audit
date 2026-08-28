@@ -8,6 +8,7 @@ export { renderReport } from "./html-report.js";
 export { migrateSnapshot } from "./baseline.js";
 export { getRuleDefinitions } from "./rules/registry.js";
 export { groupIssuesByTemplate } from "./issue-groups.js";
+export { buildHistorySeries } from "./history.js";
 export {
   DEFAULT_CONFIG_FILE,
   DEFAULT_SCAN_CONFIG,
@@ -28,6 +29,9 @@ export type {
   IssueOwner,
   IssueScope,
   IssueTemplateGroup,
+  HistoryPoint,
+  HistorySeries,
+  HistorySnapshotRecord,
   LinkGraphSummary,
   PageSnapshot,
   PlanScanOptions,

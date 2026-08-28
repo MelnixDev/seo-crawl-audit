@@ -1,6 +1,7 @@
-import { resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import {
   audit,
+  buildHistorySeries,
   diff,
   migrateSnapshot,
   planScan,
@@ -10,13 +11,16 @@ import {
   type ScanPlan,
   type ScanResult,
   type SnapshotV2,
+  type HistorySeries,
 } from "@seo-crawl-audit/core";
 import {
   checkpointPathForOutput,
   createFileCheckpointStore,
   readSnapshot,
+  readHistorySnapshots,
   writeReport,
   writeSnapshot,
+  writeHistorySnapshot,
 } from "@seo-crawl-audit/core/node";
 import { scanConfig, type CliValues } from "./args.js";
 import { printIssues, summarizeIssues } from "./report.js";
@@ -24,6 +28,7 @@ import { ask, chooseScanPlan, health, printHealth, printProgress, type ScanSelec
 
 const DEFAULT_BASELINE = ".seo-audit.json";
 const DEFAULT_REPORT = "seo-audit-report.html";
+const DEFAULT_HISTORY_DIRECTORY = ".seo-audit/history";
 
 function reportEnabled(values: CliValues, force = false): boolean {
   return force || (!values["no-report"] && (values.report !== undefined || (process.stdin.isTTY && process.stdout.isTTY && !values.json)));
@@ -122,6 +127,19 @@ function reportData(snapshot: SnapshotV2, mode: "scan" | "check", issues = audit
   };
 }
 
+function historyDirectory(values: CliValues, referencePath?: string): string {
+  if (values["history-dir"]) return resolve(values["history-dir"]);
+  return referencePath ? join(dirname(referencePath), DEFAULT_HISTORY_DIRECTORY) : resolve(DEFAULT_HISTORY_DIRECTORY);
+}
+
+async function updateHistory(values: CliValues, snapshot: SnapshotV2, referencePath: string, save: boolean): Promise<HistorySeries | undefined> {
+  if (values["no-history"]) return undefined;
+  const directory = historyDirectory(values, referencePath);
+  if (save && !snapshot.partial) await writeHistorySnapshot(directory, snapshot);
+  const records = await readHistorySnapshots(directory, snapshot.siteUrl);
+  return buildHistorySeries(records.map((record) => record.snapshot)) ?? undefined;
+}
+
 async function resolvePlan(url: string, values: CliValues, baseline: SnapshotV2 | undefined, signal?: AbortSignal): Promise<ScanPlan> {
   let config = scanConfig(url, values, baseline);
   let plan = await planScan(config, { signal });
@@ -209,9 +227,10 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
 
   await writeSnapshot(output, result.snapshot);
   const incomplete = result.partial || stoppedEarly;
+  const history = await updateHistory(values, result.snapshot, output, !incomplete);
   const finalReport = incomplete
     ? partialReportPath
-    : await saveReport(values, reportData(result.snapshot, "scan"));
+    : await saveReport(values, reportData(result.snapshot, "scan", audit(result.snapshot), history ? { history } : {}));
   const summary = health(result.snapshot.pages);
   if (values.json) {
     console.log(JSON.stringify({
@@ -281,7 +300,8 @@ export async function checkCommand(url: string | undefined, values: CliValues, s
   });
   const issues = comparison.newIssues;
   const summary = summarizeIssues(issues);
-  const report = await saveReport(values, reportData(current, "check", issues, comparison));
+  const history = await updateHistory(values, current, baselinePath, !result.partial);
+  const report = await saveReport(values, reportData(current, "check", issues, { ...comparison, ...(history ? { history } : {}) }));
   if (values.json) console.log(JSON.stringify({ command: "check", baseline: baselinePath, pages: current.pages.length, summary, issues, lifecycle: comparison, report }, null, 2));
   else {
     console.log(`Checked ${current.pages.length} page(s).\n`);
@@ -373,8 +393,63 @@ export async function compareCommand(values: CliValues, signal?: AbortSignal): P
 export async function reportCommand(inputPath: string | undefined, values: CliValues): Promise<number> {
   const baselinePath = resolve(inputPath ?? values.baseline ?? DEFAULT_BASELINE);
   const baseline = await readSnapshot(baselinePath);
-  const report = await saveReport(values, reportData(baseline, "scan"), true);
+  const history = await updateHistory(values, baseline, baselinePath, false);
+  const report = await saveReport(values, reportData(baseline, "scan", audit(baseline), history ? { history } : {}), true);
   if (values.json) console.log(JSON.stringify({ command: "report", baseline: baselinePath, pages: baseline.pages.length, report }, null, 2));
   else console.log(`HTML report saved to ${report}`);
+  return 0;
+}
+
+export async function historyCommand(siteUrl: string | undefined, values: CliValues): Promise<number> {
+  if (Boolean(values.from) !== Boolean(values.to)) throw new Error("history comparison requires both --from and --to");
+  const directory = historyDirectory(values);
+  if (values.from && values.to) {
+    const previous = await readSnapshot(resolve(values.from));
+    const current = await readSnapshot(resolve(values.to));
+    if (previous.siteUrl !== current.siteUrl) throw new Error("history snapshots must belong to the same site URL");
+    const records = await readHistorySnapshots(directory, current.siteUrl);
+    const history = buildHistorySeries([...records.map((record) => record.snapshot), previous, current]);
+    const comparison = diff(previous, current, {
+      enabledRules: current.config.enabledRules,
+      severityOverrides: current.config.severityOverrides,
+      suppressions: current.config.suppressions,
+    });
+    const report = await saveReport(values, reportData(current, "check", comparison.newIssues, {
+      ...comparison,
+      ...(history ? { history } : {}),
+    }), true);
+    const summary = summarizeIssues(comparison.newIssues);
+    if (values.json) console.log(JSON.stringify({ command: "history", from: resolve(values.from), to: resolve(values.to), summary, lifecycle: comparison, report }, null, 2));
+    else {
+      console.log(`Compared local snapshots from ${previous.generatedAt} to ${current.generatedAt}.`);
+      printIssues(comparison.newIssues);
+      if (report) console.log(`HTML report saved to ${report}`);
+    }
+    return 0;
+  }
+
+  let normalizedSiteUrl: string | undefined;
+  if (siteUrl) {
+    try { normalizedSiteUrl = new URL(siteUrl).href; } catch { throw new Error("history URL must be an HTTP(S) URL"); }
+  }
+  let records = await readHistorySnapshots(directory, normalizedSiteUrl);
+  if (records.length === 0) throw new Error(`no local history snapshots found in ${directory}`);
+  if (!normalizedSiteUrl) {
+    const latestSiteUrl = records.at(-1)!.snapshot.siteUrl;
+    records = records.filter((record) => record.snapshot.siteUrl === latestSiteUrl);
+  }
+  const latest = records.at(-1)!;
+  const history = buildHistorySeries(records.map((record) => record.snapshot));
+  const report = await saveReport(values, reportData(latest.snapshot, "scan", audit(latest.snapshot), history ? { history } : {}), true);
+  const points = history?.points ?? [];
+  if (values.json) console.log(JSON.stringify({ command: "history", directory, snapshots: records.map((record, index) => ({ path: record.path, ...points[index] })), report }, null, 2));
+  else {
+    console.log(`Local history for ${latest.snapshot.siteUrl}:`);
+    for (const [index, record] of records.entries()) {
+      const point = points[index];
+      console.log(`  ${record.snapshot.generatedAt}  ${point?.pages ?? record.snapshot.pages.length} pages  ${point?.errors ?? 0} errors  ${point?.warnings ?? 0} warnings  ${record.path}`);
+    }
+    if (report) console.log(`HTML report saved to ${report}`);
+  }
   return 0;
 }

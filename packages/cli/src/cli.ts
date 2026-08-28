@@ -1,7 +1,7 @@
 import { ENGINE_VERSION } from "@seo-crawl-audit/core";
 import { loadConfig } from "@seo-crawl-audit/core/node";
 import { parseCliArgs, withFileConfig } from "./args.js";
-import { checkCommand, compareCommand, reportCommand, scanCommand } from "./commands.js";
+import { checkCommand, compareCommand, historyCommand, reportCommand, scanCommand } from "./commands.js";
 
 export { parseScanMenuSelection } from "./ui.js";
 
@@ -14,6 +14,7 @@ Usage:
   seo-audit scan <url> [options]
   seo-audit check [url] [options]
   seo-audit compare --production <url> --preview <url> [options]
+  seo-audit history [url] [options]
   seo-audit report [baseline] [options]
 
 Commands:
@@ -21,6 +22,7 @@ Commands:
   scan    Crawl a site and save its SEO baseline.
   check   Crawl again and compare with a saved baseline.
   compare Compare a production site with a preview deployment.
+  history View local scan trends or compare two saved history snapshots.
   report  Generate HTML from an existing baseline without crawling.
 
 Options:
@@ -47,6 +49,10 @@ Options:
                            Read production request headers from a JSON environment variable
   --preview-headers-env <name>
                            Read preview request headers from a JSON environment variable
+  --history-dir <path>     Local snapshot history directory
+  --no-history            Do not save this scan to local history
+  --from <snapshot>        Older history snapshot for an explicit comparison
+  --to <snapshot>          Newer history snapshot for an explicit comparison
   --json                  Print machine-readable command output
   --help                  Show this help
   --version               Show the version
@@ -110,6 +116,7 @@ export async function main(
     if (command === "scan") return await scanCommand(url, values, options.signal);
     if (command === "check") return await checkCommand(url, values, options.signal);
     if (command === "compare") return await compareCommand(values, options.signal);
+    if (command === "history") return await historyCommand(url, values);
     if (command === "report") return await reportCommand(url, values);
     console.error(`Unknown command: ${String(command)}\n\n${HELP}`);
     return 2;

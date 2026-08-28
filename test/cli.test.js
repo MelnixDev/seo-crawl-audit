@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main, parseScanMenuSelection } from "../packages/cli/dist/cli.js";
@@ -53,6 +53,7 @@ test("scan creates a baseline and check fails on a new noindex", async (context)
     "--delay",
     "0",
   ]);
+  assert.equal((await readdir(join(directory, ".seo-audit/history"))).length, 1);
   noindex = true;
   const checkExitCode = await main([
     "check",

@@ -36,6 +36,7 @@ test("locks the documented core function surface", () => {
     "ENGINE_VERSION",
     "RULE_SET_VERSION",
     "audit",
+    "buildHistorySeries",
     "diff",
     "getRuleDefinitions",
     "groupIssuesByTemplate",
