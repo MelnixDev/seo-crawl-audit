@@ -1,5 +1,5 @@
 import { writeFile } from "node:fs/promises";
-import { audit, diff, renderReport } from "../packages/core/dist/index.js";
+import { audit, buildHistorySeries, diff, renderReport } from "../packages/core/dist/index.js";
 import { createBaseline } from "../packages/core/dist/baseline.js";
 
 const url = "https://quotes.toscrape.com/";
@@ -24,10 +24,10 @@ const common = {
   robots: { url: `${url}robots.txt`, status: 200, sha256: "demo-robots", error: null },
   sitemap: { url: `${url}sitemap.xml`, urls: [url, `${url}page/2/`, `${url}page/3/`, `${url}tag/love/`], sitemapCount: 1, truncated: false },
   options: { maxPages: 4, requestDelay: 100 },
-  generatedAt: "2026-08-02T09:00:00.000Z",
 };
 const previous = createBaseline({
   ...common,
+  generatedAt: "2026-07-20T09:00:00.000Z",
   pages: [
     basePage("/", "Quotes to Scrape"),
     basePage("/page/2/", "Quotes · Page 2"),
@@ -37,6 +37,7 @@ const previous = createBaseline({
 });
 const current = createBaseline({
   ...common,
+  generatedAt: "2026-08-02T09:00:00.000Z",
   pages: [
     basePage("/", "Quotes to Scrape", { description: null }),
     basePage("/page/2/", "Quotes to Scrape", { canonical: null, wordCount: 120 }),
@@ -45,6 +46,7 @@ const current = createBaseline({
   ],
 });
 const lifecycle = diff(previous, current);
+const history = buildHistorySeries([previous, current]);
 const html = renderReport({
   mode: "check",
   startUrl: url,
@@ -55,5 +57,6 @@ const html = renderReport({
   engineVersion: current.engineVersion,
   ruleSetVersion: current.ruleSetVersion,
   branding: { agencyName: "SEO Crawl Audit", primaryColor: "#3157d5" },
+  ...(history ? { history } : {}),
 });
 await writeFile(new URL("../examples/quotes-toscrape-report.html", import.meta.url), html, "utf8");
