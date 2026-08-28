@@ -20,6 +20,8 @@ or [view its source file](examples/quotes-toscrape-report.html).
 - SnapshotV2 with automatic baseline v1 migration;
 - `new`, `ongoing`, `resolved`, and `unchanged` issue lifecycle;
 - resumable scans and a useful report even after interruption;
+- local SnapshotV2 history with issue, page-count, sitemap, and crawl-depth
+  trends—without a hosted account;
 - English/Ukrainian report localization, filters, CSV export, print layout,
   and local report branding;
 - interactive issue statistics for severity, frequent checks, ownership, and
@@ -164,6 +166,24 @@ seo-audit report
 seo-audit report quotes-baseline.json --report quotes-report.html
 ```
 
+### `seo-audit history [url]`
+
+Lists locally saved runs and creates an HTML report with issue trends:
+
+```bash
+seo-audit history https://example.com/
+seo-audit history --history-dir ./audit-history --report history.html
+```
+
+Compare any two saved runs without crawling:
+
+```bash
+seo-audit history \
+  --from .seo-audit/history/older.snapshot.json \
+  --to .seo-audit/history/newer.snapshot.json \
+  --report selected-runs.html
+```
+
 ## Options
 
 ```text
@@ -190,6 +210,10 @@ seo-audit report quotes-baseline.json --report quotes-report.html
                         Read production headers from a JSON environment variable
 --preview-headers-env <name>
                         Read preview headers from a JSON environment variable
+--history-dir <path>    Local snapshot history directory
+--no-history            Do not save this scan to local history
+--from <snapshot>       Older snapshot for an explicit history comparison
+--to <snapshot>         Newer snapshot for an explicit history comparison
 --json                  Print machine-readable output
 --help                  Show help
 --version               Show the installed version
@@ -277,6 +301,13 @@ compatible command resumes without requesting saved pages again. The checkpoint
 is removed after completion and retained after interruption. Successful pages
 are reused; transient failures and HTTP 5xx results are refreshed. Only an
 unfinished final NDJSON record is recoverable—earlier corruption is reported.
+
+Every completed scan and check also saves a full SnapshotV2 beside the selected
+baseline under `.seo-audit/history/`. Use `--history-dir` to move it or
+`--no-history` for an ephemeral run. History is read directly from disk; no URL,
+snapshot, or metric is uploaded. The HTML trend view shows errors, warnings,
+informational findings, new/resolved issues, page count, sitemap count, and
+maximum crawl depth.
 
 ## HTML and CSV report
 
