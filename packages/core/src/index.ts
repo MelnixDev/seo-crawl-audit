@@ -7,6 +7,7 @@ export { scan } from "./api.js";
 export { renderReport } from "./html-report.js";
 export { migrateSnapshot } from "./baseline.js";
 export { getRuleDefinitions } from "./rules/registry.js";
+export { groupIssuesByTemplate } from "./issue-groups.js";
 export {
   DEFAULT_CONFIG_FILE,
   DEFAULT_SCAN_CONFIG,
@@ -26,6 +27,7 @@ export type {
   Issue,
   IssueOwner,
   IssueScope,
+  IssueTemplateGroup,
   LinkGraphSummary,
   PageSnapshot,
   PlanScanOptions,

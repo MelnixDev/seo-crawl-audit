@@ -174,6 +174,18 @@ export interface Issue {
   suppressed?: { reason: string; expiresAt?: string };
 }
 
+export interface IssueTemplateGroup {
+  origin: string;
+  template: string;
+  issueCount: number;
+  affectedPages: number;
+  severities: Record<Severity, number>;
+  rules: Record<string, number>;
+  owners: Record<string, number>;
+  urls: string[];
+  representativeUrls: string[];
+}
+
 export interface DiffResult {
   complete: boolean;
   newIssues: Issue[];

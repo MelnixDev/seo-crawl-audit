@@ -38,6 +38,7 @@ test("locks the documented core function surface", () => {
     "audit",
     "diff",
     "getRuleDefinitions",
+    "groupIssuesByTemplate",
     "migrateSnapshot",
     "planScan",
     "renderReport",

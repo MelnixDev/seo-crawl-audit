@@ -34,6 +34,8 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /id="severity-chart"/);
   assert.match(html, /id="rules-chart"/);
   assert.match(html, /id="distribution-chart"/);
+  assert.match(html, /id="templates-chart"/);
+  assert.match(html, /id="template"/);
   assert.match(html, /function applyChartFilter/);
   assert.match(html, /data-chart-filter/);
   assert.match(html, /conic-gradient/);
@@ -98,10 +100,12 @@ test("embeds deterministic interactive chart statistics", () => {
     ],
     owners: { content: 2, seo: 1, developer: 1 },
     lifecycle: { new: 2, ongoing: 1, resolved: 1 },
+    templates: [{ template: "/:id", issueCount: 4, affectedPages: 4 }],
   });
   assert.match(html, /Select a chart item to filter the issue table/);
   assert.match(html, /Оберіть елемент графіка, щоб відфільтрувати таблицю проблем/);
   assert.match(html, /report\.mode==="check"\?text\.analytics\.lifecycle:text\.analytics\.owners/);
+  assert.match(html, /kind==="template"/);
   assert.match(html, /button\.setAttribute\("aria-pressed"/);
 });
 
