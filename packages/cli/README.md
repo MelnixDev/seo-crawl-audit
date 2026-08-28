@@ -24,6 +24,8 @@ or [view its source file](examples/quotes-toscrape-report.html).
   and local report branding;
 - interactive issue statistics for severity, frequent checks, ownership, and
   regression lifecycle, with chart-to-table filtering;
+- a production-versus-preview release guard with safe environment-based
+  authentication for private deployments;
 - configuration, suppressions with expiry, severity overrides, and budgets;
 - a self-contained GitHub Action that runs inside the GitHub runner;
 - typed engine API with injectable `fetch`, checkpoints, events, logger, and
@@ -125,6 +127,34 @@ error-level findings return exit code `1`; `--strict` also blocks on warnings.
 If `scan` receives SIGINT or SIGTERM, it flushes completed pages, writes the
 partial snapshot/report, keeps the checkpoint, and exits with code `130`.
 
+### `seo-audit compare`
+
+Scans production, requests the same paths from a preview deployment, and
+reports only SEO regressions introduced by the preview:
+
+```bash
+seo-audit compare \
+  --production https://example.com/ \
+  --preview https://preview-123.example.dev/ \
+  --pages 100 \
+  --report preview-seo-report.html
+```
+
+For a protected deployment, put request headers in an environment variable as
+a JSON object and pass only its name on the command line:
+
+```bash
+export SEO_AUDIT_PREVIEW_HEADERS='{"Authorization":"Bearer …"}'
+seo-audit compare \
+  --production https://example.com/ \
+  --preview https://preview-123.example.dev/ \
+  --preview-headers-env SEO_AUDIT_PREVIEW_HEADERS
+```
+
+Header values are used only by the injected request adapter. They are never
+written to snapshots, reports, checkpoints, or JSON output. Errors block the
+release with exit code `1`; `--strict` also blocks on warnings.
+
 ### `seo-audit report [baseline]`
 
 Regenerates HTML from a saved snapshot without network requests.
@@ -154,6 +184,12 @@ seo-audit report quotes-baseline.json --report quotes-report.html
 --include-query         Treat query-string URLs as separate pages
 --ignore-robots         Ignore robots.txt disallow rules
 --strict                Fail check on warnings as well as errors
+--production <url>      Production URL for compare
+--preview <url>         Preview deployment URL for compare
+--production-headers-env <name>
+                        Read production headers from a JSON environment variable
+--preview-headers-env <name>
+                        Read preview headers from a JSON environment variable
 --json                  Print machine-readable output
 --help                  Show help
 --version               Show the installed version
