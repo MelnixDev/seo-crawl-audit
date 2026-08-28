@@ -1,9 +1,9 @@
-import { access, readFile, rename, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { access, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { migrateSnapshot } from "./baseline.js";
 import { DEFAULT_CONFIG_FILE, validateConfig } from "./config.js";
 import { renderHtmlReport } from "./html-report.js";
-import type { ReportData, ReportOptions, ScanConfigV1, SnapshotV2 } from "./types.js";
+import type { HistorySnapshotRecord, ReportData, ReportOptions, ScanConfigV1, SnapshotV2 } from "./types.js";
 
 export async function findConfigFile(cwd = process.cwd()): Promise<string | null> {
   const path = resolve(cwd, DEFAULT_CONFIG_FILE);
@@ -60,3 +60,36 @@ export async function writeReport(
 }
 
 export const writeHtmlReport = writeReport;
+
+function historyFileName(snapshot: SnapshotV2): string {
+  const timestamp = snapshot.generatedAt.replaceAll(":", "-").replaceAll(".", "-");
+  return `${timestamp}-${snapshot.configurationHash.slice(0, 8)}.snapshot.json`;
+}
+
+/** Saves a full local snapshot using an atomic write and returns its path. */
+export async function writeHistorySnapshot(directory: string, snapshot: SnapshotV2): Promise<string> {
+  const resolvedDirectory = resolve(directory);
+  await mkdir(resolvedDirectory, { recursive: true });
+  const path = join(resolvedDirectory, historyFileName(snapshot));
+  await writeSnapshot(path, snapshot);
+  return path;
+}
+
+/** Reads local history in chronological order, optionally filtered by site. */
+export async function readHistorySnapshots(directory: string, siteUrl?: string): Promise<HistorySnapshotRecord[]> {
+  const resolvedDirectory = resolve(directory);
+  let names: string[];
+  try {
+    names = await readdir(resolvedDirectory);
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return [];
+    throw error;
+  }
+  const records: HistorySnapshotRecord[] = [];
+  for (const name of names.filter((candidate) => candidate.endsWith(".snapshot.json")).sort()) {
+    const path = join(resolvedDirectory, name);
+    const snapshot = await readSnapshot(path);
+    if (!siteUrl || snapshot.siteUrl === siteUrl) records.push({ path, snapshot });
+  }
+  return records.sort((left, right) => left.snapshot.generatedAt.localeCompare(right.snapshot.generatedAt) || left.path.localeCompare(right.path));
+}

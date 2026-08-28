@@ -15,7 +15,7 @@ test("manifests, user agent, and reports use centralized versions", async () => 
     manifest("packages/cli/package.json"),
     manifest("packages/action/package.json"),
   ]);
-  assert.equal(ENGINE_VERSION, "0.6.0");
+  assert.equal(ENGINE_VERSION, "0.7.0");
   assert.equal(RULE_SET_VERSION, "1.1.0");
   assert.deepEqual([root.version, core.version, cli.version, action.version], Array(4).fill(ENGINE_VERSION));
   assert.equal(cli.devDependencies["@seo-crawl-audit/core"], ENGINE_VERSION);

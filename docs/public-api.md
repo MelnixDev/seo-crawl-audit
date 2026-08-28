@@ -104,8 +104,22 @@ state, and an in-browser `English / Українська` selector. The selected
 applies to the complete interface, issue text, remediation, and CSV without
 changing issue fingerprints or snapshot data. Reports also include
 dependency-free interactive statistics for severity, frequent rules, owners,
-and regression lifecycle. Chart controls are keyboard-accessible and reuse the
-same filters as the issue table.
+regression lifecycle, and inferred page templates. Chart controls are
+keyboard-accessible and reuse the same filters as the issue table.
+
+## `groupIssuesByTemplate(issues)`
+
+Returns deterministic presentation groups for repeated route shapes. Numeric
+IDs, UUIDs, dates, hashes, and varying sibling slugs are replaced with readable
+placeholders. The function is pure and does not modify issue fingerprints or
+snapshot data.
+
+## `buildHistorySeries(snapshots)`
+
+Builds a chronological trend model from local SnapshotV2 objects. Points
+include severity totals, affected/page/sitemap counts, crawl depth, and
+new/resolved issue counts. The function is deterministic and performs no file
+or network I/O.
 
 ## `migrateSnapshot(input)`
 
@@ -119,7 +133,9 @@ import {
   createFileCheckpointStore,
   findConfigFile,
   loadConfig,
+  readHistorySnapshots,
   readSnapshot,
+  writeHistorySnapshot,
   writeReport,
   writeSnapshot,
 } from "@seo-crawl-audit/core/node";
@@ -129,6 +145,10 @@ Snapshot and report writes use an atomic temporary-file rename. The NDJSON
 checkpoint adapter serializes concurrent appends, reads compatible v1 headers,
 deduplicates normalized URLs, ignores only an unfinished final record, and
 rejects earlier corruption.
+
+History adapters store complete SnapshotV2 files in a caller-selected local
+directory and return their paths with parsed snapshots. A missing directory is
+an empty history; malformed snapshot files remain explicit errors.
 
 Successful pages are reused. Transient failures and HTTP 5xx pages are fetched
 again on resume. Identity excludes page limit, concurrency, delay, rules, and

@@ -34,6 +34,8 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /id="severity-chart"/);
   assert.match(html, /id="rules-chart"/);
   assert.match(html, /id="distribution-chart"/);
+  assert.match(html, /id="templates-chart"/);
+  assert.match(html, /id="template"/);
   assert.match(html, /function applyChartFilter/);
   assert.match(html, /data-chart-filter/);
   assert.match(html, /conic-gradient/);
@@ -98,10 +100,12 @@ test("embeds deterministic interactive chart statistics", () => {
     ],
     owners: { content: 2, seo: 1, developer: 1 },
     lifecycle: { new: 2, ongoing: 1, resolved: 1 },
+    templates: [{ template: "/:id", issueCount: 4, affectedPages: 4 }],
   });
   assert.match(html, /Select a chart item to filter the issue table/);
   assert.match(html, /Оберіть елемент графіка, щоб відфільтрувати таблицю проблем/);
   assert.match(html, /report\.mode==="check"\?text\.analytics\.lifecycle:text\.analytics\.owners/);
+  assert.match(html, /kind==="template"/);
   assert.match(html, /button\.setAttribute\("aria-pressed"/);
 });
 
@@ -177,4 +181,24 @@ test("labels a coverage-aware partial diff as an incomplete comparison", () => {
 
   assert.match(html, /Incomplete comparison/);
   assert.match(html, /unchecked pages are not marked missing or resolved/);
+});
+
+test("renders local history as a self-contained bilingual trend chart", () => {
+  const html = renderHtmlReport({
+    startUrl: "https://example.com/",
+    pages: [{ url: "https://example.com/" }],
+    issues: [],
+    history: {
+      siteUrl: "https://example.com/",
+      points: [
+        { generatedAt: "2026-01-01T00:00:00.000Z", siteUrl: "https://example.com/", pages: 10, affectedPages: 4, errors: 2, warnings: 5, info: 1, newIssues: 0, resolvedIssues: 0, sitemapUrls: 10, maxDepth: 2, partial: false },
+        { generatedAt: "2026-01-02T00:00:00.000Z", siteUrl: "https://example.com/", pages: 12, affectedPages: 2, errors: 1, warnings: 2, info: 1, newIssues: 1, resolvedIssues: 4, sitemapUrls: 12, maxDepth: 3, partial: false },
+      ],
+    },
+  });
+  assert.match(html, /id="history-panel"/);
+  assert.match(html, /id="history-chart"/);
+  assert.match(html, /function renderHistory/);
+  assert.match(html, /Локальна історія сканувань/);
+  assert.match(html, /trend-line trend-/);
 });

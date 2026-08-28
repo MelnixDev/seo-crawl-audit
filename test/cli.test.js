@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main, parseScanMenuSelection } from "../packages/cli/dist/cli.js";
@@ -53,6 +53,7 @@ test("scan creates a baseline and check fails on a new noindex", async (context)
     "--delay",
     "0",
   ]);
+  assert.equal((await readdir(join(directory, ".seo-audit/history"))).length, 1);
   noindex = true;
   const checkExitCode = await main([
     "check",
@@ -78,7 +79,7 @@ test("--version prints the package version", async (context) => {
   });
 
   assert.equal(await main(["--version"]), 0);
-  assert.deepEqual(messages, ["0.6.0"]);
+  assert.deepEqual(messages, ["0.7.0"]);
 });
 
 test("--delay rejects negative values before crawling", async (context) => {
@@ -174,4 +175,54 @@ test("--all scans every URL from a discovered sitemap", async (context) => {
   assert.equal(baseline.pages.length, 3);
   assert.equal(baseline.truncated, false);
   assert.equal(baseline.source.requestDelay, 0);
+});
+
+test("compare reports regressions between production and preview without exposing headers", async (context) => {
+  const createSite = (preview) => createServer((request, response) => {
+    if (request.url === "/robots.txt") {
+      response.writeHead(200, { "content-type": "text/plain" });
+      response.end("User-agent: *\nAllow: /\n");
+      return;
+    }
+    if (preview && request.headers.authorization !== "Bearer staging-secret") {
+      response.writeHead(401);
+      response.end("Unauthorized");
+      return;
+    }
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end(`<html><head><title>Stable title</title><meta name="description" content="A sufficiently useful description for the comparison fixture page."><meta name="robots" content="${preview ? "noindex" : "index,follow"}"><link rel="canonical" href="/"></head><body><h1>Page</h1></body></html>`);
+  });
+  const production = createSite(false);
+  const preview = createSite(true);
+  production.listen(0, "127.0.0.1");
+  preview.listen(0, "127.0.0.1");
+  await Promise.all([once(production, "listening"), once(preview, "listening")]);
+  context.after(() => { production.close(); preview.close(); });
+  const productionAddress = production.address();
+  const previewAddress = preview.address();
+  const productionUrl = `http://127.0.0.1:${productionAddress.port}/`;
+  const previewUrl = `http://127.0.0.1:${previewAddress.port}/`;
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-compare-test-"));
+  const reportPath = join(directory, "compare.html");
+  process.env.SEO_AUDIT_PREVIEW_HEADERS = JSON.stringify({ Authorization: "Bearer staging-secret" });
+  context.after(() => { delete process.env.SEO_AUDIT_PREVIEW_HEADERS; });
+  const originalLog = console.log;
+  console.log = () => {};
+  context.after(() => { console.log = originalLog; });
+
+  const exitCode = await main([
+    "compare",
+    "--production", productionUrl,
+    "--preview", previewUrl,
+    "--preview-headers-env", "SEO_AUDIT_PREVIEW_HEADERS",
+    "--no-sitemap",
+    "--pages", "1",
+    "--delay", "0",
+    "--report", reportPath,
+  ]);
+  const report = await readFile(reportPath, "utf8");
+  assert.equal(exitCode, 1);
+  assert.match(report, /new-noindex/);
+  assert.match(report, /preview/);
+  assert.doesNotMatch(report, /staging-secret/);
 });

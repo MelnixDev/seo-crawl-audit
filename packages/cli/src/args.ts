@@ -22,6 +22,14 @@ export interface CliValues {
   json?: boolean;
   help?: boolean;
   version?: boolean;
+  production?: string;
+  preview?: string;
+  "production-headers-env"?: string;
+  "preview-headers-env"?: string;
+  "history-dir"?: string;
+  "no-history"?: boolean;
+  from?: string;
+  to?: string;
   __config?: Partial<ScanConfigV1>;
 }
 
@@ -37,6 +45,10 @@ export function parseCliArgs(args: string[]): { values: CliValues; positionals: 
       sitemap: { type: "string" }, "no-sitemap": { type: "boolean" }, "include-query": { type: "boolean" },
       "ignore-robots": { type: "boolean" }, strict: { type: "boolean" }, json: { type: "boolean" },
       help: { type: "boolean" }, version: { type: "boolean" },
+      production: { type: "string" }, preview: { type: "string" },
+      "production-headers-env": { type: "string" }, "preview-headers-env": { type: "string" },
+      "history-dir": { type: "string" }, "no-history": { type: "boolean" },
+      from: { type: "string" }, to: { type: "string" },
     },
   }) as { values: CliValues; positionals: string[] };
 }

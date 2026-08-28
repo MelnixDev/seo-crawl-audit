@@ -7,6 +7,8 @@ export {
   writeSnapshot,
   writeHtmlReport,
   writeReport,
+  readHistorySnapshots,
+  writeHistorySnapshot,
 } from "./node-files.js";
 export {
   FileCheckpointStore,
