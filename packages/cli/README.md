@@ -285,18 +285,24 @@ It includes:
 
 - an `English / Українська` language selector that translates the complete
   interface, rule names, findings, remediation, lifecycle labels, and CSV;
-- dependency-free interactive charts for severity, most frequent checks, and
-  owner or regression-lifecycle distribution; selecting a chart item filters
+- dependency-free interactive charts for severity, most frequent checks,
+  inferred page templates, and owner or regression-lifecycle distribution;
+  selecting a chart item filters
   the issue table and selecting it again clears that filter;
 - summary cards and partial-scan state;
 - current and lifecycle tabs;
-- severity, rule, owner, and URL/text filters;
+- severity, rule, inferred template, owner, and URL/text filters;
 - evidence, before/after values, remediation, and fingerprint;
 - engine and rule-set versions;
 - client-side CSV export;
 - print-friendly PDF layout;
 - optional local agency name, logo, and primary color;
 - clear clean-report and no-filter-match states.
+
+Template grouping turns repeated findings such as `/products/red-shoe` and
+`/products/blue-shirt` into `/products/:slug`. Numeric IDs, UUIDs, dates, and
+hashes have stable placeholders. Grouping changes only presentation: rule IDs,
+evidence, snapshots, and issue fingerprints remain unchanged.
 
 Writes are atomic. Interactive scans refresh a partial report while results are
 being checkpointed, so interruption does not discard already completed work.

@@ -104,8 +104,15 @@ state, and an in-browser `English / Українська` selector. The selected
 applies to the complete interface, issue text, remediation, and CSV without
 changing issue fingerprints or snapshot data. Reports also include
 dependency-free interactive statistics for severity, frequent rules, owners,
-and regression lifecycle. Chart controls are keyboard-accessible and reuse the
-same filters as the issue table.
+regression lifecycle, and inferred page templates. Chart controls are
+keyboard-accessible and reuse the same filters as the issue table.
+
+## `groupIssuesByTemplate(issues)`
+
+Returns deterministic presentation groups for repeated route shapes. Numeric
+IDs, UUIDs, dates, hashes, and varying sibling slugs are replaced with readable
+placeholders. The function is pure and does not modify issue fingerprints or
+snapshot data.
 
 ## `migrateSnapshot(input)`
 
