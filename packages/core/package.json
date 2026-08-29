@@ -1,6 +1,6 @@
 {
   "name": "@seo-crawl-audit/core",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Local-first SEO crawling, audit, diff, snapshot, and report engine.",
   "type": "module",
   "main": "dist/index.js",
