@@ -276,7 +276,8 @@ Regression-only checks cover newly introduced indexing blocks, status changes,
 metadata removal or edits, redirect changes, robots changes, and sharp sitemap
 URL loss.
 
-[Read the rule-by-rule documentation](docs/rules.md).
+[Read the rule-by-rule documentation](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/rules.md) ·
+[Українська версія довідника правил](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/rules.uk.md).
 
 ## Snapshots, lifecycle, and checkpoints
 

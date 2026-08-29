@@ -1,5 +1,7 @@
 # SEO Crawl Audit rules
 
+**English** | [Українська](rules.uk.md)
+
 Every finding has a stable rule ID, severity, owner, evidence, remediation, and
 fingerprint. Rules report concrete risks; the tool does not calculate a general
 SEO score.
