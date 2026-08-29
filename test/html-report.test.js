@@ -45,6 +45,7 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /SEO-проблем не знайдено/);
   assert.match(html, /Статистика проблем/);
   assert.match(html, /language\.addEventListener\("change"/);
+  assert.match(html, /locale==="uk"\?issue\.documentationUrl\.replace\("\/docs\/rules\.md#","\/docs\/rules\.uk\.md#"\)/);
   assert.match(html, /seo-crawl-audit-"\+locale\+"\.csv/);
   assert.match(html, /SEO baseline audit/);
   assert.doesNotMatch(
