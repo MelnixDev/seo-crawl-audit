@@ -23,27 +23,52 @@ test("English and Ukrainian rule references cover the same built-in rules", asyn
 });
 
 test("README report screenshots are present and linked from the npm README", async () => {
-  const screenshots = [
-    "report-overview.png",
-    "report-analytics.png",
-    "report-issues.png",
-  ];
+  const screenshots = new Map([
+    ["report-overview.png", [2598, 1380]],
+    ["report-analytics.png", [2580, 1128]],
+    ["report-issues.png", [2904, 1306]],
+  ]);
   const [rootReadme, packageReadme] = await Promise.all([
     readFile(new URL("../README.md", import.meta.url), "utf8"),
     readFile(new URL("../packages/cli/README.md", import.meta.url), "utf8"),
   ]);
 
-  for (const screenshot of screenshots) {
+  for (const [screenshot, [width, height]] of screenshots) {
     const image = await readFile(new URL(`../docs/images/${screenshot}`, import.meta.url));
 
     assert.deepEqual(
       [...image.subarray(0, 8)],
       [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
     );
+    assert.equal(image.readUInt32BE(16), width);
+    assert.equal(image.readUInt32BE(20), height);
     assert.match(rootReadme, new RegExp(`docs/images/${screenshot}`));
     assert.match(
       packageReadme,
       new RegExp(`raw\\.githubusercontent\\.com/MelnixDev/seo-crawl-audit/main/docs/images/${screenshot}`),
     );
   }
+
+  assert.doesNotMatch(rootReadme, /docs\/images\/report-(?:overview|analytics|issues)\.jpg/);
+  assert.doesNotMatch(packageReadme, /docs\/images\/report-(?:overview|analytics|issues)\.jpg/);
+});
+
+test("release documentation matches the current distribution boundary", async () => {
+  const [rootManifest, coreManifest, rootReadme, coreApi, changelog] = await Promise.all([
+    readFile(new URL("../package.json", import.meta.url), "utf8").then(JSON.parse),
+    readFile(new URL("../packages/core/package.json", import.meta.url), "utf8").then(JSON.parse),
+    readFile(new URL("../README.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/public-api.md", import.meta.url), "utf8"),
+    readFile(new URL("../CHANGELOG.md", import.meta.url), "utf8"),
+  ]);
+  const releaseNotes = await readFile(
+    new URL(`../docs/releases/${rootManifest.version}.md`, import.meta.url),
+    "utf8",
+  );
+
+  assert.equal(coreManifest.private, true);
+  assert.match(rootReadme, /core` is currently an internal workspace package/);
+  assert.match(coreApi, /not\s+available as a standalone npm install/);
+  assert.match(changelog, new RegExp(`^## ${rootManifest.version.replaceAll(".", "\\.")} `, "m"));
+  assert.match(releaseNotes, new RegExp(`^# SEO Crawl Audit ${rootManifest.version.replaceAll(".", "\\.")}$`, "m"));
 });
