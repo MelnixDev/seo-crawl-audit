@@ -10,6 +10,33 @@ results stay in local JSON, checkpoint, CSV, and self-contained HTML files.
 [Open the interactive example report](https://melnixdev.github.io/seo-crawl-audit/)
 or [view its source file](examples/quotes-toscrape-report.html).
 
+## Report preview
+
+The report is a self-contained HTML file: open it locally, share it as an
+artifact, or publish the same file on GitHub Pages. Charts and filters work
+without a server.
+
+### Overview and local history
+
+![SEO Crawl Audit summary cards and local scan history](docs/images/report-overview.jpg)
+
+The overview keeps scan coverage, issue counts, and locally stored trends in
+one place.
+
+### Interactive issue analytics
+
+![SEO Crawl Audit interactive issue statistics](docs/images/report-analytics.jpg)
+
+Select a severity, rule, lifecycle state, or page template to filter the issue
+table immediately.
+
+### English and Ukrainian reports
+
+![SEO Crawl Audit issue table in Ukrainian](docs/images/report-ukrainian.jpg)
+
+The language switch translates the report UI and routes rule documentation to
+the matching English or Ukrainian reference.
+
 ## Highlights
 
 - automatic `robots.txt`, sitemap, sitemap-index, and gzip sitemap support;
