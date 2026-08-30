@@ -24,9 +24,9 @@ test("English and Ukrainian rule references cover the same built-in rules", asyn
 
 test("README report screenshots are present and linked from the npm README", async () => {
   const screenshots = [
-    "report-overview.jpg",
-    "report-analytics.jpg",
-    "report-issues.jpg",
+    "report-overview.png",
+    "report-analytics.png",
+    "report-issues.png",
   ];
   const [rootReadme, packageReadme] = await Promise.all([
     readFile(new URL("../README.md", import.meta.url), "utf8"),
@@ -36,7 +36,10 @@ test("README report screenshots are present and linked from the npm README", asy
   for (const screenshot of screenshots) {
     const image = await readFile(new URL(`../docs/images/${screenshot}`, import.meta.url));
 
-    assert.deepEqual([...image.subarray(0, 3)], [0xff, 0xd8, 0xff]);
+    assert.deepEqual(
+      [...image.subarray(0, 8)],
+      [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+    );
     assert.match(rootReadme, new RegExp(`docs/images/${screenshot}`));
     assert.match(
       packageReadme,
