@@ -18,21 +18,21 @@ without a server.
 
 ### Overview and local history
 
-![SEO Crawl Audit summary cards and local scan history](docs/images/report-overview.jpg)
+![SEO Crawl Audit summary cards and local scan history](docs/images/report-overview.png)
 
 The overview keeps scan coverage, issue counts, and locally stored trends in
 one place.
 
 ### Interactive issue analytics
 
-![SEO Crawl Audit interactive issue statistics](docs/images/report-analytics.jpg)
+![SEO Crawl Audit interactive issue statistics](docs/images/report-analytics.png)
 
 Select a severity, rule, lifecycle state, or page template to filter the issue
 table immediately.
 
 ### Filtered issue table
 
-![SEO Crawl Audit issue table filtered to errors](docs/images/report-issues.jpg)
+![SEO Crawl Audit issue table filtered to errors](docs/images/report-issues.png)
 
 Chart selections and report filters narrow the table to the findings that need
 attention, with evidence and remediation kept alongside each issue.
