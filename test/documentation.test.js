@@ -26,7 +26,7 @@ test("README report screenshots are present and linked from the npm README", asy
   const screenshots = [
     "report-overview.jpg",
     "report-analytics.jpg",
-    "report-ukrainian.jpg",
+    "report-issues.jpg",
   ];
   const [rootReadme, packageReadme] = await Promise.all([
     readFile(new URL("../README.md", import.meta.url), "utf8"),

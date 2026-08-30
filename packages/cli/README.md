@@ -30,12 +30,12 @@ one place.
 Select a severity, rule, lifecycle state, or page template to filter the issue
 table immediately.
 
-### Ukrainian report interface
+### Filtered issue table
 
-![SEO Crawl Audit issue table in Ukrainian](https://raw.githubusercontent.com/MelnixDev/seo-crawl-audit/main/docs/images/report-ukrainian.jpg)
+![SEO Crawl Audit issue table filtered to errors](https://raw.githubusercontent.com/MelnixDev/seo-crawl-audit/main/docs/images/report-issues.jpg)
 
-The language switch translates the report interface and routes every help link
-to the matching English or Ukrainian rule reference.
+Chart selections and report filters narrow the table to the findings that need
+attention, with evidence and remediation kept alongside each issue.
 
 ## Highlights
 
