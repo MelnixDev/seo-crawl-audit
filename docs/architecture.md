@@ -30,6 +30,15 @@ has no filesystem dependency.
 The CLI and Action import only the public core root and `/node` adapters. ESLint
 enforces this boundary. The root does not expose crawler helpers or parsers.
 
+## Distribution boundary
+
+The workspace name `@seo-crawl-audit/core` defines an internal package and API
+boundary; it is not currently published to npm. The supported npm distribution
+is the self-contained `seo-crawl-audit` CLI. Keeping core private avoids making
+an external semver commitment before there is demonstrated demand for direct
+engine embedding. `@seo-crawl-audit/action` is also private and is distributed
+only through versioned GitHub repository tags.
+
 ## Determinism
 
 Link discovery processes one breadth-first frontier at a time. URLs within a

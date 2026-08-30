@@ -6,6 +6,12 @@ The local-first crawl, snapshot, audit, diff, and HTML report engine used by
 The package performs all work locally and does not send crawl data to an
 external service.
 
+This is currently a private npm workspace package used to maintain a strict
+boundary between the engine, CLI, and GitHub Action. It is not published as a
+standalone npm dependency. The documented imports are for contributors and
+workspace development; end users should install the self-contained
+`seo-crawl-audit` CLI.
+
 Use the root export for the stable application API:
 
 ```ts

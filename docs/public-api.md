@@ -4,6 +4,11 @@
 GitHub Action. The root export is intentionally small and stable. Node.js file
 adapters live in the separate `@seo-crawl-audit/core/node` subpath.
 
+The scoped package is currently private to this npm workspace and is not
+available as a standalone npm install. This guide documents the repository API
+used by the CLI and Action and provides a compatibility boundary for future
+embedding. Install `seo-crawl-audit` when using the supported CLI distribution.
+
 ```ts
 import {
   audit,
