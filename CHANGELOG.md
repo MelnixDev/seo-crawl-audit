@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.7.2 — 2026-08-30
+
+- replaced the compressed report preview images with the original full-resolution
+  PNG captures in both the repository and npm README;
+- clarified that `@seo-crawl-audit/core` is currently an internal workspace
+  package rather than a separately published npm package;
+- refreshed the release documentation without changing CLI behavior, SnapshotV2,
+  rule IDs, fingerprints, or report data contracts.
+
+## 0.7.1 — 2026-08-29
+
+- added a complete Ukrainian reference for all 46 built-in and regression rules;
+- linked English and Ukrainian rule documentation from bilingual HTML reports;
+- kept both language references aligned with the built-in registry through a
+  documentation contract test;
+- preserved SnapshotV2, rule IDs, fingerprints, and rule-set version `1.1.0`.
+
+## 0.7.0 — 2026-08-28
+
+- added production-to-preview regression comparisons with protected preview
+  headers that are never persisted in outputs;
+- grouped findings by inferred page templates and added interactive template
+  analytics to the local HTML report;
+- added local SnapshotV2 history, trend reports, and comparisons between saved
+  runs;
+- exposed `groupIssuesByTemplate()` and `buildHistorySeries()` through the core
+  workspace API.
+
 ## 0.6.0 — 2026-08-16
 
 - added reusable two-phase `planScan()` and `scan()` workflows without
