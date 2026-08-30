@@ -30,13 +30,12 @@ one place.
 Select a severity, rule, lifecycle state, or page template to filter the issue
 table immediately.
 
-### Focused issue workflow in Ukrainian
+### Ukrainian report interface
 
 ![SEO Crawl Audit issue table in Ukrainian](docs/images/report-ukrainian.jpg)
 
-The severity filter narrows the table to four errors. The language switch
-translates the full workflow and routes every help link to the matching
-English or Ukrainian rule reference.
+The language switch translates the report interface and routes every help link
+to the matching English or Ukrainian rule reference.
 
 ## Highlights
 
