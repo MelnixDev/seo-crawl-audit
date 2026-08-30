@@ -21,3 +21,26 @@ test("English and Ukrainian rule references cover the same built-in rules", asyn
   assert.match(english, /\[Українська\]\(rules\.uk\.md\)/);
   assert.match(ukrainian, /\[English\]\(rules\.md\)/);
 });
+
+test("README report screenshots are present and linked from the npm README", async () => {
+  const screenshots = [
+    "report-overview.jpg",
+    "report-analytics.jpg",
+    "report-ukrainian.jpg",
+  ];
+  const [rootReadme, packageReadme] = await Promise.all([
+    readFile(new URL("../README.md", import.meta.url), "utf8"),
+    readFile(new URL("../packages/cli/README.md", import.meta.url), "utf8"),
+  ]);
+
+  for (const screenshot of screenshots) {
+    const image = await readFile(new URL(`../docs/images/${screenshot}`, import.meta.url));
+
+    assert.deepEqual([...image.subarray(0, 3)], [0xff, 0xd8, 0xff]);
+    assert.match(rootReadme, new RegExp(`docs/images/${screenshot}`));
+    assert.match(
+      packageReadme,
+      new RegExp(`raw\\.githubusercontent\\.com/MelnixDev/seo-crawl-audit/main/docs/images/${screenshot}`),
+    );
+  }
+});
