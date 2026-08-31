@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.2 — 2026-08-30
+## 0.7.2 — 2026-08-31
 
 - replaced the compressed report preview images with the original full-resolution
   PNG captures in both the repository and npm README;
