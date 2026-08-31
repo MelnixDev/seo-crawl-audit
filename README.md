@@ -409,6 +409,11 @@ packages/cli     seo-crawl-audit       — terminal UX and npm executable
 packages/action  @seo-crawl-audit/action — GitHub runner entry point
 ```
 
+`@seo-crawl-audit/core` is currently an internal workspace package and is not
+published separately on npm. Install `seo-crawl-audit` for the supported,
+self-contained CLI. The imports below document the repository API used by the
+CLI and Action and are intended for contributors working in this workspace.
+
 ```ts
 import { audit, planScan, scan } from "@seo-crawl-audit/core";
 import { createFileCheckpointStore } from "@seo-crawl-audit/core/node";
