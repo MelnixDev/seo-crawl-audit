@@ -25,9 +25,17 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Checkout release automation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: automation
+
+      - name: Checkout immutable release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.tag || github.ref }}
+          path: source
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -41,22 +49,28 @@ jobs:
       - name: Verify release tag and manifests
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-        run: node scripts/verify-release-tag.mjs "$RELEASE_TAG"
+        run: node automation/scripts/verify-release-tag.mjs "$RELEASE_TAG" source
 
       - name: Allow required dependency install scripts
         run: node "$RUNNER_TEMP/npm-cli/node_modules/npm/bin/npm-cli.js" config set allow-scripts=esbuild --location=project
+        working-directory: source
 
       - name: Install dependencies
         run: node "$RUNNER_TEMP/npm-cli/node_modules/npm/bin/npm-cli.js" ci
+        working-directory: source
 
       - name: Run release quality gates
         run: node "$RUNNER_TEMP/npm-cli/node_modules/npm/bin/npm-cli.js" run check
+        working-directory: source
 
       - name: Audit production dependencies
         run: node "$RUNNER_TEMP/npm-cli/node_modules/npm/bin/npm-cli.js" audit --omit=dev
+        working-directory: source
 
       - name: Verify committed bundles
         run: git diff --exit-code -- packages/cli/bundle packages/action/action-dist
+        working-directory: source
 
       - name: Publish the CLI with npm trusted publishing
         run: node "$RUNNER_TEMP/npm-cli/node_modules/npm/bin/npm-cli.js" publish --workspace seo-crawl-audit --access public
+        working-directory: source
