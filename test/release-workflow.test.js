@@ -9,7 +9,9 @@ test("npm publishing uses OIDC and cannot run for the moving v0 tag", async () =
   assert.match(workflow, /tags: \["v\*\.\*\.\*"\]/);
   assert.match(workflow, /id-token: write/);
   assert.match(workflow, /package-manager-cache: false/);
-  assert.match(workflow, /verify-release-tag\.mjs/);
+  assert.match(workflow, /automation\/scripts\/verify-release-tag\.mjs "\$RELEASE_TAG" source/);
+  assert.match(workflow, /Checkout immutable release source/);
+  assert.match(workflow, /working-directory: source/);
   assert.match(workflow, /publish --workspace seo-crawl-audit --access public/);
   assert.doesNotMatch(workflow, /NODE_AUTH_TOKEN|NPM_TOKEN/);
   assert.doesNotMatch(workflow, /publish --workspace @seo-crawl-audit\/core/);
@@ -28,4 +30,16 @@ test("release tag verification locks all workspace versions", async () => {
   assert.match(valid.stdout, /only seo-crawl-audit@/);
   assert.notEqual(moving.status, 0);
   assert.match(moving.stderr, /vMAJOR\.MINOR\.PATCH/);
+});
+
+test("release verification can inspect a separately checked-out source tree", async () => {
+  const root = JSON.parse(await readFile("package.json", "utf8"));
+  const nested = spawnSync(
+    process.execPath,
+    ["scripts/verify-release-tag.mjs", `v${root.version}`, "."],
+    { encoding: "utf8" },
+  );
+
+  assert.equal(nested.status, 0, nested.stderr);
+  assert.match(nested.stdout, /is publishable/);
 });
