@@ -475,6 +475,9 @@ CI covers Node.js 20, 22, and 24. Tests use local HTTP fixtures for robots,
 sitemaps, gzip, retries, redirects, cancellation, checkpoint resume, migration,
 rules, lifecycle, HTML escaping, npm packaging, and the GitHub Action.
 
+Maintainers publish the CLI through token-free
+[npm trusted publishing](docs/publishing.md).
+
 ## License
 
 MIT
