@@ -91,6 +91,31 @@ npm run build
 npm link --workspace seo-crawl-audit
 ```
 
+## Initialize a project
+
+Create a safe configuration in an existing project:
+
+```bash
+npx seo-crawl-audit init https://example.com/
+```
+
+The interactive setup can also create a manual, scheduled, or pull-request
+GitHub Actions workflow. For a site whose content is published outside pull
+requests, generate the scheduled workflow:
+
+```bash
+npx seo-crawl-audit init https://example.com/ \
+  --workflow scheduled \
+  --yes
+```
+
+Existing config and workflow files are never replaced without an explicit
+confirmation or `--force`. The generated `.gitignore` recommendations exclude
+runtime checkpoints, local history, and reports, but intentionally keep the
+optional `.seo-audit.json` regression baseline available for version control.
+
+[Read the complete initialization guide](docs/initialization.md).
+
 ## Five-minute example
 
 [Quotes to Scrape](https://quotes.toscrape.com/) is a public educational site
@@ -115,6 +140,20 @@ seo-audit check https://quotes.toscrape.com/ \
 ```
 
 ## Commands
+
+### `seo-audit init [url]`
+
+Creates `seo-audit.config.json`, adds safe local artifact recommendations to
+`.gitignore`, and can create an optional GitHub Actions workflow.
+
+```bash
+seo-audit init https://example.com/
+seo-audit init https://example.com/ --workflow manual --yes
+seo-audit init https://example.com/ --workflow scheduled --yes
+seo-audit init https://example.com/ --workflow pull-request --yes
+```
+
+Workflow modes are `none`, `manual`, `scheduled`, and `pull-request`.
 
 ### `seo-audit <url>`
 
@@ -241,6 +280,10 @@ seo-audit history \
 --no-history            Do not save this scan to local history
 --from <snapshot>       Older snapshot for an explicit history comparison
 --to <snapshot>         Newer snapshot for an explicit history comparison
+--directory <path>      Project directory for init
+--workflow <mode>       Init workflow: none, manual, scheduled, or pull-request
+--yes                   Accept safe init defaults without prompting
+--force                 Allow init to replace existing generated files
 --json                  Print machine-readable output
 --help                  Show help
 --version               Show the installed version
@@ -397,7 +440,7 @@ jobs:
             ${{ steps.seo.outputs.summary }}
 ```
 
-[Read all Action inputs and outputs](docs/github-action.md).
+[Read all Action inputs, outputs, and generated workflow modes](docs/github-action.md).
 
 ## Core API and repository structure
 

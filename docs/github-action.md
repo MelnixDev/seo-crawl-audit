@@ -42,3 +42,28 @@ Use `MelnixDev/seo-crawl-audit@v0` for the latest compatible `0.x` Action
 release. `v0` is moved only after the corresponding versioned release has
 passed its clean-install verification. The Action bundle is committed to the
 repository and is not published as a separate npm package.
+
+## Generate a workflow
+
+`seo-audit init` can create `.github/workflows/seo-audit.yml` without copying
+YAML by hand:
+
+```bash
+seo-audit init https://example.com/ --workflow scheduled --yes
+```
+
+Available modes:
+
+- `manual` uses `workflow_dispatch` and runs only when requested;
+- `scheduled` runs every Monday at 06:00 UTC and also supports manual runs;
+- `pull-request` reads the preview URL from the `SEO_AUDIT_PREVIEW_URL`
+  repository variable and compares it with committed `.seo-audit.json`;
+- `none` does not create a workflow.
+
+Manual and scheduled workflows audit the URL from `seo-audit.config.json`, so
+they work for CMS publishing and other content changes that do not pass through
+a pull request. Every generated workflow uploads the HTML report and JSON
+summary with `if: always()`, including failed audits.
+
+See the [project initialization guide](initialization.md) for overwrite safety,
+generated defaults, and pull-request prerequisites.
