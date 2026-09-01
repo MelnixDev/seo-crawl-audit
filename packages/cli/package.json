@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "build": "tsc -b",
-    "bundle": "esbuild dist/cli.js --bundle --platform=node --target=node20 --format=esm --minify-whitespace --outfile=bundle/cli.js"
+    "bundle": "esbuild dist/cli.js --bundle --platform=node --target=node20 --format=esm --minify-whitespace --minify-syntax --outfile=bundle/cli.js"
   },
   "keywords": [
     "seo",
