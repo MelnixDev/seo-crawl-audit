@@ -87,7 +87,7 @@ test("repository and npm documentation describe safe project initialization", as
     assert.match(readme, /--force/);
   }
   assert.match(initialization, /does not ignore `\.seo-audit\.json`/);
-  assert.match(initialization, /does not replace\n  an existing config or workflow/);
+  assert.match(initialization, /does not replace\r?\n  an existing config or workflow/);
   assert.match(actionGuide, /CMS publishing/);
   assert.match(actionGuide, /SEO_AUDIT_PREVIEW_URL/);
 });
