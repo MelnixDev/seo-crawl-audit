@@ -116,6 +116,15 @@ optional `.seo-audit.json` regression baseline available for version control.
 
 [Read the complete initialization guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/initialization.md).
 
+Verify the project setup without starting a full crawl:
+
+```bash
+seo-audit doctor
+seo-audit doctor --offline
+```
+
+[Read the project diagnostics guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/doctor.md).
+
 ## Five-minute example
 
 [Quotes to Scrape](https://quotes.toscrape.com/) is a public educational site
@@ -154,6 +163,18 @@ seo-audit init https://example.com/ --workflow pull-request --yes
 ```
 
 Workflow modes are `none`, `manual`, `scheduled`, and `pull-request`.
+
+### `seo-audit doctor [url]`
+
+Checks the local Node.js runtime, configuration, output access, start page,
+robots.txt, and sitemap without crawling linked HTML pages. Node.js is required
+only on the machine running the CLI; the audited site can use any server stack.
+
+```bash
+seo-audit doctor
+seo-audit doctor https://example.com/
+seo-audit doctor --offline --json
+```
 
 ### `seo-audit <url>`
 
@@ -284,6 +305,7 @@ seo-audit history \
 --workflow <mode>       Init workflow: none, manual, scheduled, or pull-request
 --yes                   Accept safe init defaults without prompting
 --force                 Allow init to replace existing generated files
+--offline               Skip doctor network checks
 --json                  Print machine-readable output
 --help                  Show help
 --version               Show the installed version

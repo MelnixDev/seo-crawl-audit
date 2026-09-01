@@ -91,3 +91,19 @@ test("repository and npm documentation describe safe project initialization", as
   assert.match(actionGuide, /CMS publishing/);
   assert.match(actionGuide, /SEO_AUDIT_PREVIEW_URL/);
 });
+
+test("repository and npm documentation explain project diagnostics", async () => {
+  const [rootReadme, packageReadme, doctorGuide] = await Promise.all([
+    readFile(new URL("../README.md", import.meta.url), "utf8"),
+    readFile(new URL("../packages/cli/README.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/doctor.md", import.meta.url), "utf8"),
+  ]);
+
+  for (const readme of [rootReadme, packageReadme]) {
+    assert.match(readme, /seo-audit doctor --offline/);
+    assert.match(readme, /site can use any server stack/);
+  }
+  assert.match(doctorGuide, /Node\.js is required by the local CLI, not by the audited website/);
+  assert.match(doctorGuide, /No linked HTML pages are crawled/);
+  assert.match(doctorGuide, /^1    One or more diagnostic checks failed$/m);
+});
