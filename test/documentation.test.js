@@ -72,3 +72,22 @@ test("release documentation matches the current distribution boundary", async ()
   assert.match(changelog, new RegExp(`^## ${rootManifest.version.replaceAll(".", "\\.")} `, "m"));
   assert.match(releaseNotes, new RegExp(`^# SEO Crawl Audit ${rootManifest.version.replaceAll(".", "\\.")}$`, "m"));
 });
+
+test("repository and npm documentation describe safe project initialization", async () => {
+  const [rootReadme, packageReadme, initialization, actionGuide] = await Promise.all([
+    readFile(new URL("../README.md", import.meta.url), "utf8"),
+    readFile(new URL("../packages/cli/README.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/initialization.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/github-action.md", import.meta.url), "utf8"),
+  ]);
+
+  for (const readme of [rootReadme, packageReadme]) {
+    assert.match(readme, /seo-audit init https:\/\/example\.com\//);
+    assert.match(readme, /--workflow scheduled/);
+    assert.match(readme, /--force/);
+  }
+  assert.match(initialization, /does not ignore `\.seo-audit\.json`/);
+  assert.match(initialization, /does not replace\r?\n  an existing config or workflow/);
+  assert.match(actionGuide, /CMS publishing/);
+  assert.match(actionGuide, /SEO_AUDIT_PREVIEW_URL/);
+});

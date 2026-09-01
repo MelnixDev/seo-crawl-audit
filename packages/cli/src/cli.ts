@@ -2,6 +2,7 @@ import { ENGINE_VERSION } from "@seo-crawl-audit/core";
 import { loadConfig } from "@seo-crawl-audit/core/node";
 import { parseCliArgs, withFileConfig } from "./args.js";
 import { checkCommand, compareCommand, historyCommand, reportCommand, scanCommand } from "./commands.js";
+import { initCommand } from "./init.js";
 
 export { parseScanMenuSelection } from "./ui.js";
 
@@ -16,6 +17,7 @@ Usage:
   seo-audit compare --production <url> --preview <url> [options]
   seo-audit history [url] [options]
   seo-audit report [baseline] [options]
+  seo-audit init [url] [options]
 
 Commands:
   <url>   Shortcut for scan.
@@ -24,6 +26,7 @@ Commands:
   compare Compare a production site with a preview deployment.
   history View local scan trends or compare two saved history snapshots.
   report  Generate HTML from an existing baseline without crawling.
+  init    Create a safe local config and optional GitHub workflow.
 
 Options:
   --baseline <file>       Baseline file for check (default: .seo-audit.json)
@@ -53,6 +56,10 @@ Options:
   --no-history            Do not save this scan to local history
   --from <snapshot>        Older history snapshot for an explicit comparison
   --to <snapshot>          Newer history snapshot for an explicit comparison
+  --directory <path>       Project directory for init (default: current directory)
+  --workflow <mode>        Init workflow: none, manual, scheduled, or pull-request
+  --yes                    Accept safe init defaults without prompting
+  --force                  Allow init to replace existing generated files
   --json                  Print machine-readable command output
   --help                  Show this help
   --version               Show the version
@@ -82,6 +89,26 @@ export async function main(
 
   let { values } = parsed;
   const { positionals } = parsed;
+  if (positionals[0] === "init") {
+    if (values.help) {
+      console.log(HELP);
+      return 0;
+    }
+    if (values.version) {
+      console.log(ENGINE_VERSION);
+      return 0;
+    }
+    if (positionals.length > 2) {
+      console.error(`Unexpected argument: ${positionals[2]}`);
+      return 2;
+    }
+    try {
+      return await initCommand(positionals[1], values);
+    } catch (error) {
+      console.error(`seo-audit: ${error instanceof Error ? error.message : String(error)}`);
+      return 2;
+    }
+  }
   try {
     values = withFileConfig(values, await loadConfig(values.config));
   } catch (error) {
