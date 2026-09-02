@@ -29,6 +29,8 @@ Inputs:
 - `config` — configuration path;
 - `fail-on` — `error`, `warning`, or `none`;
 - `report` — HTML output path.
+- `headers-env` — optional name of a JSON environment variable containing
+  same-origin request headers.
 
 The Action writes HTML and JSON, adds error annotations for critical findings,
 creates a job summary, and returns a failing exit status at the configured
@@ -67,3 +69,8 @@ summary with `if: always()`, including failed audits.
 
 See the [project initialization guide](initialization.md) for overwrite safety,
 generated defaults, and pull-request prerequisites.
+
+For a protected site, keep the JSON header object in a GitHub Actions secret
+and pass only the environment variable name to `headers-env`. See the
+[authenticated scans guide](authenticated-scans.md) for a complete example and
+the origin isolation rules.
