@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.0 — 2026-09-02
+
+- added `seo-audit init` for safe project configuration, `.gitignore`
+  recommendations, and optional manual, scheduled, or pull-request workflows;
+- added `seo-audit doctor` for local runtime, config, storage, homepage,
+  robots.txt, and sitemap diagnostics without crawling linked HTML pages;
+- added environment-based request headers to `doctor`, `scan`, and `check`, in
+  addition to the existing production-versus-preview comparison;
+- added protected-site support to the self-contained GitHub Action;
+- restricted private headers to the configured site origin and isolated
+  authenticated checkpoints without persisting secret values;
+- moved npm publishing to GitHub Actions trusted publishing with OIDC and
+  provenance, without a long-lived registry token;
+- preserved SnapshotV2, rule IDs, fingerprints, config schema, report data,
+  existing commands, and rule-set version `1.1.0`.
+
 ## 0.7.2 — 2026-08-31
 
 - replaced the compressed report preview images with the original full-resolution
