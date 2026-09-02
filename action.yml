@@ -23,6 +23,9 @@ inputs:
     description: HTML report output path.
     required: false
     default: seo-audit-report.html
+  headers-env:
+    description: Name of a JSON environment variable containing same-origin request headers.
+    required: false
 outputs:
   report:
     description: Generated HTML report path.

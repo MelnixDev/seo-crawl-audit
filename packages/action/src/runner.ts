@@ -17,6 +17,7 @@ export interface ActionInputs {
   config?: string;
   failOn?: string;
   report?: string;
+  headersEnv?: string;
 }
 
 export interface ActionSummary {
@@ -33,6 +34,8 @@ export interface ActionAdapters {
   writeJson(path: string, value: unknown): Promise<void>;
   resolvePath(path: string): string;
   scan?: typeof coreScan;
+  fetch?: typeof globalThis.fetch;
+  environment?: Readonly<Record<string, string | undefined>>;
   info(message: string): void;
   annotateError(issue: Issue): void;
   setOutput(name: "report" | "summary", value: string): void;
@@ -61,6 +64,40 @@ function isMissingDefaultConfig(error: unknown, path: string): boolean {
     && /ENOENT/.test(`${error.message} ${String(error.cause)}`);
 }
 
+function requestFetch(
+  environment: Readonly<Record<string, string | undefined>>,
+  variableName: string | undefined,
+  targetUrl: string,
+  baseFetch: typeof globalThis.fetch,
+): typeof globalThis.fetch {
+  if (!variableName) return baseFetch;
+  const encoded = environment[variableName];
+  if (!encoded) throw new Error(`environment variable ${variableName} is empty or missing`);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(encoded);
+  } catch (error) {
+    throw new Error(`environment variable ${variableName} must contain a JSON object`, { cause: error });
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`environment variable ${variableName} must contain a JSON object`);
+  }
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(parsed)) {
+    if (typeof value !== "string") throw new Error(`header ${name} in ${variableName} must be a string`);
+    headers.set(name, value);
+  }
+  const targetOrigin = new URL(targetUrl).origin;
+  return (input, init) => {
+    const requestUrl = input instanceof Request ? input.url : String(input);
+    if (new URL(requestUrl).origin !== targetOrigin) return baseFetch(input, init);
+    const merged = new Headers(input instanceof Request ? input.headers : undefined);
+    new Headers(init?.headers).forEach((value, name) => merged.set(name, value));
+    headers.forEach((value, name) => merged.set(name, value));
+    return baseFetch(input, { ...init, headers: merged });
+  };
+}
+
 export async function runAction(inputs: ActionInputs, adapters: ActionAdapters): Promise<ActionRunResult> {
   const threshold = inputs.failOn || "error";
   if (!["error", "warning", "none"].includes(threshold)) {
@@ -79,7 +116,9 @@ export async function runAction(inputs: ActionInputs, adapters: ActionAdapters):
 
   const config = resolveConfig({ schemaVersion: 1, url }, configFile, baseline?.config ?? {});
   const runScan = adapters.scan ?? coreScan;
+  const fetch = requestFetch(adapters.environment ?? process.env, inputs.headersEnv, url, adapters.fetch ?? globalThis.fetch);
   const result = await runScan(config, {
+    fetch,
     onEvent(event) {
       if (event.type === "progress" && (event.completed === event.total || event.completed % 25 === 0)) {
         adapters.info(`Scanned ${event.completed}/${event.total} pages`);

@@ -104,6 +104,41 @@ test("runAction rejects invalid inputs before starting a scan", async () => {
   );
 });
 
+test("runAction reads same-origin headers from the named environment variable", async () => {
+  const current = snapshot();
+  const fixture = adapters(current);
+  const requests = [];
+  fixture.value.environment = {
+    SEO_AUDIT_SITE_HEADERS: JSON.stringify({ Authorization: "Bearer action-private" }),
+  };
+  fixture.value.fetch = async (input, init) => {
+    requests.push({ url: String(input), authorization: new Headers(init?.headers).get("authorization") });
+    return new Response("ok");
+  };
+  fixture.value.scan = async (_config, options) => {
+    await options.fetch("https://example.com/private");
+    await options.fetch("https://external.example.net/redirect");
+    return scanResult(current);
+  };
+
+  await runAction({
+    url: "https://example.com/",
+    headersEnv: "SEO_AUDIT_SITE_HEADERS",
+    failOn: "none",
+  }, fixture.value);
+
+  assert.deepEqual(requests, [
+    { url: "https://example.com/private", authorization: "Bearer action-private" },
+    { url: "https://external.example.net/redirect", authorization: null },
+  ]);
+  assert.doesNotMatch(JSON.stringify(fixture.state), /action-private/);
+
+  await assert.rejects(
+    runAction({ url: "https://example.com/", headersEnv: "MISSING" }, fixture.value),
+    /empty or missing/,
+  );
+});
+
 test("runAction tolerates an absent default config and emits annotations and summary", async () => {
   const fixture = adapters(snapshot({ status: 500 }));
   fixture.value.loadConfig = async () => {

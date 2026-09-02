@@ -8,8 +8,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 test("GitHub Action creates local JSON and HTML outputs without an external API", async (context) => {
+  const secret = "Bearer action-secret";
+  const seenHeaders = [];
   let origin;
   const server = createServer((request, response) => {
+    seenHeaders.push(request.headers.authorization ?? null);
+    if (request.headers.authorization !== secret) {
+      response.writeHead(401, { "content-type": "text/plain" });
+      response.end("Unauthorized");
+      return;
+    }
     if (request.url === "/robots.txt") {
       response.writeHead(200, { "content-type": "text/plain" });
       return response.end(`User-agent: *\nAllow: /\nSitemap: ${origin}/sitemap.xml\n`);
@@ -39,6 +47,8 @@ test("GitHub Action creates local JSON and HTML outputs without an external API"
       "INPUT_CONFIG": "",
       "INPUT_FAIL-ON": "none",
       "INPUT_REPORT": report,
+      "INPUT_HEADERS-ENV": "SEO_AUDIT_SITE_HEADERS",
+      SEO_AUDIT_SITE_HEADERS: JSON.stringify({ Authorization: secret }),
       GITHUB_OUTPUT: output,
       GITHUB_STEP_SUMMARY: summary,
     },
@@ -51,8 +61,12 @@ test("GitHub Action creates local JSON and HTML outputs without an external API"
   const [code] = await once(child, "exit");
 
   assert.equal(code, 0, `${stderr}\n${stdout}`);
+  assert.ok(seenHeaders.length >= 3);
+  assert.ok(seenHeaders.every((value) => value === secret));
   assert.match(await readFile(report, "utf8"), /SEO baseline audit/);
+  assert.doesNotMatch(await readFile(report, "utf8"), /action-secret/);
   const json = JSON.parse(await readFile(`${report}.json`, "utf8"));
   assert.equal(json.pages, 1);
+  assert.doesNotMatch(JSON.stringify(json), /action-secret/);
   assert.match(await readFile(output, "utf8"), /report<<ghadelimiter_/);
 });
