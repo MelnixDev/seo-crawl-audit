@@ -107,6 +107,31 @@ test("doctor gives actionable diagnostics for protected or non-HTML sites", asyn
   assert.equal(nonHtmlResult.healthy, true);
 });
 
+test("doctor applies private headers without including them in diagnostics", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-doctor-auth-"));
+  const secret = "Bearer doctor-secret";
+  const fetch = async (input, init) => {
+    if (new Headers(init?.headers).get("authorization") !== secret) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    const path = new URL(String(input)).pathname;
+    if (path === "/") return new Response("<h1>Protected</h1>", { headers: { "content-type": "text/html" } });
+    if (path === "/robots.txt") return new Response("User-agent: *\nAllow: /", { status: 200 });
+    return new Response("Not found", { status: 404 });
+  };
+  const result = await runDoctor({
+    directory,
+    url: "https://example.com/",
+    runtimeVersion: "24.1.0",
+    requestHeaders: { Authorization: secret },
+    fetch,
+  });
+
+  assert.equal(status(result, "homepage"), "pass");
+  assert.equal(status(result, "robots"), "pass");
+  assert.doesNotMatch(JSON.stringify(result), /doctor-secret/);
+});
+
 test("CLI doctor supports config URLs, offline checks, and JSON output", async (context) => {
   const directory = await mkdtemp(join(tmpdir(), "seo-audit-doctor-cli-"));
   await writeFile(join(directory, "seo-audit.config.json"), JSON.stringify({ url: "https://example.com/" }));

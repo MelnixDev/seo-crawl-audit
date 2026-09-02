@@ -10,6 +10,7 @@ runAction({
   config: action.getInput("config"),
   failOn: action.getInput("fail-on"),
   report: action.getInput("report"),
+  headersEnv: action.getInput("headers-env"),
 }, {
   loadConfig,
   readSnapshot,

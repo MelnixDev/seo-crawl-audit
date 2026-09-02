@@ -53,8 +53,8 @@ attention, with evidence and remediation kept alongside each issue.
   and local report branding;
 - interactive issue statistics for severity, frequent checks, ownership, and
   regression lifecycle, with chart-to-table filtering;
-- a production-versus-preview release guard with safe environment-based
-  authentication for private deployments;
+- safe environment-based authentication for private `doctor`, `scan`,
+  `check`, Action, and production-versus-preview workflows;
 - configuration, suppressions with expiry, severity overrides, and budgets;
 - a self-contained GitHub Action that runs inside the GitHub runner;
 - typed engine API with injectable `fetch`, checkpoints, events, logger, and
@@ -125,6 +125,9 @@ seo-audit doctor --offline
 
 [Read the project diagnostics guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/doctor.md).
 
+Protected preview or staging site credentials can be supplied through a named
+JSON environment variable. [Read the authenticated scans guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/authenticated-scans.md).
+
 ## Five-minute example
 
 [Quotes to Scrape](https://quotes.toscrape.com/) is a public educational site
@@ -193,6 +196,14 @@ an HTML report.
 seo-audit scan https://example.com/
 seo-audit scan https://example.com/ --pages 250
 seo-audit scan https://example.com/ --all
+```
+
+For a protected site, keep headers outside command history and project files:
+
+```bash
+export SEO_AUDIT_SITE_HEADERS='{"Authorization":"Bearer …"}'
+seo-audit scan https://preview.example.com/ \
+  --headers-env SEO_AUDIT_SITE_HEADERS
 ```
 
 When a sitemap is found in an interactive terminal, the menu offers the first
@@ -291,6 +302,7 @@ seo-audit history \
 --include-query         Treat query-string URLs as separate pages
 --ignore-robots         Ignore robots.txt disallow rules
 --strict                Fail check on warnings as well as errors
+--headers-env <name>    Read target headers from a JSON environment variable
 --production <url>      Production URL for compare
 --preview <url>         Preview deployment URL for compare
 --production-headers-env <name>

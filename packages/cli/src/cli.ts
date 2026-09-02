@@ -49,6 +49,7 @@ Options:
   --include-query         Treat query-string URLs as separate pages
   --ignore-robots         Crawl URLs disallowed by robots.txt
   --strict                Fail check on warnings as well as errors
+  --headers-env <name>    Read target request headers from a JSON environment variable
   --production <url>      Production URL for compare
   --preview <url>         Preview deployment URL for compare
   --production-headers-env <name>

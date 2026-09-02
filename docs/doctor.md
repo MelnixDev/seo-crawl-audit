@@ -14,6 +14,16 @@ When `seo-audit.config.json` contains `url`, the positional URL is optional:
 seo-audit doctor
 ```
 
+For a protected target, read request headers from a JSON environment variable:
+
+```bash
+export SEO_AUDIT_SITE_HEADERS='{"Authorization":"Bearer …"}'
+seo-audit doctor --headers-env SEO_AUDIT_SITE_HEADERS
+```
+
+See [Authenticated scans](authenticated-scans.md) for the security boundary
+and GitHub Actions usage.
+
 ## What it checks
 
 ### Local runtime

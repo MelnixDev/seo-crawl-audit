@@ -107,3 +107,18 @@ test("repository and npm documentation explain project diagnostics", async () =>
   assert.match(doctorGuide, /No linked HTML pages are crawled/);
   assert.match(doctorGuide, /^1    One or more diagnostic checks failed$/m);
 });
+
+test("authenticated scan documentation covers CLI, Action, and secret isolation", async () => {
+  const [rootReadme, packageReadme, guide, actionGuide] = await Promise.all([
+    readFile(new URL("../README.md", import.meta.url), "utf8"),
+    readFile(new URL("../packages/cli/README.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/authenticated-scans.md", import.meta.url), "utf8"),
+    readFile(new URL("../docs/github-action.md", import.meta.url), "utf8"),
+  ]);
+  for (const readme of [rootReadme, packageReadme]) {
+    assert.match(readme, /--headers-env SEO_AUDIT_SITE_HEADERS/);
+  }
+  assert.match(guide, /A redirect or sitemap hosted on another origin does not receive/);
+  assert.match(guide, /secrets\.SEO_AUDIT_SITE_HEADERS/);
+  assert.match(actionGuide, /authenticated scans guide/);
+});

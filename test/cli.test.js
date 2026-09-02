@@ -70,6 +70,80 @@ test("scan creates a baseline and check fails on a new noindex", async (context)
   assert.equal(checkExitCode, 1);
 });
 
+test("scan and check support protected sites without persisting request secrets", async (context) => {
+  const secret = "Bearer scan-secret";
+  const authorizations = [];
+  let noindex = false;
+  const server = createServer((request, response) => {
+    authorizations.push(request.headers.authorization ?? null);
+    if (request.headers.authorization !== secret) {
+      response.writeHead(401, { "content-type": "text/plain" });
+      response.end("Unauthorized");
+      return;
+    }
+    if (request.url === "/robots.txt") {
+      response.writeHead(200, { "content-type": "text/plain" });
+      response.end("User-agent: *\nAllow: /\n");
+      return;
+    }
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end(`
+      <html><head>
+        <title>Protected page title</title>
+        <meta name="description" content="A sufficiently useful description for this protected fixture page.">
+        <meta name="robots" content="${noindex ? "noindex,follow" : "index,follow"}">
+        <link rel="canonical" href="/">
+      </head><body><h1>Protected page</h1></body></html>
+    `);
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  context.after(() => server.close());
+
+  const address = server.address();
+  const url = `http://127.0.0.1:${address.port}/`;
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-auth-test-"));
+  const baselinePath = join(directory, "baseline.json");
+  const reportPath = join(directory, "report.html");
+  process.env.SEO_AUDIT_SITE_HEADERS = JSON.stringify({ Authorization: secret });
+  context.after(() => { delete process.env.SEO_AUDIT_SITE_HEADERS; });
+  const messages = [];
+  const originalLog = console.log;
+  console.log = (...values) => { messages.push(values.join(" ")); };
+  context.after(() => { console.log = originalLog; });
+
+  assert.equal(await main([
+    "doctor", url,
+    "--headers-env", "SEO_AUDIT_SITE_HEADERS",
+    "--directory", directory, "--json",
+  ]), 0);
+  assert.equal(await main([
+    "scan", url,
+    "--headers-env", "SEO_AUDIT_SITE_HEADERS",
+    "--no-sitemap", "--pages", "1", "--delay", "0",
+    "--output", baselinePath, "--report", reportPath, "--json",
+  ]), 0);
+  noindex = true;
+  assert.equal(await main([
+    "check", url,
+    "--headers-env", "SEO_AUDIT_SITE_HEADERS",
+    "--baseline", baselinePath, "--delay", "0",
+    "--report", reportPath, "--json",
+  ]), 1);
+
+  assert.ok(authorizations.length >= 4);
+  assert.ok(authorizations.every((value) => value === secret));
+  const historyDirectory = join(directory, ".seo-audit/history");
+  const persisted = [
+    await readFile(baselinePath, "utf8"),
+    await readFile(reportPath, "utf8"),
+    ...await Promise.all((await readdir(historyDirectory)).map((name) => readFile(join(historyDirectory, name), "utf8"))),
+    ...messages,
+  ].join("\n");
+  assert.doesNotMatch(persisted, /scan-secret/);
+  assert.match(messages.at(-1), /"command": "check"/);
+});
+
 test("--version prints the package version", async (context) => {
   const messages = [];
   const originalLog = console.log;
