@@ -9,6 +9,7 @@ import {
 } from "@seo-crawl-audit/core";
 import { findConfigFile, loadConfig } from "@seo-crawl-audit/core/node";
 import type { CliValues } from "./args.js";
+import { fetchWithHeaders, headersFromEnvironment } from "./request-headers.js";
 
 export type DoctorStatus = "pass" | "warning" | "fail" | "skipped";
 
@@ -40,6 +41,7 @@ export interface DoctorOptions {
   offline?: boolean;
   runtimeVersion?: string;
   fetch?: typeof globalThis.fetch;
+  requestHeaders?: Record<string, string>;
   signal?: AbortSignal;
 }
 
@@ -252,7 +254,7 @@ export async function runDoctor(options: DoctorOptions = {}): Promise<DoctorResu
     }
   } else {
     const config = resolveConfig({ url }, fileConfig);
-    const fetch = options.fetch ?? globalThis.fetch;
+    const fetch = fetchWithHeaders(options.requestHeaders ?? {}, url, options.fetch ?? globalThis.fetch);
     checks.push(await homepageCheck(url, config, fetch, options.signal));
     try {
       const plan = await planScan(config, { fetch, signal: options.signal });
@@ -362,6 +364,7 @@ export async function doctorCommand(url: string | undefined, values: CliValues, 
     reportEnabled: values["no-report"] !== true,
     historyEnabled: values["no-history"] !== true,
     offline: values.offline === true,
+    requestHeaders: headersFromEnvironment(values["headers-env"]),
     ...(signal !== undefined ? { signal } : {}),
   });
   if (values.json) console.log(JSON.stringify({ command: "doctor", ...result }, null, 2));

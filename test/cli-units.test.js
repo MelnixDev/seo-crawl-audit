@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { scanConfig } from "../packages/cli/dist/args.js";
 import { main } from "../packages/cli/dist/cli.js";
 import { headersFromEnvironment } from "../packages/cli/dist/commands.js";
+import { checkpointPathForRequestHeaders, fetchWithHeaders } from "../packages/cli/dist/request-headers.js";
 import { printIssues, summarizeIssues } from "../packages/cli/dist/report.js";
 import { health, printHealth, printProgress } from "../packages/cli/dist/ui.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
@@ -96,6 +97,40 @@ test("preview request headers are read from JSON environment variables", (contex
     "X-Preview": "yes",
   });
   assert.throws(() => headersFromEnvironment("SEO_AUDIT_MISSING_HEADERS"), /empty or missing/);
+  process.env.SEO_AUDIT_INVALID_HEADERS = JSON.stringify({ Authorization: 42 });
+  context.after(() => { delete process.env.SEO_AUDIT_INVALID_HEADERS; });
+  assert.throws(() => headersFromEnvironment("SEO_AUDIT_INVALID_HEADERS"), /must be a string/);
+});
+
+test("private request headers are restricted to the target origin", async () => {
+  const requests = [];
+  const baseFetch = async (input, init) => {
+    requests.push({ url: String(input), headers: Object.fromEntries(new Headers(init?.headers)) });
+    return new Response("ok");
+  };
+  const fetch = fetchWithHeaders(
+    { Authorization: "Bearer private", "X-Audit": "allowed" },
+    "https://preview.example.com/",
+    baseFetch,
+  );
+
+  await fetch("https://preview.example.com/page", { headers: { Accept: "text/html" } });
+  await fetch("https://assets.example.net/sitemap.xml", { headers: { Accept: "application/xml" } });
+
+  assert.deepEqual(requests[0].headers, {
+    accept: "text/html",
+    authorization: "Bearer private",
+    "x-audit": "allowed",
+  });
+  assert.deepEqual(requests[1].headers, { accept: "application/xml" });
+});
+
+test("authenticated scan checkpoints use a separate non-secret namespace", () => {
+  const plain = "/tmp/audit.checkpoint.ndjson";
+  const authenticated = checkpointPathForRequestHeaders(plain, "SEO_AUDIT_SITE_HEADERS");
+  assert.equal(checkpointPathForRequestHeaders(plain, undefined), plain);
+  assert.match(authenticated, /^\/tmp\/audit\.checkpoint\.auth-[a-f0-9]{12}\.ndjson$/);
+  assert.doesNotMatch(authenticated, /SEO_AUDIT_SITE_HEADERS/);
 });
 
 test("CLI presentation summarizes all severities and health evidence", (context) => {

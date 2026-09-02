@@ -24,6 +24,7 @@ export interface CliValues {
   version?: boolean;
   production?: string;
   preview?: string;
+  "headers-env"?: string;
   "production-headers-env"?: string;
   "preview-headers-env"?: string;
   "history-dir"?: string;
@@ -51,6 +52,7 @@ export function parseCliArgs(args: string[]): { values: CliValues; positionals: 
       "ignore-robots": { type: "boolean" }, strict: { type: "boolean" }, json: { type: "boolean" },
       help: { type: "boolean" }, version: { type: "boolean" },
       production: { type: "string" }, preview: { type: "string" },
+      "headers-env": { type: "string" },
       "production-headers-env": { type: "string" }, "preview-headers-env": { type: "string" },
       "history-dir": { type: "string" }, "no-history": { type: "boolean" },
       from: { type: "string" }, to: { type: "string" },

@@ -24,7 +24,10 @@ import {
 } from "@seo-crawl-audit/core/node";
 import { scanConfig, type CliValues } from "./args.js";
 import { printIssues, summarizeIssues } from "./report.js";
+import { checkpointPathForRequestHeaders, requestFetch } from "./request-headers.js";
 import { ask, chooseScanPlan, health, printHealth, printProgress, type ScanSelection } from "./ui.js";
+
+export { headersFromEnvironment } from "./request-headers.js";
 
 const DEFAULT_BASELINE = ".seo-audit.json";
 const DEFAULT_REPORT = "seo-audit-report.html";
@@ -82,36 +85,6 @@ function mapPage(page: PageSnapshot, fromStart: string, toStart: string): PageSn
   };
 }
 
-export function headersFromEnvironment(variableName: string | undefined): Record<string, string> {
-  if (!variableName) return {};
-  const encoded = process.env[variableName];
-  if (!encoded) throw new Error(`environment variable ${variableName} is empty or missing`);
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(encoded);
-  } catch (error) {
-    throw new Error(`environment variable ${variableName} must contain a JSON object`, { cause: error });
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(`environment variable ${variableName} must contain a JSON object`);
-  }
-  const headers: Record<string, string> = {};
-  for (const [name, value] of Object.entries(parsed)) {
-    if (typeof value !== "string") throw new Error(`header ${name} in ${variableName} must be a string`);
-    headers[name] = value;
-  }
-  return headers;
-}
-
-function fetchWithHeaders(headers: Record<string, string>): typeof globalThis.fetch {
-  if (Object.keys(headers).length === 0) return globalThis.fetch;
-  return (input, init) => {
-    const merged = new Headers(init?.headers);
-    for (const [name, value] of Object.entries(headers)) merged.set(name, value);
-    return globalThis.fetch(input, { ...init, headers: merged });
-  };
-}
-
 function reportData(snapshot: SnapshotV2, mode: "scan" | "check", issues = audit(snapshot), extra: Partial<ReportData> = {}): ReportData {
   return {
     mode,
@@ -140,14 +113,20 @@ async function updateHistory(values: CliValues, snapshot: SnapshotV2, referenceP
   return buildHistorySeries(records.map((record) => record.snapshot)) ?? undefined;
 }
 
-async function resolvePlan(url: string, values: CliValues, baseline: SnapshotV2 | undefined, signal?: AbortSignal): Promise<ScanPlan> {
+async function resolvePlan(
+  url: string,
+  values: CliValues,
+  baseline: SnapshotV2 | undefined,
+  fetch: typeof globalThis.fetch,
+  signal?: AbortSignal,
+): Promise<ScanPlan> {
   let config = scanConfig(url, values, baseline);
-  let plan = await planScan(config, { signal });
+  let plan = await planScan(config, { signal, fetch });
   if (plan.mode === "links" && config.sitemap === "auto" && process.stdin.isTTY && process.stdout.isTTY && !values.json) {
     const entered = await ask("Sitemap was not found. Enter its full URL, or press Enter to crawl internal links: ");
     if (entered) {
       config = { ...config, sitemap: entered };
-      plan = await planScan(config, { signal });
+      plan = await planScan(config, { signal, fetch });
     }
   }
   return plan;
@@ -169,9 +148,13 @@ function selectScan(plan: ScanPlan, values: CliValues): Promise<ScanSelection> |
 export async function scanCommand(url: string | undefined, values: CliValues, signal?: AbortSignal): Promise<number> {
   if (!url) throw new Error("scan requires a URL");
   const output = resolve(values.output ?? DEFAULT_BASELINE);
-  const plan = await resolvePlan(url, values, undefined, signal);
+  const fetch = requestFetch(values["headers-env"], url);
+  const plan = await resolvePlan(url, values, undefined, fetch, signal);
   const selection = await selectScan(plan, values);
-  const checkpointPath = checkpointPathForOutput(output);
+  const checkpointPath = checkpointPathForRequestHeaders(
+    checkpointPathForOutput(output),
+    values["headers-env"],
+  );
   const store = values["no-cache"] ? undefined : createFileCheckpointStore(checkpointPath);
   const collected = new Map<string, PageSnapshot>();
   const partialReportPath = reportEnabled(values) ? resolve(values.report ?? DEFAULT_REPORT) : null;
@@ -203,6 +186,7 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
   while (requested > 0) {
     result = await scan(plan, {
       signal,
+      fetch,
       limit: requested,
       checkpointStore: store,
       retainCheckpoint: selection.mode === "step" && requested < selection.target,
@@ -257,7 +241,8 @@ export async function checkCommand(url: string | undefined, values: CliValues, s
   const baselinePath = resolve(values.baseline ?? DEFAULT_BASELINE);
   const baseline = await readSnapshot(baselinePath);
   const targetStart = url ?? baseline.siteUrl;
-  const basePlan = await planScan({ ...scanConfig(targetStart, values, baseline), sitemap: "none" }, { signal });
+  const fetch = requestFetch(values["headers-env"], targetStart);
+  const basePlan = await planScan({ ...scanConfig(targetStart, values, baseline), sitemap: "none" }, { signal, fetch });
   const targets = baseline.pages.map((page) => ({
     baselineUrl: page.url,
     targetUrl: mapUrl(page.url, baseline.siteUrl, basePlan.startUrl) ?? page.url,
@@ -278,6 +263,7 @@ export async function checkCommand(url: string | undefined, values: CliValues, s
   };
   const result = await scan(plan, {
     signal,
+    fetch,
     limit: targetUrls.length,
     onEvent(event) { if (event.type === "progress" && !values.json) printProgress(event.completed, targetUrls.length); },
   });
@@ -316,8 +302,8 @@ export async function compareCommand(values: CliValues, signal?: AbortSignal): P
   const productionUrl = values.production;
   const previewUrl = values.preview;
   if (!productionUrl || !previewUrl) throw new Error("compare requires --production and --preview URLs");
-  const productionFetch = fetchWithHeaders(headersFromEnvironment(values["production-headers-env"]));
-  const previewFetch = fetchWithHeaders(headersFromEnvironment(values["preview-headers-env"]));
+  const productionFetch = requestFetch(values["production-headers-env"], productionUrl);
+  const previewFetch = requestFetch(values["preview-headers-env"], previewUrl);
 
   const productionPlan = await planScan(scanConfig(productionUrl, values), { signal, fetch: productionFetch });
   const selection = await selectScan(productionPlan, values);
