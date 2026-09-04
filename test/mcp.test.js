@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { access, mkdtemp, readFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { spawn } from "node:child_process";
 import {
   checkTool,
   compareTool,
@@ -12,7 +13,7 @@ import {
   rulesTool,
   scanTool,
 } from "../packages/mcp/dist/tools.js";
-import { workspacePath } from "../packages/mcp/dist/paths.js";
+import { assertRealWorkspacePath, workspacePath } from "../packages/mcp/dist/paths.js";
 import { authenticatedCheckpointPath, headersFromEnvironment } from "../packages/mcp/dist/request-headers.js";
 
 function siteFetch({ noindex = false, h1 = true } = {}) {
@@ -77,6 +78,34 @@ test("MCP artifact paths cannot escape the workspace", () => {
   assert.throws(() => workspacePath("/tmp/project", "/tmp/secret", "fallback"), /relative/);
 });
 
+test("MCP artifact paths reject symlinks that leave the workspace", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-audit-mcp-root-"));
+  const outside = await mkdtemp(join(tmpdir(), "seo-audit-mcp-outside-"));
+  await symlink(outside, join(root, "linked"), process.platform === "win32" ? "junction" : "dir");
+  await assert.rejects(assertRealWorkspacePath(root, join(root, "linked/report.html")), /symlink/);
+  await assert.rejects(reportTool({ root }, { snapshot: "linked/input.json" }), /symlink/);
+});
+
+test("MCP validates the authenticated checkpoint path after namespacing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-audit-mcp-checkpoint-root-"));
+  const outside = await mkdtemp(join(tmpdir(), "seo-audit-mcp-checkpoint-outside-"));
+  const checkpoint = authenticatedCheckpointPath(join(root, "checkpoint.ndjson"), "SEO_AUDIT_MCP_HEADERS");
+  await symlink(outside, checkpoint, process.platform === "win32" ? "junction" : "dir");
+  process.env.SEO_AUDIT_MCP_HEADERS = "{}";
+  try {
+    await assert.rejects(scanTool({ root, fetch: siteFetch() }, {
+      url: "https://example.com/",
+      sitemap: "none",
+      maxPages: 1,
+      delay: 0,
+      checkpoint: "checkpoint.ndjson",
+      headersEnv: "SEO_AUDIT_MCP_HEADERS",
+    }), /symlink/);
+  } finally {
+    delete process.env.SEO_AUDIT_MCP_HEADERS;
+  }
+});
+
 test("MCP authenticated requests stay same-origin and never return secret values", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-audit-mcp-auth-"));
   const secret = "mcp-private-value";
@@ -95,4 +124,50 @@ test("MCP authenticated requests stay same-origin and never return secret values
   } finally {
     delete process.env.SEO_AUDIT_MCP_TEST_HEADERS;
   }
+});
+
+test("MCP header validation never includes rejected secret values", () => {
+  const secret = "private-value\ninvalid";
+  process.env.SEO_AUDIT_MCP_INVALID_HEADERS = JSON.stringify({ Authorization: secret });
+  try {
+    assert.throws(
+      () => headersFromEnvironment("SEO_AUDIT_MCP_INVALID_HEADERS"),
+      (error) => error instanceof Error && /Authorization/.test(error.message) && !error.message.includes(secret),
+    );
+  } finally {
+    delete process.env.SEO_AUDIT_MCP_INVALID_HEADERS;
+  }
+});
+
+test("bundled stdio server negotiates MCP and advertises the complete tool set", async () => {
+  const child = spawn(process.execPath, [join(process.cwd(), "packages/cli/bin/seo-audit.js"), "mcp"], {
+    cwd: process.cwd(),
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8").on("data", (chunk) => { stdout += chunk; });
+  child.stderr.setEncoding("utf8").on("data", (chunk) => { stderr += chunk; });
+  child.stdin.end([
+    { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } } },
+    { jsonrpc: "2.0", method: "notifications/initialized", params: {} },
+    { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} },
+  ].map((message) => JSON.stringify(message)).join("\n") + "\n");
+  const exitCode = await new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", resolve);
+  });
+  assert.equal(exitCode, 0, stderr);
+  assert.equal(stderr, "");
+  const responses = stdout.trim().split("\n").map(JSON.parse);
+  assert.equal(responses[0].result.serverInfo.version, "0.9.0");
+  assert.deepEqual(responses[1].result.tools.map((tool) => tool.name).sort(), [
+    "seo_audit_check",
+    "seo_audit_compare",
+    "seo_audit_issues",
+    "seo_audit_plan",
+    "seo_audit_report",
+    "seo_audit_rules",
+    "seo_audit_scan",
+  ]);
 });

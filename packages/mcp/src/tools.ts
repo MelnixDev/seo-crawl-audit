@@ -23,7 +23,7 @@ import {
 } from "@seo-crawl-audit/core/node";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import { workspacePath, relativeArtifact } from "./paths.js";
+import { assertRealWorkspacePath, workspacePath, relativeArtifact } from "./paths.js";
 import { authenticatedCheckpointPath, requestFetch } from "./request-headers.js";
 
 export interface ToolContext {
@@ -45,6 +45,18 @@ interface CommonInput {
   headersEnv?: string | undefined;
 }
 
+async function localPath(context: ToolContext, requested: string | undefined, fallback: string): Promise<string> {
+  const path = workspacePath(context.root, requested, fallback);
+  await assertRealWorkspacePath(context.root, path);
+  return path;
+}
+
+async function checkpointPath(context: ToolContext, requested: string | undefined, headersEnv: string | undefined): Promise<string> {
+  const path = authenticatedCheckpointPath(await localPath(context, requested, ".seo-audit.checkpoint.ndjson"), headersEnv);
+  await assertRealWorkspacePath(context.root, path);
+  return path;
+}
+
 function requireUrl(url: string | undefined): string {
   if (!url) throw new Error("url is required (or provide a config file with url)");
   let parsed: URL;
@@ -55,8 +67,9 @@ function requireUrl(url: string | undefined): string {
 
 async function inputConfig(context: ToolContext, input: CommonInput, fallbackUrl?: string): Promise<ScanConfigInput> {
   const configPath = input.config
-    ? workspacePath(context.root, input.config, "seo-audit.config.json")
+    ? await localPath(context, input.config, "seo-audit.config.json")
     : await findConfigFile(context.root);
+  if (configPath) await assertRealWorkspacePath(context.root, configPath);
   const file = await loadConfig(configPath);
   const url = requireUrl(input.url ?? fallbackUrl ?? file.url);
   return resolveConfig({
@@ -134,9 +147,9 @@ export async function scanTool(context: ToolContext, input: CommonInput & { outp
   const config = await inputConfig(context, input);
   const fetch = requestFetch(input.headersEnv, config.url, context.fetch);
   const plan = await planScan(config, { signal: context.signal, fetch });
-  const output = workspacePath(context.root, input.output, ".seo-audit.json");
-  const report = workspacePath(context.root, input.report, "seo-audit-report.html");
-  const checkpoint = authenticatedCheckpointPath(workspacePath(context.root, input.checkpoint, ".seo-audit.checkpoint.ndjson"), input.headersEnv);
+  const output = await localPath(context, input.output, ".seo-audit.json");
+  const report = await localPath(context, input.report, "seo-audit-report.html");
+  const checkpoint = await checkpointPath(context, input.checkpoint, input.headersEnv);
   await ensureParents(output, report, checkpoint);
   const store = createFileCheckpointStore(checkpoint);
   const result = await scan(plan, {
@@ -153,14 +166,14 @@ export async function scanTool(context: ToolContext, input: CommonInput & { outp
 }
 
 export async function checkTool(context: ToolContext, input: CommonInput & { baseline?: string | undefined; output?: string | undefined; report?: string | undefined; checkpoint?: string | undefined; resume?: boolean | undefined }): Promise<Record<string, unknown>> {
-  const baselinePath = workspacePath(context.root, input.baseline, ".seo-audit.json");
+  const baselinePath = await localPath(context, input.baseline, ".seo-audit.json");
   const baseline = await readSnapshot(baselinePath);
   const config = await inputConfig(context, input, baseline.siteUrl);
   const fetch = requestFetch(input.headersEnv, config.url, context.fetch);
   const plan = await planScan(config, { signal: context.signal, fetch });
-  const output = workspacePath(context.root, input.output, ".seo-audit.current.json");
-  const report = workspacePath(context.root, input.report, "seo-audit-check.html");
-  const checkpoint = authenticatedCheckpointPath(workspacePath(context.root, input.checkpoint, ".seo-audit.checkpoint.ndjson"), input.headersEnv);
+  const output = await localPath(context, input.output, ".seo-audit.current.json");
+  const report = await localPath(context, input.report, "seo-audit-check.html");
+  const checkpoint = await checkpointPath(context, input.checkpoint, input.headersEnv);
   await ensureParents(output, report, checkpoint);
   const store = createFileCheckpointStore(checkpoint);
   const result = await scan(plan, { signal: context.signal, limit: input.maxPages ?? config.maxPages, resume: input.resume !== false, checkpointStore: store, fetch });
@@ -188,9 +201,9 @@ function issueMatches(issue: Issue, input: { query?: string | undefined; severit
 }
 
 export async function issuesTool(context: ToolContext, input: { snapshot?: string | undefined; baseline?: string | undefined; query?: string | undefined; severity?: string | undefined; rule?: string | undefined; owner?: string | undefined; lifecycle?: string | undefined; offset?: number | undefined; limit?: number | undefined }): Promise<Record<string, unknown>> {
-  const currentPath = workspacePath(context.root, input.snapshot, ".seo-audit.json");
+  const currentPath = await localPath(context, input.snapshot, ".seo-audit.json");
   const current = await readSnapshot(currentPath);
-  const comparison = input.baseline ? diff(await readSnapshot(workspacePath(context.root, input.baseline, ".seo-audit.json")), current) : null;
+  const comparison = input.baseline ? diff(await readSnapshot(await localPath(context, input.baseline, ".seo-audit.json")), current) : null;
   const all = comparison ? [...comparison.newIssues, ...comparison.ongoingIssues, ...comparison.resolvedIssues, ...comparison.unchangedIssues] : audit(current);
   const filtered = all.filter((issue) => issueMatches(issue, input));
   const offset = Math.max(0, input.offset ?? 0);
@@ -199,13 +212,13 @@ export async function issuesTool(context: ToolContext, input: { snapshot?: strin
 }
 
 export async function compareTool(context: ToolContext, input: { production?: string | undefined; preview?: string | undefined; report?: string | undefined }): Promise<Record<string, unknown>> {
-  const productionPath = workspacePath(context.root, input.production, ".seo-audit.json");
-  const previewPath = workspacePath(context.root, input.preview, ".seo-audit.current.json");
+  const productionPath = await localPath(context, input.production, ".seo-audit.json");
+  const previewPath = await localPath(context, input.preview, ".seo-audit.current.json");
   const production = await readSnapshot(productionPath);
   const preview = await readSnapshot(previewPath);
   const comparison = diff(production, preview);
   if (input.report !== undefined) {
-    const report = workspacePath(context.root, input.report, "seo-audit-compare.html");
+    const report = await localPath(context, input.report, "seo-audit-compare.html");
     await ensureParents(report);
     await writeReport(report, reportData(preview, comparison.issues, "check", {
       newIssues: comparison.newIssues, ongoingIssues: comparison.ongoingIssues, resolvedIssues: comparison.resolvedIssues,
@@ -217,8 +230,8 @@ export async function compareTool(context: ToolContext, input: { production?: st
 }
 
 export async function reportTool(context: ToolContext, input: { snapshot?: string | undefined; output?: string | undefined }): Promise<Record<string, unknown>> {
-  const snapshotPath = workspacePath(context.root, input.snapshot, ".seo-audit.json");
-  const output = workspacePath(context.root, input.output, "seo-audit-report.html");
+  const snapshotPath = await localPath(context, input.snapshot, ".seo-audit.json");
+  const output = await localPath(context, input.output, "seo-audit-report.html");
   const snapshot = await readSnapshot(snapshotPath);
   await ensureParents(output);
   await writeReport(output, reportData(snapshot, audit(snapshot), "scan"));

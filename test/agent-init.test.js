@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { initializeAgents } from "../packages/cli/dist/agent-init.js";
@@ -24,4 +24,12 @@ test("agent-init prepares Codex, Claude, and OpenCode without replacing config",
 
 test("agent-init validates platform names", async () => {
   await assert.rejects(initializeAgents({ platform: "unknown" }), /codex, claude, opencode, or all/);
+});
+
+test("agent-init refuses project paths redirected by symlinks", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-agents-root-"));
+  const outside = await mkdtemp(join(tmpdir(), "seo-audit-agents-outside-"));
+  await symlink(outside, join(directory, ".codex"), process.platform === "win32" ? "junction" : "dir");
+  await assert.rejects(initializeAgents({ directory, platform: "codex" }), /escapes the project/);
+  await assert.rejects(access(join(directory, ".agents/skills/seo-crawl-audit/SKILL.md")));
 });

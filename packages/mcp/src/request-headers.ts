@@ -11,7 +11,8 @@ export function headersFromEnvironment(variableName: string | undefined): Record
   const headers: Record<string, string> = {};
   for (const [name, value] of Object.entries(parsed)) {
     if (typeof value !== "string") throw new Error(`header ${name} in ${variableName} must be a string`);
-    new Headers({ [name]: value });
+    try { new Headers({ [name]: value }); }
+    catch { throw new Error(`header ${name} in ${variableName} is invalid`); }
     headers[name] = value;
   }
   return headers;

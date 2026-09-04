@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { lstat, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CliValues } from "./args.js";
 
@@ -8,6 +8,33 @@ type AgentFileStatus = "created" | "updated" | "unchanged" | "skipped";
 export interface AgentInitResult { directory: string; platform: AgentPlatform; files: Array<{ path: string; status: AgentFileStatus }>; snippets: string[]; }
 
 const SKILL_SOURCE = resolve(fileURLToPath(new URL("../agent-skill/seo-crawl-audit", import.meta.url)));
+
+async function assertProjectPath(directory: string, target: string): Promise<void> {
+  const realDirectory = await realpath(directory);
+  let current = target;
+  while (true) {
+    try {
+      const realTarget = await realpath(current);
+      const rel = relative(realDirectory, realTarget);
+      if (rel === ".." || rel.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`)) {
+        throw new Error(`generated agent path escapes the project through a symlink: ${target}`);
+      }
+      return;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      try {
+        if ((await lstat(current)).isSymbolicLink()) {
+          throw new Error(`generated agent path escapes the project through an unresolved symlink: ${target}`);
+        }
+      } catch (statError) {
+        if ((statError as NodeJS.ErrnoException).code !== "ENOENT") throw statError;
+      }
+      const parent = dirname(current);
+      if (parent === current) throw error;
+      current = parent;
+    }
+  }
+}
 
 function platforms(value: string | undefined): AgentPlatform[] {
   const normalized = (value ?? "all").toLowerCase();
@@ -53,6 +80,14 @@ export async function initializeAgents(options: { directory?: string | undefined
   const files: AgentInitResult["files"] = [];
   const snippets: string[] = [];
   const installedSkills = new Set<string>();
+
+  const targets = new Set<string>();
+  for (const platform of selected) {
+    targets.add(platform === "claude" ? join(directory, ".claude/skills/seo-crawl-audit/SKILL.md") : join(directory, ".agents/skills/seo-crawl-audit/SKILL.md"));
+    targets.add(platform === "codex" ? join(directory, ".codex/config.toml") : platform === "claude" ? join(directory, ".mcp.json") : join(directory, "opencode.json"));
+  }
+  await Promise.all([...targets].map((target) => assertProjectPath(directory, target)));
+
   for (const platform of selected) {
     const skillTarget = platform === "claude" ? join(directory, ".claude/skills/seo-crawl-audit/SKILL.md") : join(directory, ".agents/skills/seo-crawl-audit/SKILL.md");
     if (!installedSkills.has(skillTarget)) {
