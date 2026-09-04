@@ -22,6 +22,7 @@ Usage:
   seo-audit init [url] [options]
   seo-audit doctor [url] [options]
   seo-audit agent-init [options]
+  seo-audit mcp
 
 Commands:
   <url>   Shortcut for scan.
@@ -33,6 +34,7 @@ Commands:
   init    Create a safe local config and optional GitHub workflow.
   doctor  Diagnose runtime, config, storage, and site connectivity.
   agent-init  Install project-scoped MCP configuration and agent skill files.
+  mcp     Start the local STDIO MCP server for coding agents.
 
 Options:
   --baseline <file>       Baseline file for check (default: .seo-audit.json)
