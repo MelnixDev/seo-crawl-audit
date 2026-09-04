@@ -18,6 +18,7 @@ const manifests = await Promise.all([
   manifest("packages/core/package.json"),
   manifest("packages/cli/package.json"),
   manifest("packages/action/package.json"),
+  manifest("packages/mcp/package.json"),
 ]);
 
 for (const value of manifests) {
@@ -26,9 +27,10 @@ for (const value of manifests) {
   }
 }
 
-const [, core, cli, action] = manifests;
+const [, core, cli, action, mcp] = manifests;
 if (core.private !== true) throw new Error("the core workspace must remain private");
 if (action.private !== true) throw new Error("the Action workspace must remain private");
+if (mcp.private !== true) throw new Error("the MCP workspace must remain private");
 if (cli.private === true) throw new Error("the CLI workspace must remain publishable");
 
 console.log(`Release ${tag} is consistent; only ${cli.name}@${cli.version} is publishable.`);

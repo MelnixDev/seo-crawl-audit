@@ -36,6 +36,7 @@ export interface CliValues {
   yes?: boolean;
   force?: boolean;
   offline?: boolean;
+  platform?: string;
   __config?: Partial<ScanConfigV1>;
 }
 
@@ -59,6 +60,7 @@ export function parseCliArgs(args: string[]): { values: CliValues; positionals: 
       directory: { type: "string" }, workflow: { type: "string" },
       yes: { type: "boolean" }, force: { type: "boolean" },
       offline: { type: "boolean" },
+      platform: { type: "string" },
     },
   }) as { values: CliValues; positionals: string[] };
 }

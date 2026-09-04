@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.0 — 2026-09-04
+
+- added a local STDIO MCP server bundled with the existing `seo-crawl-audit`
+  npm package, without a hosted API or separate public package;
+- added MCP tools for crawl planning, scanning, regression checks, snapshot
+  comparison, filtered issue inspection, HTML reports, and rule discovery;
+- added project-scoped `agent-init` setup for Codex, Claude Code, and OpenCode,
+  including a portable SEO audit skill;
+- restricted generated artifacts to the configured workspace and kept
+  authenticated headers in named environment variables with same-origin
+  isolation and separate checkpoint namespaces;
+- added cancellation propagation, partial-result reporting, pagination, compact
+  structured responses, and local artifact paths for agent workflows;
+- added MCP, agent setup, authentication, package, and overwrite-safety tests;
+- preserved SnapshotV2, rule IDs, fingerprints, rule-set version `1.1.0`, the
+  existing CLI and Action contracts, and the local-first open-source model.
+
 ## 0.8.0 — 2026-09-02
 
 - added `seo-audit init` for safe project configuration, `.gitignore`

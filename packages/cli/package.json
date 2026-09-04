@@ -1,10 +1,12 @@
 {
   "name": "seo-crawl-audit",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Free, open-source, local-first SEO crawler and regression audit tool.",
   "type": "module",
   "bin": {
-    "seo-audit": "bin/seo-audit.js"
+    "seo-crawl-audit": "bin/seo-audit.js",
+    "seo-audit": "bin/seo-audit.js",
+    "seo-audit-mcp": "bin/seo-audit-mcp.js"
   },
   "exports": {
     ".": "./bundle/cli.js"
@@ -12,6 +14,7 @@
   "files": [
     "bin",
     "bundle",
+    "agent-skill",
     "README.md",
     "LICENSE"
   ],
@@ -27,7 +30,9 @@
     "sitemap",
     "html-report",
     "cli",
-    "ci"
+    "ci",
+    "mcp",
+    "coding-agents"
   ],
   "author": "MelnixDev",
   "license": "MIT",
@@ -43,6 +48,6 @@
     "node": ">=20.19"
   },
   "devDependencies": {
-    "@seo-crawl-audit/core": "0.8.0"
+    "@seo-crawl-audit/core": "0.9.0"
   }
 }

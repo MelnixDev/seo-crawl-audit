@@ -15,7 +15,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["packages/cli/src/**/*.ts", "packages/action/src/**/*.ts"],
+    files: ["packages/cli/src/**/*.ts", "packages/action/src/**/*.ts", "packages/mcp/src/**/*.ts"],
     rules: {
       "no-restricted-imports": ["error", {
         patterns: [{

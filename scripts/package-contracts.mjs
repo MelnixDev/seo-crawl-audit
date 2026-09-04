@@ -34,7 +34,13 @@ try {
   assert.equal(corePaths.some((path) => path.endsWith(".d.ts.map")), false);
   assert.equal(corePaths.includes("dist/index.d.ts"), true);
   assert.equal(corePaths.includes("dist/node.d.ts"), true);
-  assert.ok(cli.metadata.unpackedSize <= 500 * 1024, `CLI tarball is ${cli.metadata.unpackedSize} bytes unpacked`);
+  const cliBundle = cli.metadata.files.find((file) => file.path === "bundle/cli.js");
+  const mcpBundle = cli.metadata.files.find((file) => file.path === "bundle/mcp.js");
+  const cliPaths = cli.metadata.files.map((file) => file.path);
+  assert.ok(cliBundle && cliBundle.size <= 500 * 1024, `CLI bundle is ${cliBundle?.size ?? 0} bytes`);
+  assert.ok(mcpBundle && mcpBundle.size <= 1.5 * 1024 * 1024, `MCP bundle is ${mcpBundle?.size ?? 0} bytes`);
+  assert.equal(cliPaths.includes("bin/seo-audit-mcp.js"), true);
+  assert.equal(cliPaths.includes("agent-skill/seo-crawl-audit/SKILL.md"), true);
   assert.ok((await stat(resolve(projectRoot, "packages/action/action-dist/index.cjs"))).size <= 1.2 * 1024 * 1024);
 
   await writeFile(join(temporaryRoot, "package.json"), `${JSON.stringify({
@@ -75,8 +81,12 @@ try {
   ], temporaryRoot);
 
   const cliPackage = JSON.parse(await readFile(resolve(projectRoot, "packages/cli/package.json"), "utf8"));
+  assert.equal(cliPackage.bin["seo-crawl-audit"], "bin/seo-audit.js");
+  assert.equal(cliPackage.bin["seo-audit-mcp"], "bin/seo-audit-mcp.js");
   const { stdout: versionOutput } = await run(process.execPath, [join(temporaryRoot, "node_modules/seo-crawl-audit/bin/seo-audit.js"), "--version"], temporaryRoot);
   assert.equal(versionOutput.trim(), cliPackage.version);
+  const { stdout: npxVersionOutput } = await run("npx", ["--no-install", "seo-crawl-audit", "--version"], temporaryRoot);
+  assert.equal(npxVersionOutput.trim(), cliPackage.version);
   console.log(`Packed core root/node imports, TypeScript declarations, and CLI ${cliPackage.version} passed.`);
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });

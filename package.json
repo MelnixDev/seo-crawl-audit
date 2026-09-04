@@ -1,18 +1,18 @@
 {
   "name": "seo-crawl-audit-workspace",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -b && npm run bundle --workspace seo-crawl-audit && npm run bundle --workspace @seo-crawl-audit/action",
+    "build": "tsc -b && npm run bundle --workspace seo-crawl-audit && npm run bundle --workspace @seo-crawl-audit/mcp && npm run bundle --workspace @seo-crawl-audit/action",
     "clean": "tsc -b --clean",
     "lint": "eslint packages/*/src --max-warnings=0",
     "test": "npm run build && node --test",
     "test:coverage:core": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=75 --test-coverage-functions=90 --test-coverage-include='packages/core/dist/**/*.js'",
-    "test:coverage:apps": "node --test --experimental-test-coverage --test-coverage-lines=80 --test-coverage-branches=65 --test-coverage-functions=75 --test-coverage-include='packages/cli/dist/**/*.js' --test-coverage-include='packages/action/dist/runner.js'",
+    "test:coverage:apps": "node --test --experimental-test-coverage --test-coverage-lines=80 --test-coverage-branches=65 --test-coverage-functions=75 --test-coverage-include='packages/cli/dist/**/*.js' --test-coverage-include='packages/action/dist/runner.js' --test-coverage-include='packages/mcp/dist/**/*.js'",
     "test:coverage": "npm run test:coverage:core && npm run test:coverage:apps",
     "check": "npm run lint && npm run build && npm run test:coverage && npm run pack:check",
     "pack:check": "node scripts/package-contracts.mjs",
