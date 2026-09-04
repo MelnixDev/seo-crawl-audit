@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { access, mkdtemp, readFile, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import {
   checkTool,
@@ -64,7 +64,7 @@ test("MCP tools plan, scan, inspect, compare, and render local artifacts", async
   assert.equal(lifecycle.issues.every((issue) => issue.lifecycle === "new"), true);
 
   const rendered = await reportTool(context, { snapshot: "current.json", output: "reports/fresh-report.html" });
-  assert.equal(rendered.report, "reports/fresh-report.html");
+  assert.equal(rendered.report, join("reports", "fresh-report.html"));
   assert.match(await readFile(join(root, "reports/fresh-report.html"), "utf8"), /SEO baseline audit/);
 
   const rules = await rulesTool();
@@ -73,9 +73,10 @@ test("MCP tools plan, scan, inspect, compare, and render local artifacts", async
 });
 
 test("MCP artifact paths cannot escape the workspace", () => {
-  assert.equal(workspacePath("/tmp/project", "reports/audit.html", "fallback"), "/tmp/project/reports/audit.html");
-  assert.throws(() => workspacePath("/tmp/project", "../secret", "fallback"), /inside the workspace/);
-  assert.throws(() => workspacePath("/tmp/project", "/tmp/secret", "fallback"), /relative/);
+  const root = resolve("project");
+  assert.equal(workspacePath(root, join("reports", "audit.html"), "fallback"), join(root, "reports", "audit.html"));
+  assert.throws(() => workspacePath(root, join("..", "secret"), "fallback"), /inside the workspace/);
+  assert.throws(() => workspacePath(root, resolve("secret"), "fallback"), /relative/);
 });
 
 test("MCP artifact paths reject symlinks that leave the workspace", async () => {
