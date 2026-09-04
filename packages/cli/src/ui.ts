@@ -36,15 +36,25 @@ export async function chooseScanPlan(totalPages: number): Promise<ScanSelection>
   }
 }
 
-export function printProgress(checked: number, target: number, persistent = false): void {
+export function formatProgress(checked: number, target: number): string {
   const ratio = target === 0 ? 1 : Math.min(checked / target, 1);
   const percent = (ratio * 100).toFixed(ratio < 0.1 ? 1 : 0);
   const filled = Math.round(ratio * 20);
-  const message = `[${"█".repeat(filled)}${"░".repeat(20 - filled)}] ${percent}% · ${checked.toLocaleString("en-US")} / ${target.toLocaleString("en-US")} pages`;
-  if (process.stdout.isTTY && !persistent) {
-    process.stdout.write(`\r${message}`);
-    if (checked >= target) process.stdout.write("\n");
-  } else if (process.stdout.isTTY || checked >= target || checked % 1_000 === 0) console.log(message);
+  return `[${"█".repeat(filled)}${"░".repeat(20 - filled)}] ${percent}% · ${checked.toLocaleString("en-US")} / ${target.toLocaleString("en-US")} pages`;
+}
+
+export function printProgress(
+  checked: number,
+  target: number,
+  persistent = false,
+  output: NodeJS.WriteStream = process.stdout,
+): void {
+  const message = formatProgress(checked, target);
+  const log = output === process.stderr ? console.error : console.log;
+  if (output.isTTY && !persistent) {
+    output.write(`\r${message}`);
+    if (checked >= target) output.write("\n");
+  } else if (output.isTTY || checked >= target || checked % 1_000 === 0) log(message);
 }
 
 export function health(pages: PageSnapshot[]) {

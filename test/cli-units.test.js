@@ -8,7 +8,7 @@ import { main } from "../packages/cli/dist/cli.js";
 import { headersFromEnvironment } from "../packages/cli/dist/commands.js";
 import { checkpointPathForRequestHeaders, fetchWithHeaders } from "../packages/cli/dist/request-headers.js";
 import { printIssues, summarizeIssues } from "../packages/cli/dist/report.js";
-import { health, printHealth, printProgress } from "../packages/cli/dist/ui.js";
+import { formatProgress, health, printHealth, printProgress } from "../packages/cli/dist/ui.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
 import { writeHistorySnapshot } from "../packages/core/dist/node.js";
 
@@ -168,6 +168,7 @@ test("CLI presentation summarizes all severities and health evidence", (context)
   printHealth(summary);
   printProgress(0, 0);
   printProgress(100, 100, true);
+  assert.match(formatProgress(25, 100), /25%/);
   assert.match(messages.join("\n"), /No SEO regressions/);
   assert.match(messages.join("\n"), /before:/);
   assert.match(messages.join("\n"), /Current health/);

@@ -243,6 +243,8 @@ When a sitemap is found in an interactive terminal, the menu offers the first
 100 pages, every sitemap URL, groups of 100 with confirmation, or a custom
 number. `--pages` and `--all` skip the menu. If no sitemap is found, press Enter
 to continue through same-origin internal links, or enter the full sitemap URL.
+With `--json`, progress is written to stderr so stdout remains valid JSON for
+scripts and CI.
 
 ### `seo-audit check [url]`
 

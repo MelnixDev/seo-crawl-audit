@@ -195,7 +195,7 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
         await writePartial();
       },
       onEvent(event) {
-        if (event.type === "progress" && !values.json) printProgress(event.completed, requested, selection.mode === "step");
+        if (event.type === "progress") printProgress(event.completed, requested, selection.mode === "step", values.json ? process.stderr : process.stdout);
       },
     });
     for (const page of result.pages) collected.set(page.url, page);
@@ -265,7 +265,7 @@ export async function checkCommand(url: string | undefined, values: CliValues, s
     signal,
     fetch,
     limit: targetUrls.length,
-    onEvent(event) { if (event.type === "progress" && !values.json) printProgress(event.completed, targetUrls.length); },
+    onEvent(event) { if (event.type === "progress") printProgress(event.completed, targetUrls.length, false, values.json ? process.stderr : process.stdout); },
   });
   const checked = new Map(result.pages.map((page) => [page.url, page]));
   const pages = targets.flatMap(({ baselineUrl, targetUrl }) => {
@@ -312,7 +312,7 @@ export async function compareCommand(values: CliValues, signal?: AbortSignal): P
     fetch: productionFetch,
     limit: selection.target,
     onEvent(event) {
-      if (event.type === "progress" && !values.json) printProgress(event.completed, selection.target);
+      if (event.type === "progress") printProgress(event.completed, selection.target, false, values.json ? process.stderr : process.stdout);
     },
   });
   if (production.partial) return 130;
@@ -337,7 +337,7 @@ export async function compareCommand(values: CliValues, signal?: AbortSignal): P
     fetch: previewFetch,
     limit: targetUrls.length,
     onEvent(event) {
-      if (event.type === "progress" && !values.json) printProgress(event.completed, targetUrls.length);
+      if (event.type === "progress") printProgress(event.completed, targetUrls.length, false, values.json ? process.stderr : process.stdout);
     },
   });
   const previewPages = preview.snapshot.pages.map((page) => mapPage(page, previewUrl, productionUrl));
