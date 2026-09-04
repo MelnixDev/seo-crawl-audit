@@ -1,6 +1,6 @@
 {
   "name": "seo-crawl-audit",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Free, open-source, local-first SEO crawler and regression audit tool.",
   "type": "module",
   "bin": {
@@ -48,6 +48,6 @@
     "node": ">=20.19"
   },
   "devDependencies": {
-    "@seo-crawl-audit/core": "0.9.0"
+    "@seo-crawl-audit/core": "0.9.1"
   }
 }

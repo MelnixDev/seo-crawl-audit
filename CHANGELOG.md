@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.1 — 2026-09-04
+
+- improved OpenCode compatibility by keeping MCP tool payloads in the standard
+  text content field;
+- added visible planning, robots, sitemap, retry, resume, cancellation, and
+  live progress-bar status to CLI scans;
+- kept `--json` stdout machine-readable by writing progress to stderr;
+- preserved all existing CLI flags, SnapshotV2 data, MCP tool names, and issue
+  fingerprints.
+
 ## 0.9.0 — 2026-09-04
 
 - added a local STDIO MCP server bundled with the existing `seo-crawl-audit`

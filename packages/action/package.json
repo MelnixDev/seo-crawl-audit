@@ -1,6 +1,6 @@
 {
   "name": "@seo-crawl-audit/action",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "description": "GitHub Action for local SEO Crawl Audit checks.",
   "type": "module",
@@ -12,7 +12,7 @@
     "@actions/core": "^3.0.1"
   },
   "devDependencies": {
-    "@seo-crawl-audit/core": "0.9.0"
+    "@seo-crawl-audit/core": "0.9.1"
   },
   "author": "MelnixDev",
   "license": "MIT",
