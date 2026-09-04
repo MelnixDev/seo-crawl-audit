@@ -13,6 +13,7 @@ import {
   rulesTool,
   scanTool,
 } from "../packages/mcp/dist/tools.js";
+import { toolError, toolResult } from "../packages/mcp/dist/result.js";
 import { assertRealWorkspacePath, workspacePath } from "../packages/mcp/dist/paths.js";
 import { authenticatedCheckpointPath, headersFromEnvironment } from "../packages/mcp/dist/request-headers.js";
 
@@ -26,6 +27,16 @@ function siteFetch({ noindex = false, h1 = true } = {}) {
     return new Response("not found", { status: 404 });
   };
 }
+
+test("MCP results keep JSON in text for clients without structured-content support", () => {
+  const success = toolResult({ mode: "links", candidateCount: null });
+  assert.equal(success.structuredContent, undefined);
+  assert.deepEqual(JSON.parse(success.content[0].text), { mode: "links", candidateCount: null });
+
+  const failure = toolError(new Error("example failure"));
+  assert.equal(failure.structuredContent, undefined);
+  assert.deepEqual(JSON.parse(failure.content[0].text), { error: "example failure" });
+});
 
 test("MCP tools plan, scan, inspect, compare, and render local artifacts", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-audit-mcp-"));
