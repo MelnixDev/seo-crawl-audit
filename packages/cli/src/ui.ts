@@ -57,6 +57,12 @@ export function printProgress(
   } else if (output.isTTY || checked >= target || checked % 1_000 === 0) log(message);
 }
 
+export function printStatus(message: string, output: NodeJS.WriteStream = process.stdout): void {
+  if (output.isTTY) output.write("\r\x1b[2K");
+  if (output === process.stderr) console.error(message);
+  else console.log(message);
+}
+
 export function health(pages: PageSnapshot[]) {
   return pages.reduce((summary, page) => {
     if (page.error || page.blockedByRobots || (page.status ?? 500) >= 400) summary.unavailable += 1;

@@ -8,6 +8,7 @@ import {
   scan,
   type PageSnapshot,
   type ReportData,
+  type ScanEvent,
   type ScanPlan,
   type ScanResult,
   type SnapshotV2,
@@ -25,7 +26,7 @@ import {
 import { scanConfig, type CliValues } from "./args.js";
 import { printIssues, summarizeIssues } from "./report.js";
 import { checkpointPathForRequestHeaders, requestFetch } from "./request-headers.js";
-import { ask, chooseScanPlan, health, printHealth, printProgress, type ScanSelection } from "./ui.js";
+import { ask, chooseScanPlan, health, printHealth, printProgress, printStatus, type ScanSelection } from "./ui.js";
 
 export { headersFromEnvironment } from "./request-headers.js";
 
@@ -121,12 +122,26 @@ async function resolvePlan(
   signal?: AbortSignal,
 ): Promise<ScanPlan> {
   let config = scanConfig(url, values, baseline);
-  let plan = await planScan(config, { signal, fetch });
+  const output = values.json ? process.stderr : process.stdout;
+  const onEvent = (event: ScanEvent) => {
+    if (event.type === "plan-start") printStatus(`Preparing crawl plan for ${event.url}`, output);
+    if (event.type === "robots") printStatus(
+      event.robots.error ? `robots.txt check failed: ${event.robots.error}` : `robots.txt checked (${event.robots.status ?? "unknown status"})`,
+      output,
+    );
+    if (event.type === "sitemap") printStatus(
+      event.sitemap
+        ? `Sitemap loaded: ${event.candidateCount ?? event.sitemap.urls.length} candidate URL(s)`
+        : "No sitemap found; internal-link discovery will be used",
+      output,
+    );
+  };
+  let plan = await planScan(config, { signal, fetch, onEvent });
   if (plan.mode === "links" && config.sitemap === "auto" && process.stdin.isTTY && process.stdout.isTTY && !values.json) {
     const entered = await ask("Sitemap was not found. Enter its full URL, or press Enter to crawl internal links: ");
     if (entered) {
       config = { ...config, sitemap: entered };
-      plan = await planScan(config, { signal, fetch });
+      plan = await planScan(config, { signal, fetch, onEvent });
     }
   }
   return plan;
@@ -195,7 +210,11 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
         await writePartial();
       },
       onEvent(event) {
+        if (event.type === "scan-start") printStatus(`Starting crawl: up to ${event.total.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
+        if (event.type === "resume") printStatus(`Resuming from checkpoint: ${event.completed.toLocaleString("en-US")} page(s) already available`, values.json ? process.stderr : process.stdout);
+        if (event.type === "retry") printStatus(`Retrying request (attempt ${event.attempt}) after ${event.delayMs} ms`, values.json ? process.stderr : process.stdout);
         if (event.type === "progress") printProgress(event.completed, requested, selection.mode === "step", values.json ? process.stderr : process.stdout);
+        if (event.type === "cancelled") printStatus(`Scan interrupted after ${event.completed.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
       },
     });
     for (const page of result.pages) collected.set(page.url, page);
@@ -265,7 +284,10 @@ export async function checkCommand(url: string | undefined, values: CliValues, s
     signal,
     fetch,
     limit: targetUrls.length,
-    onEvent(event) { if (event.type === "progress") printProgress(event.completed, targetUrls.length, false, values.json ? process.stderr : process.stdout); },
+    onEvent(event) {
+      if (event.type === "scan-start") printStatus(`Starting regression check: ${event.total.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
+      if (event.type === "progress") printProgress(event.completed, targetUrls.length, false, values.json ? process.stderr : process.stdout);
+    },
   });
   const checked = new Map(result.pages.map((page) => [page.url, page]));
   const pages = targets.flatMap(({ baselineUrl, targetUrl }) => {
@@ -312,6 +334,7 @@ export async function compareCommand(values: CliValues, signal?: AbortSignal): P
     fetch: productionFetch,
     limit: selection.target,
     onEvent(event) {
+      if (event.type === "scan-start") printStatus(`Starting production crawl: up to ${event.total.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
       if (event.type === "progress") printProgress(event.completed, selection.target, false, values.json ? process.stderr : process.stdout);
     },
   });
@@ -337,6 +360,7 @@ export async function compareCommand(values: CliValues, signal?: AbortSignal): P
     fetch: previewFetch,
     limit: targetUrls.length,
     onEvent(event) {
+      if (event.type === "scan-start") printStatus(`Starting preview crawl: ${event.total.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
       if (event.type === "progress") printProgress(event.completed, targetUrls.length, false, values.json ? process.stderr : process.stdout);
     },
   });
