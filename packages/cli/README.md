@@ -125,6 +125,14 @@ seo-audit doctor --offline
 
 [Read the project diagnostics guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/doctor.md).
 
+For project-scoped Codex, Claude Code, or OpenCode integration, run:
+
+```bash
+npx seo-crawl-audit agent-init --platform all
+```
+
+[Read the agent integration guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/agent-integration.md).
+
 Protected preview or staging site credentials can be supplied through a named
 JSON environment variable. [Read the authenticated scans guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/authenticated-scans.md).
 

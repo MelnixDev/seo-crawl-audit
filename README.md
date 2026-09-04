@@ -125,6 +125,16 @@ seo-audit doctor --offline
 
 [Read the project diagnostics guide](docs/doctor.md).
 
+Agents can use the local STDIO MCP server and a portable project skill:
+
+```bash
+npx seo-crawl-audit agent-init --platform all
+```
+
+This prepares project-scoped integrations for Codex, Claude Code, and OpenCode
+without replacing existing configuration files. [Read the agent integration
+guide](docs/agent-integration.md).
+
 Protected preview or staging site credentials can be supplied through a named
 JSON environment variable. [Read the authenticated scans guide](docs/authenticated-scans.md).
 
@@ -317,7 +327,8 @@ seo-audit history \
 --workflow <mode>       Init workflow: none, manual, scheduled, or pull-request
 --yes                   Accept safe init defaults without prompting
 --force                 Allow init to replace existing generated files
---offline               Skip doctor network checks
+  --offline               Skip doctor network checks
+  --platform <name>        Agent integration: codex, claude, opencode, or all
 --json                  Print machine-readable output
 --help                  Show help
 --version               Show the installed version
