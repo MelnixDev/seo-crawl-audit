@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
+import { ENGINE_VERSION } from "@seo-crawl-audit/core";
 import { workspaceRoot } from "./paths.js";
 import { toolError, toolResult } from "./result.js";
 import { checkTool, compareTool, issuesTool, planTool, reportTool, rulesTool, scanTool } from "./tools.js";
@@ -23,7 +24,7 @@ function register<T extends z.ZodRawShape>(server: McpServer, name: string, titl
 }
 
 export function createServer(root = workspaceRoot()): McpServer {
-  const server = new McpServer({ name: "seo-crawl-audit", version: "0.9.0" }, { instructions: "Local-first SEO audit server. Plan before crawling, keep scans within the workspace, respect robots.txt, inspect issues with pagination, and cite report artifact paths. Do not expose secrets from environment variables." });
+  const server = new McpServer({ name: "seo-crawl-audit", version: ENGINE_VERSION }, { instructions: "Local-first SEO audit server. Plan before crawling, keep scans within the workspace, respect robots.txt, inspect issues with pagination, and cite report artifact paths. Do not expose secrets from environment variables." });
   const context = (signal: AbortSignal) => ({ root, signal });
   register(server, "seo_audit_plan", "Plan SEO crawl", "Discover robots.txt and sitemap metadata without fetching HTML pages.", common, (input, signal) => planTool(context(signal), input));
   register(server, "seo_audit_scan", "Run SEO scan", "Scan a site locally and save a SnapshotV2 plus an HTML report. Defaults to 100 pages and a resumable checkpoint.", { ...common, output: z.string().optional(), report: z.string().optional(), checkpoint: z.string().optional(), resume: z.boolean().optional() }, (input, signal) => scanTool(context(signal), input));
