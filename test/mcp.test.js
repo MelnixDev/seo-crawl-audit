@@ -170,9 +170,9 @@ test("bundled stdio server negotiates MCP and advertises the complete tool set",
     child.once("close", resolve);
   });
   assert.equal(exitCode, 0, stderr);
-  assert.equal(stderr, "");
+  assert.match(stderr, /^\[seo-crawl-audit:mcp\] MCP server 0\.9\.1 is running on stdio\. Waiting for client requests; press Ctrl\+C to stop\.\n$/);
   const responses = stdout.trim().split("\n").map(JSON.parse);
-  assert.equal(responses[0].result.serverInfo.version, "0.9.0");
+  assert.equal(responses[0].result.serverInfo.version, "0.9.1");
   assert.deepEqual(responses[1].result.tools.map((tool) => tool.name).sort(), [
     "seo_audit_check",
     "seo_audit_compare",
