@@ -57,6 +57,8 @@ attention, with evidence and remediation kept alongside each issue.
   `check`, Action, and production-versus-preview workflows;
 - configuration, suppressions with expiry, severity overrides, and budgets;
 - a self-contained GitHub Action that runs inside the GitHub runner;
+- a local STDIO MCP server and project skills for Codex, Claude Code, and
+  OpenCode;
 - typed engine API with injectable `fetch`, checkpoints, events, logger, and
   `AbortSignal`.
 
@@ -174,6 +176,27 @@ seo-audit init https://example.com/ --workflow pull-request --yes
 ```
 
 Workflow modes are `none`, `manual`, `scheduled`, and `pull-request`.
+
+### `seo-audit agent-init`
+
+Installs a portable project skill and project-scoped MCP configuration for
+Codex, Claude Code, OpenCode, or all three. Existing files are preserved unless
+`--force` is explicitly supplied.
+
+```bash
+seo-audit agent-init --platform all
+seo-audit agent-init --platform codex --directory ./my-project
+```
+
+### `seo-audit mcp`
+
+Starts the local STDIO MCP server used by compatible coding agents. It normally
+runs through generated agent configuration rather than as an interactive shell
+command.
+
+```bash
+seo-audit mcp
+```
 
 ### `seo-audit doctor [url]`
 
@@ -326,6 +349,7 @@ seo-audit history \
 --yes                   Accept safe init defaults without prompting
 --force                 Allow init to replace existing generated files
 --offline               Skip doctor network checks
+--platform <name>       Agent integration: codex, claude, opencode, or all
 --json                  Print machine-readable output
 --help                  Show help
 --version               Show the installed version
@@ -492,12 +516,14 @@ The npm workspace separates reusable concerns:
 packages/core    @seo-crawl-audit/core — scan, audit, diff, snapshots, reports
 packages/cli     seo-crawl-audit       — terminal UX and npm executable
 packages/action  @seo-crawl-audit/action — GitHub runner entry point
+packages/mcp     @seo-crawl-audit/mcp  — private STDIO adapter bundled into CLI
 ```
 
 `@seo-crawl-audit/core` is currently an internal workspace package and is not
 published separately on npm. Install `seo-crawl-audit` for the supported,
 self-contained CLI. The imports below document the repository API used by the
-CLI and Action and are intended for contributors working in this workspace.
+CLI, Action, and MCP adapter and are intended for contributors working in this
+workspace.
 
 ```ts
 import { audit, planScan, scan } from "@seo-crawl-audit/core";

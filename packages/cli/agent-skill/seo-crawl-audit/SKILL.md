@@ -25,6 +25,6 @@ Use this skill when a user asks to audit a website, check SEO regressions, inspe
 
 ## CLI fallback
 
-If MCP is unavailable, use `seo-audit scan <url> --json`, `seo-audit check --json`, `seo-audit issues` (when available), or `seo-audit report <snapshot>`. Keep generated snapshots, checkpoints, and reports inside the project workspace.
+If MCP is unavailable, use `seo-audit scan <url> --json`, `seo-audit check --json`, or `seo-audit report <snapshot>`. Keep generated snapshots, checkpoints, and reports inside the project workspace.
 
 Rule documentation: https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/rules.md
