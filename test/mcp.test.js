@@ -183,3 +183,22 @@ test("bundled stdio server negotiates MCP and advertises the complete tool set",
     "seo_audit_scan",
   ]);
 });
+
+test("repository development entrypoint starts the MCP server", async () => {
+  const child = spawn(process.execPath, [join(process.cwd(), "bin/seo-audit.js"), "mcp"], {
+    cwd: process.cwd(),
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8").on("data", (chunk) => { stdout += chunk; });
+  child.stderr.setEncoding("utf8").on("data", (chunk) => { stderr += chunk; });
+  child.stdin.end();
+  const exitCode = await new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", resolve);
+  });
+  assert.equal(exitCode, 0, stderr);
+  assert.equal(stdout, "");
+  assert.match(stderr, /MCP server 0\.9\.1 is running on stdio/);
+});
