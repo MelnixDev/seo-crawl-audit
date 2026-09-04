@@ -15,10 +15,12 @@ const common = {
   sitemap: z.string().optional(),
   includeQuery: z.boolean().optional(),
   respectRobots: z.boolean().optional(),
+  headersEnv: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).optional().describe("Name of a JSON environment variable containing same-origin request headers; values are never returned"),
 };
 
 function register<T extends z.ZodRawShape>(server: McpServer, name: string, title: string, description: string, shape: T, handler: (input: z.infer<z.ZodObject<T>>, signal: AbortSignal) => Promise<Record<string, unknown>>) {
-  server.registerTool(name, { title, description, inputSchema: z.object(shape), annotations: { readOnlyHint: name !== "seo_audit_scan" && name !== "seo_audit_check", idempotentHint: true } }, async (input, ctx) => {
+  const writesArtifacts = ["seo_audit_scan", "seo_audit_check", "seo_audit_compare", "seo_audit_report"].includes(name);
+  server.registerTool(name, { title, description, inputSchema: z.object(shape), annotations: { readOnlyHint: !writesArtifacts, idempotentHint: true } }, async (input, ctx) => {
     try { return toolResult(await handler(input, ctx.mcpReq.signal)); } catch (error) { return toolError(error); }
   });
 }

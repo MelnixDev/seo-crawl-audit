@@ -15,6 +15,7 @@ import {
 } from "@seo-crawl-audit/core";
 import {
   createFileCheckpointStore,
+  findConfigFile,
   loadConfig,
   readSnapshot,
   writeReport,
@@ -23,10 +24,12 @@ import {
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { workspacePath, relativeArtifact } from "./paths.js";
+import { authenticatedCheckpointPath, requestFetch } from "./request-headers.js";
 
 export interface ToolContext {
   root: string;
   signal?: AbortSignal;
+  fetch?: typeof globalThis.fetch;
 }
 
 interface CommonInput {
@@ -39,6 +42,7 @@ interface CommonInput {
   sitemap?: string | undefined;
   includeQuery?: boolean | undefined;
   respectRobots?: boolean | undefined;
+  headersEnv?: string | undefined;
 }
 
 function requireUrl(url: string | undefined): string {
@@ -50,7 +54,10 @@ function requireUrl(url: string | undefined): string {
 }
 
 async function inputConfig(context: ToolContext, input: CommonInput, fallbackUrl?: string): Promise<ScanConfigInput> {
-  const file = await loadConfig(workspacePath(context.root, input.config, "seo-audit.config.json"));
+  const configPath = input.config
+    ? workspacePath(context.root, input.config, "seo-audit.config.json")
+    : await findConfigFile(context.root);
+  const file = await loadConfig(configPath);
   const url = requireUrl(input.url ?? fallbackUrl ?? file.url);
   return resolveConfig({
     url,
@@ -92,6 +99,10 @@ function reportData(snapshot: SnapshotV2, issues: Issue[], mode: "scan" | "check
   };
 }
 
+async function ensureParents(...paths: string[]): Promise<void> {
+  await Promise.all([...new Set(paths.map(dirname))].map((directory) => mkdir(directory, { recursive: true })));
+}
+
 export async function rulesTool(): Promise<Record<string, unknown>> {
   return {
     engineVersion: ENGINE_VERSION,
@@ -105,7 +116,8 @@ export async function rulesTool(): Promise<Record<string, unknown>> {
 
 export async function planTool(context: ToolContext, input: CommonInput): Promise<Record<string, unknown>> {
   const config = await inputConfig(context, input);
-  const plan = await planScan(config, { signal: context.signal });
+  const fetch = requestFetch(input.headersEnv, config.url, context.fetch);
+  const plan = await planScan(config, { signal: context.signal, fetch });
   return {
     planVersion: plan.planVersion,
     startUrl: plan.startUrl,
@@ -120,26 +132,23 @@ export async function planTool(context: ToolContext, input: CommonInput): Promis
 
 export async function scanTool(context: ToolContext, input: CommonInput & { output?: string | undefined; report?: string | undefined; checkpoint?: string | undefined; resume?: boolean | undefined }): Promise<Record<string, unknown>> {
   const config = await inputConfig(context, input);
-  const plan = await planScan(config, { signal: context.signal });
+  const fetch = requestFetch(input.headersEnv, config.url, context.fetch);
+  const plan = await planScan(config, { signal: context.signal, fetch });
   const output = workspacePath(context.root, input.output, ".seo-audit.json");
   const report = workspacePath(context.root, input.report, "seo-audit-report.html");
-  const checkpoint = workspacePath(context.root, input.checkpoint, ".seo-audit.checkpoint.ndjson");
-  await mkdir(dirname(output), { recursive: true });
+  const checkpoint = authenticatedCheckpointPath(workspacePath(context.root, input.checkpoint, ".seo-audit.checkpoint.ndjson"), input.headersEnv);
+  await ensureParents(output, report, checkpoint);
   const store = createFileCheckpointStore(checkpoint);
   const result = await scan(plan, {
     signal: context.signal,
     limit: input.maxPages ?? config.maxPages,
     resume: input.resume !== false,
     checkpointStore: store,
+    fetch,
   });
   await writeSnapshot(output, result.snapshot);
   const issues = audit(result.snapshot);
   await writeReport(report, reportData(result.snapshot, issues, "scan"));
-  if (!result.partial) await store.clear({
-    schemaVersion: 2, pageSchemaVersion: 1, siteUrl: plan.startUrl, sitemapUrl: plan.sitemap?.url ?? null,
-    includeQuery: plan.config.includeQuery, respectRobots: plan.config.respectRobots, timeout: plan.config.timeout,
-    maxRedirects: plan.config.maxRedirects, maxResponseBytes: plan.config.maxResponseBytes, userAgent: plan.userAgent,
-  });
   return { ...summary(result.snapshot), startUrl: result.startUrl, artifacts: { snapshot: relativeArtifact(context.root, output), report: relativeArtifact(context.root, report), checkpoint: result.partial ? relativeArtifact(context.root, checkpoint) : null } };
 }
 
@@ -147,22 +156,19 @@ export async function checkTool(context: ToolContext, input: CommonInput & { bas
   const baselinePath = workspacePath(context.root, input.baseline, ".seo-audit.json");
   const baseline = await readSnapshot(baselinePath);
   const config = await inputConfig(context, input, baseline.siteUrl);
-  const plan = await planScan(config, { signal: context.signal });
+  const fetch = requestFetch(input.headersEnv, config.url, context.fetch);
+  const plan = await planScan(config, { signal: context.signal, fetch });
   const output = workspacePath(context.root, input.output, ".seo-audit.current.json");
   const report = workspacePath(context.root, input.report, "seo-audit-check.html");
-  const checkpoint = workspacePath(context.root, input.checkpoint, ".seo-audit.checkpoint.ndjson");
+  const checkpoint = authenticatedCheckpointPath(workspacePath(context.root, input.checkpoint, ".seo-audit.checkpoint.ndjson"), input.headersEnv);
+  await ensureParents(output, report, checkpoint);
   const store = createFileCheckpointStore(checkpoint);
-  const result = await scan(plan, { signal: context.signal, limit: input.maxPages ?? config.maxPages, resume: input.resume !== false, checkpointStore: store });
+  const result = await scan(plan, { signal: context.signal, limit: input.maxPages ?? config.maxPages, resume: input.resume !== false, checkpointStore: store, fetch });
   await writeSnapshot(output, result.snapshot);
   const comparison = diff(baseline, result.snapshot);
   await writeReport(report, reportData(result.snapshot, comparison.issues, "check", {
     newIssues: comparison.newIssues, ongoingIssues: comparison.ongoingIssues, resolvedIssues: comparison.resolvedIssues, unchangedIssues: comparison.unchangedIssues, complete: comparison.complete,
   }));
-  if (!result.partial) await store.clear({
-    schemaVersion: 2, pageSchemaVersion: 1, siteUrl: plan.startUrl, sitemapUrl: plan.sitemap?.url ?? null,
-    includeQuery: plan.config.includeQuery, respectRobots: plan.config.respectRobots, timeout: plan.config.timeout,
-    maxRedirects: plan.config.maxRedirects, maxResponseBytes: plan.config.maxResponseBytes, userAgent: plan.userAgent,
-  });
   return {
     baseline: relativeArtifact(context.root, baselinePath),
     ...summary(result.snapshot),
@@ -200,6 +206,7 @@ export async function compareTool(context: ToolContext, input: { production?: st
   const comparison = diff(production, preview);
   if (input.report !== undefined) {
     const report = workspacePath(context.root, input.report, "seo-audit-compare.html");
+    await ensureParents(report);
     await writeReport(report, reportData(preview, comparison.issues, "check", {
       newIssues: comparison.newIssues, ongoingIssues: comparison.ongoingIssues, resolvedIssues: comparison.resolvedIssues,
       unchangedIssues: comparison.unchangedIssues, complete: comparison.complete,
@@ -213,6 +220,7 @@ export async function reportTool(context: ToolContext, input: { snapshot?: strin
   const snapshotPath = workspacePath(context.root, input.snapshot, ".seo-audit.json");
   const output = workspacePath(context.root, input.output, "seo-audit-report.html");
   const snapshot = await readSnapshot(snapshotPath);
+  await ensureParents(output);
   await writeReport(output, reportData(snapshot, audit(snapshot), "scan"));
   return { snapshot: relativeArtifact(context.root, snapshotPath), report: relativeArtifact(context.root, output), ...summary(snapshot) };
 }

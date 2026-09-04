@@ -38,6 +38,6 @@ to local SnapshotV2, HTML report, and (when interrupted) checkpoint artifacts.
 
 All artifact paths are workspace-bound. Robots are respected by default, partial
 comparisons are marked incomplete, and request headers are never returned in
-tool output. For authenticated sites, pass the name of a JSON environment
-variable through the CLI fallback rather than putting secrets in prompts or
-configuration files.
+tool output. For authenticated sites, set a JSON environment variable in the
+agent process and pass only its name as `headersEnv`; same-origin isolation keeps
+those values away from external redirects and sitemap hosts.
