@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { access, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLocalUiServer } from "../packages/cli/dist/server.js";
+import { browserLaunchCommand, createLocalUiServer, serveCommand } from "../packages/cli/dist/server.js";
 
 function siteFetch(input) {
   const url = new URL(String(input));
@@ -80,4 +80,28 @@ test("local UI rejects cross-origin scan requests", async (context) => {
     body: JSON.stringify({ url: "https://example.com/" }),
   });
   assert.equal(response.status, 403);
+});
+
+test("serve opens the local URL with a platform-appropriate browser command", async () => {
+  assert.deepEqual(browserLaunchCommand("http://127.0.0.1:4179/", "darwin"), {
+    command: "open",
+    args: ["http://127.0.0.1:4179/"],
+  });
+  assert.deepEqual(browserLaunchCommand("http://127.0.0.1:4179/", "win32"), {
+    command: "cmd",
+    args: ["/c", "start", "", "http://127.0.0.1:4179/"],
+  });
+  assert.deepEqual(browserLaunchCommand("http://127.0.0.1:4179/", "linux"), {
+    command: "xdg-open",
+    args: ["http://127.0.0.1:4179/"],
+  });
+
+  const controller = new AbortController();
+  controller.abort();
+  let openedUrl;
+  const exitCode = await serveCommand(0, controller.signal, {
+    launchBrowser: async (url) => { openedUrl = url; },
+  });
+  assert.equal(exitCode, 130);
+  assert.match(openedUrl, /^http:\/\/127\.0\.0\.1:\d+\/$/);
 });

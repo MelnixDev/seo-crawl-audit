@@ -24,7 +24,7 @@ Usage:
   seo-audit doctor [url] [options]
   seo-audit agent-init [options]
   seo-audit mcp
-  seo-audit serve [--port 4179]
+  seo-audit serve [--port 4179] [--no-open]
 
 Commands:
   <url>   Shortcut for scan.
@@ -76,6 +76,7 @@ Options:
   --offline                Skip doctor network checks
   --platform <name>        Agent integration: codex, claude, opencode, or all
   --port <number>          Local UI port (default: 4179)
+  --no-open                Do not open the local UI in the default browser
   --render <mode>          Page rendering: http (default) or playwright
   --json                  Print machine-readable command output
   --help                  Show this help
@@ -173,7 +174,7 @@ export async function main(
     if (!Number.isInteger(port) || port < 0 || port > 65_535) { console.error("seo-audit: --port must be an integer between 0 and 65535"); return 2; }
     try {
       const { serveCommand } = await import("./server.js");
-      return await serveCommand(port, options.signal);
+      return await serveCommand(port, options.signal, { openBrowser: !values["no-open"] });
     }
     catch (error) { console.error(`seo-audit: ${error instanceof Error ? error.message : String(error)}`); return 2; }
   }

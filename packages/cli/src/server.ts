@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
@@ -38,6 +39,34 @@ export interface LocalUiOptions {
 export interface LocalUiServer {
   url: string;
   close(): Promise<void>;
+}
+
+export interface ServeCommandOptions {
+  openBrowser?: boolean;
+  launchBrowser?: (url: string) => Promise<void>;
+}
+
+export interface BrowserLaunchCommand {
+  command: string;
+  args: string[];
+}
+
+export function browserLaunchCommand(url: string, platform = process.platform): BrowserLaunchCommand {
+  if (platform === "darwin") return { command: "open", args: [url] };
+  if (platform === "win32") return { command: "cmd", args: ["/c", "start", "", url] };
+  return { command: "xdg-open", args: [url] };
+}
+
+export async function launchDefaultBrowser(url: string): Promise<void> {
+  const launch = browserLaunchCommand(url);
+  await new Promise<void>((resolveLaunch, reject) => {
+    const child = spawn(launch.command, launch.args, { detached: true, stdio: "ignore" });
+    child.once("error", reject);
+    child.once("spawn", () => {
+      child.unref();
+      resolveLaunch();
+    });
+  });
 }
 
 async function loadRenderer(mode: unknown): Promise<PageRenderer | undefined> {
@@ -198,10 +227,22 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
   };
 }
 
-export async function serveCommand(port: number, signal?: AbortSignal): Promise<number> {
+export async function serveCommand(
+  port: number,
+  signal?: AbortSignal,
+  options: ServeCommandOptions = {},
+): Promise<number> {
   const server = await createLocalUiServer({ port });
   console.log(`SEO Crawl Audit local UI is running at ${server.url}`);
   console.log("All scan data stays on this device. Press Ctrl+C to stop.");
+  if (options.openBrowser !== false) {
+    try {
+      await (options.launchBrowser ?? launchDefaultBrowser)(server.url);
+    } catch (error) {
+      console.error(`Could not open the browser automatically: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`Open ${server.url} manually.`);
+    }
+  }
   if (signal?.aborted) { await server.close(); return 130; }
   await new Promise<void>((resolveWait) => {
     signal?.addEventListener("abort", () => resolveWait(), { once: true });

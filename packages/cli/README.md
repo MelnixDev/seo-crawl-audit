@@ -135,9 +135,12 @@ Start the local browser interface:
 ```bash
 seo-audit serve
 seo-audit serve --port 4180
+seo-audit serve --no-open
 ```
 
-It binds only to `127.0.0.1`, runs the same core crawler, and keeps snapshots,
+The command opens the interface in the default browser. Use `--no-open` in CI,
+remote shells, or when you prefer to open the printed URL manually. It binds
+only to `127.0.0.1`, runs the same core crawler, and keeps snapshots,
 checkpoints, and reports in the current directory. Public RDAP domain data is an
 explicit checkbox in the interface. [Read the Site Metrics guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/site-metrics.md).
 

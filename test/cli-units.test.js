@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { scanConfig } from "../packages/cli/dist/args.js";
+import { parseCliArgs, scanConfig } from "../packages/cli/dist/args.js";
 import { main } from "../packages/cli/dist/cli.js";
 import { headersFromEnvironment } from "../packages/cli/dist/commands.js";
 import { checkpointPathForRequestHeaders, fetchWithHeaders } from "../packages/cli/dist/request-headers.js";
@@ -35,6 +35,13 @@ test("CLI dispatcher covers help and invalid input paths", async (context) => {
   assert.match(messages.join("\n"), /Local-first SEO crawler/);
   assert.match(messages.join("\n"), /Unknown command/);
   assert.match(messages.join("\n"), /Unexpected argument/);
+});
+
+test("serve accepts the no-open switch", () => {
+  const parsed = parseCliArgs(["serve", "--port", "4180", "--no-open"]);
+  assert.deepEqual(parsed.positionals, ["serve"]);
+  assert.equal(parsed.values.port, "4180");
+  assert.equal(parsed.values["no-open"], true);
 });
 
 test("report command renders an existing baseline in JSON mode", async (context) => {
