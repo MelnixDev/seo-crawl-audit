@@ -1,7 +1,7 @@
 import { ENGINE_VERSION } from "@seo-crawl-audit/core";
 import { loadConfig } from "@seo-crawl-audit/core/node";
 import { parseCliArgs, withFileConfig } from "./args.js";
-import { checkCommand, compareCommand, historyCommand, reportCommand, scanCommand } from "./commands.js";
+import { checkCommand, compareCommand, historyCommand, reportCommand, scanCommand, statusCommand } from "./commands.js";
 import { initCommand } from "./init.js";
 import { doctorCommand } from "./doctor.js";
 import { agentInitCommand } from "./agent-init.js";
@@ -18,6 +18,7 @@ Usage:
   seo-audit check [url] [options]
   seo-audit compare --production <url> --preview <url> [options]
   seo-audit history [url] [options]
+  seo-audit status [snapshot] [options]
   seo-audit report [baseline] [options]
   seo-audit init [url] [options]
   seo-audit doctor [url] [options]
@@ -30,6 +31,7 @@ Commands:
   check   Crawl again and compare with a saved baseline.
   compare Compare a production site with a preview deployment.
   history View local scan trends or compare two saved history snapshots.
+  status  Inspect the local snapshot and resumable checkpoint.
   report  Generate HTML from an existing baseline without crawling.
   init    Create a safe local config and optional GitHub workflow.
   doctor  Diagnose runtime, config, storage, and site connectivity.
@@ -148,6 +150,16 @@ export async function main(
     if (values.help) { console.log(HELP); return 0; }
     if (values.version) { console.log(ENGINE_VERSION); return 0; }
     try { return await agentInitCommand(values); }
+    catch (error) { console.error(`seo-audit: ${error instanceof Error ? error.message : String(error)}`); return 2; }
+  }
+  if (positionals[0] === "status") {
+    if (positionals.length > 2) {
+      console.error(`Unexpected argument: ${positionals[2]}`);
+      return 2;
+    }
+    if (values.help) { console.log(HELP); return 0; }
+    if (values.version) { console.log(ENGINE_VERSION); return 0; }
+    try { return await statusCommand(positionals[1], values); }
     catch (error) { console.error(`seo-audit: ${error instanceof Error ? error.message : String(error)}`); return 2; }
   }
   try {

@@ -10,7 +10,7 @@ import { checkpointPathForRequestHeaders, fetchWithHeaders } from "../packages/c
 import { printIssues, summarizeIssues } from "../packages/cli/dist/report.js";
 import { createProgressReporter, formatProgress, health, printHealth, printPreflight, printProgress, printStatus } from "../packages/cli/dist/ui.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
-import { writeHistorySnapshot } from "../packages/core/dist/node.js";
+import { createFileCheckpointStore, writeHistorySnapshot, writeSnapshot } from "../packages/core/dist/node.js";
 
 function captureConsole(context) {
   const messages = [];
@@ -65,6 +65,37 @@ test("history command lists local runs and renders their trend report", async (c
   const report = await readFile(reportPath, "utf8");
   assert.match(report, /id="history-chart"/);
   assert.match(messages.at(-1), /"snapshots"/);
+});
+
+test("status command reports snapshots and resumable checkpoints", async (context) => {
+  const messages = captureConsole(context);
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-status-command-"));
+  const snapshotPath = join(directory, "baseline.json");
+  const checkpointPath = join(directory, "baseline.checkpoint.ndjson");
+  const snapshot = migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200 }] });
+  await writeSnapshot(snapshotPath, snapshot);
+  const store = createFileCheckpointStore(checkpointPath);
+  const identity = {
+    schemaVersion: 2,
+    pageSchemaVersion: 1,
+    siteUrl: "https://example.com/",
+    sitemapUrl: null,
+    includeQuery: false,
+    respectRobots: true,
+    timeout: 10_000,
+    maxRedirects: 10,
+    maxResponseBytes: 5 * 1024 * 1024,
+    userAgent: "seo-crawl-audit/test",
+  };
+  await store.load(identity);
+  await store.append(identity, { url: "https://example.com/saved", status: 200, error: null });
+  await store.flush();
+
+  assert.equal(await main(["status", snapshotPath, "--json"]), 0);
+  const result = JSON.parse(messages.at(-1));
+  assert.equal(result.snapshot.pages, 1);
+  assert.equal(result.checkpoint.completedPages, 1);
+  assert.equal(result.checkpoint.resumable, true);
 });
 
 test("CLI config mapping validates conflicts and explicit policies", () => {

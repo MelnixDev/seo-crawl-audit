@@ -17,6 +17,7 @@ import {
 import {
   checkpointPathForOutput,
   createFileCheckpointStore,
+  inspectFileCheckpoint,
   readSnapshot,
   readHistorySnapshots,
   writeReport,
@@ -33,6 +34,56 @@ export { headersFromEnvironment } from "./request-headers.js";
 const DEFAULT_BASELINE = ".seo-audit.json";
 const DEFAULT_REPORT = "seo-audit-report.html";
 const DEFAULT_HISTORY_DIRECTORY = ".seo-audit/history";
+
+export async function statusCommand(inputPath: string | undefined, values: CliValues): Promise<number> {
+  const snapshotPath = resolve(inputPath ?? values.output ?? DEFAULT_BASELINE);
+  const checkpointPath = checkpointPathForRequestHeaders(
+    checkpointPathForOutput(snapshotPath),
+    values["headers-env"],
+  );
+  const checkpoint = await inspectFileCheckpoint(checkpointPath);
+  let snapshot: SnapshotV2 | null = null;
+  try {
+    snapshot = await readSnapshot(snapshotPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  const result = {
+    command: "status",
+    snapshot: snapshot ? {
+      path: snapshotPath,
+      siteUrl: snapshot.siteUrl,
+      pages: snapshot.pages.length,
+      generatedAt: snapshot.generatedAt,
+      partial: snapshot.partial,
+      truncated: snapshot.truncated,
+    } : null,
+    checkpoint,
+  };
+  if (values.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return 0;
+  }
+  console.log("SEO Crawl Audit status");
+  if (snapshot) {
+    console.log(`  Snapshot: ${snapshotPath}`);
+    console.log(`  Site: ${snapshot.siteUrl}`);
+    console.log(`  Last completed result: ${snapshot.pages.length.toLocaleString("en-US")} page(s) at ${snapshot.generatedAt}`);
+  } else {
+    console.log(`  Snapshot: not found (${snapshotPath})`);
+  }
+  if (checkpoint.status === "missing") {
+    console.log(`  Checkpoint: not found (${checkpointPath})`);
+  } else {
+    console.log(`  Checkpoint: ${checkpoint.status} (${checkpointPath})`);
+    if (checkpoint.siteUrl) console.log(`  Checkpoint site: ${checkpoint.siteUrl}`);
+    console.log(`  Saved pages: ${checkpoint.completedPages.toLocaleString("en-US")}`);
+    if (checkpoint.updatedAt) console.log(`  Updated: ${checkpoint.updatedAt}`);
+    if (checkpoint.message) console.log(`  Detail: ${checkpoint.message}`);
+    if (checkpoint.resumable) console.log("  Resume: run the same scan command again to reuse saved pages.");
+  }
+  return 0;
+}
 
 function reportEnabled(values: CliValues, force = false): boolean {
   return force || (!values["no-report"] && (values.report !== undefined || (process.stdin.isTTY && process.stdout.isTTY && !values.json)));

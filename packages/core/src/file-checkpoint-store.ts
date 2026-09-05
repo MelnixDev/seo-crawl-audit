@@ -1,4 +1,4 @@
-import { appendFile, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { appendFile, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import type {
   CheckpointIdentity,
   CheckpointState,
@@ -21,6 +21,17 @@ interface HeaderV1 {
     includeQuery?: boolean;
     respectRobots?: boolean;
   };
+}
+
+export interface FileCheckpointInspection {
+  path: string;
+  status: "missing" | "ready" | "corrupt" | "incompatible";
+  schemaVersion: 1 | 2 | null;
+  siteUrl: string | null;
+  completedPages: number;
+  updatedAt: string | null;
+  resumable: boolean;
+  message: string | null;
 }
 
 function header(identity: CheckpointIdentity): HeaderV2 {
@@ -133,4 +144,54 @@ export class FileCheckpointStore implements CheckpointStore {
 
 export function createFileCheckpointStore(path: string): FileCheckpointStore {
   return new FileCheckpointStore(path);
+}
+
+export async function inspectFileCheckpoint(path: string): Promise<FileCheckpointInspection> {
+  let content: string;
+  let updatedAt: string;
+  try {
+    const [saved, metadata] = await Promise.all([readFile(path, "utf8"), stat(path)]);
+    content = saved;
+    updatedAt = metadata.mtime.toISOString();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { path, status: "missing", schemaVersion: null, siteUrl: null, completedPages: 0, updatedAt: null, resumable: false, message: null };
+    }
+    throw error;
+  }
+
+  const lines = content.split("\n");
+  let savedHeader: unknown;
+  try {
+    savedHeader = JSON.parse(lines[0] ?? "");
+  } catch {
+    return { path, status: "corrupt", schemaVersion: null, siteUrl: null, completedPages: 0, updatedAt, resumable: false, message: "checkpoint header is not valid JSON" };
+  }
+  if (!savedHeader || typeof savedHeader !== "object" || (savedHeader as { type?: unknown }).type !== "seo-audit-checkpoint") {
+    return { path, status: "incompatible", schemaVersion: null, siteUrl: null, completedPages: 0, updatedAt, resumable: false, message: "file is not an SEO Crawl Audit checkpoint" };
+  }
+  const candidate = savedHeader as Partial<HeaderV1> | Partial<HeaderV2>;
+  const schemaVersion = candidate.schemaVersion === 1 || candidate.schemaVersion === 2 ? candidate.schemaVersion : null;
+  if (schemaVersion === null) {
+    return { path, status: "incompatible", schemaVersion: null, siteUrl: null, completedPages: 0, updatedAt, resumable: false, message: "checkpoint schema is not supported" };
+  }
+  const siteUrl = schemaVersion === 2
+    ? ((candidate as Partial<HeaderV2>).identity?.siteUrl ?? null)
+    : ((candidate as Partial<HeaderV1>).source?.startUrl ?? null);
+  const pages = new Set<string>();
+  const records = lines.slice(1);
+  let lastRecordIndex = records.length - 1;
+  while (lastRecordIndex >= 0 && !records[lastRecordIndex]?.trim()) lastRecordIndex -= 1;
+  for (const [index, line] of records.entries()) {
+    if (!line.trim()) continue;
+    try {
+      const record = JSON.parse(line) as { type?: unknown; page?: { url?: unknown } };
+      if (record.type === "page" && typeof record.page?.url === "string") pages.add(record.page.url);
+    } catch {
+      if (index !== lastRecordIndex) {
+        return { path, status: "corrupt", schemaVersion, siteUrl, completedPages: pages.size, updatedAt, resumable: false, message: `checkpoint record ${index + 2} is corrupt` };
+      }
+    }
+  }
+  return { path, status: "ready", schemaVersion, siteUrl, completedPages: pages.size, updatedAt, resumable: pages.size > 0, message: null };
 }
