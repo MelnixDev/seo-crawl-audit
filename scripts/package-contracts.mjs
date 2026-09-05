@@ -29,6 +29,7 @@ async function pack(workspace) {
 try {
   const core = await pack("@seo-crawl-audit/core");
   const cli = await pack("seo-crawl-audit");
+  const renderer = await pack("@seo-crawl-audit/renderer-playwright");
   const corePaths = core.metadata.files.map((file) => file.path);
   assert.equal(corePaths.some((path) => path.endsWith(".tsbuildinfo")), false);
   assert.equal(corePaths.some((path) => path.endsWith(".d.ts.map")), false);
@@ -51,6 +52,7 @@ try {
     dependencies: {
       "@seo-crawl-audit/core": `file:${core.path}`,
       "seo-crawl-audit": `file:${cli.path}`,
+      "@seo-crawl-audit/renderer-playwright": `file:${renderer.path}`,
     },
   }, null, 2)}\n`);
   await run("npm", ["install", "--ignore-scripts"], temporaryRoot);
@@ -58,7 +60,8 @@ try {
   await writeFile(join(temporaryRoot, "smoke.mjs"), `
     import { audit, buildHistorySeries, collectSiteMetrics, createRdapDomainProvider, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan } from "@seo-crawl-audit/core";
     import { createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot } from "@seo-crawl-audit/core/node";
-    for (const value of [audit, buildHistorySeries, collectSiteMetrics, createRdapDomainProvider, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan, createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot]) {
+    import { createPlaywrightRenderer } from "@seo-crawl-audit/renderer-playwright";
+    for (const value of [audit, buildHistorySeries, collectSiteMetrics, createRdapDomainProvider, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan, createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot, createPlaywrightRenderer]) {
       if (typeof value !== "function") throw new Error("packed export is not callable");
     }
   `);
