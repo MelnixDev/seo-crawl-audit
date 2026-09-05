@@ -4,6 +4,8 @@ import { access, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { browserLaunchCommand, createLocalUiServer, serveCommand } from "../packages/cli/dist/server.js";
+import { migrateSnapshot } from "../packages/core/dist/index.js";
+import { writeSnapshot } from "../packages/core/dist/node.js";
 
 function siteFetch(input) {
   const url = new URL(String(input));
@@ -37,7 +39,9 @@ test("local UI binds only to loopback and serves its application shell", async (
   assert.equal(response.status, 200);
   const page = await response.text();
   assert.match(page, /Free, local-first site crawler/);
+  assert.match(page, /rel="icon" href="data:image\/svg\+xml/);
   assert.match(page, /new EventSource\("\/api\/events"\)/);
+  assert.match(page, /id="reportFrame"/);
   assert.match(response.headers.get("content-security-policy"), /default-src 'self'/);
   const state = await fetch(new URL("/api/state", server.url)).then((result) => result.json());
   assert.equal(state.url, "https://example.com/");
@@ -68,9 +72,37 @@ test("local UI runs a scan and exposes the generated report", async (context) =>
 
   const report = await fetch(new URL("/report", server.url));
   assert.equal(report.status, 200);
-  assert.match(await report.text(), /Site Metrics/);
+  const reportHtml = await report.text();
+  assert.match(reportHtml, /Site Metrics/);
+  assert.match(reportHtml, /id="history-chart"/);
   await access(join(directory, ".seo-audit.json"));
   await access(join(directory, "seo-audit-report.html"));
+});
+
+test("local UI requires confirmation before replacing another site's results", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-local-ui-target-"));
+  await writeSnapshot(join(directory, ".seo-audit.json"), migrateSnapshot({
+    schemaVersion: 1,
+    startUrl: "https://existing.example/",
+    pages: [{ url: "https://existing.example/", status: 200 }],
+  }));
+  const server = await createLocalUiServer({ port: 0, directory, fetch: siteFetch });
+  context.after(() => server.close());
+  const request = (replaceExisting = false) => fetch(new URL("/api/scan", server.url), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url: "https://example.com/", maxPages: 1, concurrency: 1, delay: 0, publicMetrics: false, replaceExisting }),
+  });
+
+  const blocked = await request();
+  assert.equal(blocked.status, 409);
+  const warning = await blocked.json();
+  assert.equal(warning.requiresConfirmation, true);
+  assert.equal(warning.existingSiteUrl, "https://existing.example/");
+
+  const confirmed = await request(true);
+  assert.equal(confirmed.status, 202);
+  assert.equal((await waitForCompletion(server.url)).status, "complete");
 });
 
 test("local UI rejects cross-origin scan requests", async (context) => {
