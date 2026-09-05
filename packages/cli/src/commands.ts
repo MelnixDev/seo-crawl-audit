@@ -2,6 +2,7 @@ import { dirname, join, resolve } from "node:path";
 import {
   audit,
   buildHistorySeries,
+  buildSiteMetrics,
   diff,
   migrateSnapshot,
   planScan,
@@ -148,6 +149,7 @@ function reportData(snapshot: SnapshotV2, mode: "scan" | "check", issues = audit
     engineVersion: snapshot.engineVersion,
     ruleSetVersion: snapshot.ruleSetVersion,
     branding: snapshot.config.report,
+    siteMetrics: buildSiteMetrics(snapshot),
     ...extra,
   };
 }

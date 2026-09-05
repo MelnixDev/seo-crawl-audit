@@ -1,5 +1,6 @@
 import {
   audit,
+  buildSiteMetrics,
   diff,
   resolveConfig,
   scan as coreScan,
@@ -142,6 +143,7 @@ export async function runAction(inputs: ActionInputs, adapters: ActionAdapters):
     engineVersion: result.snapshot.engineVersion,
     ruleSetVersion: result.snapshot.ruleSetVersion,
     branding: config.report,
+    siteMetrics: buildSiteMetrics(result.snapshot),
   };
   const counts = issues.reduce<Record<Severity, number>>((summary, issue) => {
     summary[issue.severity] += 1;

@@ -9,6 +9,7 @@ export { migrateSnapshot } from "./baseline.js";
 export { getRuleDefinitions } from "./rules/registry.js";
 export { groupIssuesByTemplate } from "./issue-groups.js";
 export { buildHistorySeries } from "./history.js";
+export { buildSiteMetrics } from "./site-metrics.js";
 export {
   DEFAULT_CONFIG_FILE,
   DEFAULT_SCAN_CONFIG,
@@ -46,6 +47,8 @@ export type {
   ScanPlan,
   ScanResult,
   Severity,
+  SiteMetric,
+  SiteMetrics,
   SitemapState,
   SnapshotV2,
   Suppression,

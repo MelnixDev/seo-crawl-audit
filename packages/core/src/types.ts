@@ -59,6 +59,26 @@ export interface ReportData {
     previewUrl: string;
   };
   history?: HistorySeries;
+  siteMetrics?: SiteMetrics;
+}
+
+export interface SiteMetric {
+  id: string;
+  label: { en: string; uk: string };
+  value: number | string | null;
+  unit: "count" | "bytes" | "milliseconds" | "date" | "text";
+  source: { id: string; label: string; url?: string };
+  observedAt: string;
+  confidence: "high" | "medium" | "low";
+  status: "available" | "estimate" | "unavailable" | "not-connected" | "error";
+  detail?: { en: string; uk: string };
+}
+
+export interface SiteMetrics {
+  schemaVersion: 1;
+  siteUrl: string;
+  observedAt: string;
+  metrics: SiteMetric[];
 }
 
 export interface ReportOptions {

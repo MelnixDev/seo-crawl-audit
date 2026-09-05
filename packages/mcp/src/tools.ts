@@ -1,5 +1,6 @@
 import {
   audit,
+  buildSiteMetrics,
   diff,
   getRuleDefinitions,
   planScan,
@@ -108,6 +109,7 @@ function reportData(snapshot: SnapshotV2, issues: Issue[], mode: "scan" | "check
     engineVersion: snapshot.engineVersion,
     ruleSetVersion: snapshot.ruleSetVersion,
     branding: snapshot.config.report,
+    siteMetrics: buildSiteMetrics(snapshot),
     ...extra,
   };
 }
