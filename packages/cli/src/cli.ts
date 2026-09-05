@@ -76,6 +76,7 @@ Options:
   --offline                Skip doctor network checks
   --platform <name>        Agent integration: codex, claude, opencode, or all
   --port <number>          Local UI port (default: 4179)
+  --render <mode>          Page rendering: http (default) or playwright
   --json                  Print machine-readable command output
   --help                  Show this help
   --version               Show the version

@@ -177,6 +177,16 @@ seo-audit check https://quotes.toscrape.com/ \
   --report quotes-changes.html
 ```
 
+For a JavaScript-rendered site, install the optional adapter and Chromium:
+
+```bash
+npm install --save-dev @seo-crawl-audit/renderer-playwright playwright
+npx playwright install chromium
+seo-audit scan https://example.com/ --render playwright
+```
+
+HTTP remains the default. A Playwright scan never silently falls back to HTTP.
+
 ## Commands
 
 ### `seo-audit init [url]`
@@ -586,7 +596,7 @@ Use `--delay 0` only for local or explicitly controlled fixtures.
 
 ## Current scope
 
-- server-rendered HTML; JavaScript rendering is not included;
+- fast HTTP crawling by default, with separate opt-in Playwright rendering;
 - same-origin crawl discovery;
 - sitemap and internal-link seeding;
 - non-HTML responses are recorded but not parsed for page metadata;

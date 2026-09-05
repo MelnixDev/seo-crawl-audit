@@ -8,6 +8,7 @@ import {
   planScan,
   scan,
   type PageSnapshot,
+  type PageRenderer,
   type ReportData,
   type ScanEvent,
   type ScanPlan,
@@ -35,6 +36,24 @@ export { headersFromEnvironment } from "./request-headers.js";
 const DEFAULT_BASELINE = ".seo-audit.json";
 const DEFAULT_REPORT = "seo-audit-report.html";
 const DEFAULT_HISTORY_DIRECTORY = ".seo-audit/history";
+
+function validateRendererMode(values: CliValues): void {
+  if (values.render !== undefined && values.render !== "http" && values.render !== "playwright") throw new Error("--render must be http or playwright");
+}
+
+async function selectedRenderer(values: CliValues): Promise<PageRenderer | undefined> {
+  validateRendererMode(values);
+  const mode = values.render ?? "http";
+  if (mode === "http") return undefined;
+  try {
+    const moduleName = "@seo-crawl-audit/renderer-playwright";
+    const adapter = await import(moduleName) as { createPlaywrightRenderer(): Promise<PageRenderer> };
+    return await adapter.createPlaywrightRenderer();
+  } catch (error) {
+    if (error instanceof Error && /Playwright|Chromium|playwright/.test(error.message)) throw error;
+    throw new Error("Playwright rendering is optional. Install it with: npm install --save-dev @seo-crawl-audit/renderer-playwright playwright && npx playwright install chromium", { cause: error });
+  }
+}
 
 export async function statusCommand(inputPath: string | undefined, values: CliValues): Promise<number> {
   const snapshotPath = resolve(inputPath ?? values.output ?? DEFAULT_BASELINE);
@@ -215,6 +234,7 @@ function selectScan(plan: ScanPlan, values: CliValues): Promise<ScanSelection> |
 
 export async function scanCommand(url: string | undefined, values: CliValues, signal?: AbortSignal): Promise<number> {
   if (!url) throw new Error("scan requires a URL");
+  validateRendererMode(values);
   const output = resolve(values.output ?? DEFAULT_BASELINE);
   const fetch = requestFetch(values["headers-env"], url);
   const plan = await resolvePlan(url, values, undefined, fetch, signal);
@@ -253,11 +273,13 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
   let requested = selection.mode === "step" ? Math.min(100, selection.target) : selection.target;
   let result: ScanResult | null = null;
   let stoppedEarly = false;
-  while (requested > 0) {
+  const renderer = await selectedRenderer(values);
+  try { while (requested > 0) {
     const progress = createProgressReporter(requested, selection.mode === "step", progressOutput);
     result = await scan(plan, {
       signal,
       fetch,
+      renderer,
       limit: requested,
       checkpointStore: store,
       retainCheckpoint: selection.mode === "step" && requested < selection.target,
@@ -284,7 +306,7 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
     const answer = await ask(`Check the next ${nextSize} page(s)? [y/N] `);
     if (!["y", "yes"].includes(answer.toLowerCase())) { stoppedEarly = true; break; }
     requested = Math.min(selection.target, requested + 100);
-  }
+  } } finally { await renderer?.close?.(); }
   if (!result) throw new Error("scan did not produce a result");
 
   await writeSnapshot(output, result.snapshot);
@@ -316,6 +338,7 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
 }
 
 export async function checkCommand(url: string | undefined, values: CliValues, signal?: AbortSignal): Promise<number> {
+  validateRendererMode(values);
   const baselinePath = resolve(values.baseline ?? DEFAULT_BASELINE);
   const baseline = await readSnapshot(baselinePath);
   const targetStart = url ?? baseline.siteUrl;
@@ -339,15 +362,22 @@ export async function checkCommand(url: string | undefined, values: CliValues, s
       error: null,
     },
   };
-  const result = await scan(plan, {
-    signal,
-    fetch,
-    limit: targetUrls.length,
-    onEvent(event) {
-      if (event.type === "scan-start") printStatus(`Starting regression check: ${event.total.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
-      if (event.type === "progress") printProgress(event.completed, targetUrls.length, false, values.json ? process.stderr : process.stdout);
-    },
-  });
+  const renderer = await selectedRenderer(values);
+  let result: ScanResult;
+  try {
+    result = await scan(plan, {
+      signal,
+      fetch,
+      renderer,
+      limit: targetUrls.length,
+      onEvent(event) {
+        if (event.type === "scan-start") printStatus(`Starting regression check: ${event.total.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
+        if (event.type === "progress") printProgress(event.completed, targetUrls.length, false, values.json ? process.stderr : process.stdout);
+      },
+    });
+  } finally {
+    await renderer?.close?.();
+  }
   const checked = new Map(result.pages.map((page) => [page.url, page]));
   const pages = targets.flatMap(({ baselineUrl, targetUrl }) => {
     const page = checked.get(targetUrl);
@@ -380,6 +410,7 @@ export async function checkCommand(url: string | undefined, values: CliValues, s
 }
 
 export async function compareCommand(values: CliValues, signal?: AbortSignal): Promise<number> {
+  validateRendererMode(values);
   const productionUrl = values.production;
   const previewUrl = values.preview;
   if (!productionUrl || !previewUrl) throw new Error("compare requires --production and --preview URLs");
@@ -388,15 +419,22 @@ export async function compareCommand(values: CliValues, signal?: AbortSignal): P
 
   const productionPlan = await planScan(scanConfig(productionUrl, values), { signal, fetch: productionFetch });
   const selection = await selectScan(productionPlan, values);
-  const production = await scan(productionPlan, {
-    signal,
-    fetch: productionFetch,
-    limit: selection.target,
-    onEvent(event) {
-      if (event.type === "scan-start") printStatus(`Starting production crawl: up to ${event.total.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
-      if (event.type === "progress") printProgress(event.completed, selection.target, false, values.json ? process.stderr : process.stdout);
-    },
-  });
+  const productionRenderer = await selectedRenderer(values);
+  let production: ScanResult;
+  try {
+    production = await scan(productionPlan, {
+      signal,
+      fetch: productionFetch,
+      renderer: productionRenderer,
+      limit: selection.target,
+      onEvent(event) {
+        if (event.type === "scan-start") printStatus(`Starting production crawl: up to ${event.total.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
+        if (event.type === "progress") printProgress(event.completed, selection.target, false, values.json ? process.stderr : process.stdout);
+      },
+    });
+  } finally {
+    await productionRenderer?.close?.();
+  }
   if (production.partial) return 130;
 
   const previewBasePlan = await planScan({ ...scanConfig(previewUrl, values), sitemap: "none" }, { signal, fetch: previewFetch });
@@ -414,15 +452,22 @@ export async function compareCommand(values: CliValues, signal?: AbortSignal): P
       error: null,
     },
   };
-  const preview = await scan(previewPlan, {
-    signal,
-    fetch: previewFetch,
-    limit: targetUrls.length,
-    onEvent(event) {
-      if (event.type === "scan-start") printStatus(`Starting preview crawl: ${event.total.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
-      if (event.type === "progress") printProgress(event.completed, targetUrls.length, false, values.json ? process.stderr : process.stdout);
-    },
-  });
+  const previewRenderer = await selectedRenderer(values);
+  let preview: ScanResult;
+  try {
+    preview = await scan(previewPlan, {
+      signal,
+      fetch: previewFetch,
+      renderer: previewRenderer,
+      limit: targetUrls.length,
+      onEvent(event) {
+        if (event.type === "scan-start") printStatus(`Starting preview crawl: ${event.total.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
+        if (event.type === "progress") printProgress(event.completed, targetUrls.length, false, values.json ? process.stderr : process.stdout);
+      },
+    });
+  } finally {
+    await previewRenderer?.close?.();
+  }
   const previewPages = preview.snapshot.pages.map((page) => mapPage(page, previewUrl, productionUrl));
   const current = migrateSnapshot({
     ...preview.snapshot,
