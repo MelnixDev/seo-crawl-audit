@@ -25,6 +25,9 @@ test("builds deterministic local site metrics from a snapshot", () => {
   assert.equal(metrics.schemaVersion, 1);
   assert.equal(values["pages.sitemap"], 2);
   assert.equal(values["pages.indexable"], 1);
+  const crawlable = metrics.metrics.find((metric) => metric.id === "pages.indexable");
+  assert.equal(crawlable.label.en, "Crawlable HTML pages");
+  assert.match(crawlable.detail.en, /not the Google index count/);
   assert.equal(values["search.google-indexed"], null);
   assert.equal(metrics.metrics.find((metric) => metric.id === "search.google-indexed").status, "not-connected");
   assert.equal(values["pages.noindex"], 1);
@@ -33,6 +36,20 @@ test("builds deterministic local site metrics from a snapshot", () => {
   assert.equal(values["crawl.max-depth"], 1);
   assert.equal(values["crawl.transfer"], 3_072);
   assert.equal(values["crawl.average-time"], 200);
+});
+
+test("crawlable page count excludes redirects and non-HTML responses", () => {
+  const snapshot = migrateSnapshot({
+    schemaVersion: 1,
+    startUrl: "https://example.com/",
+    pages: [
+      { url: "https://example.com/", status: 200, contentType: "text/html" },
+      { url: "https://example.com/redirect", status: 301, contentType: "text/html" },
+      { url: "https://example.com/feed", status: 200, contentType: "application/json" },
+    ],
+  });
+  const metrics = buildSiteMetrics(snapshot);
+  assert.equal(metrics.metrics.find((metric) => metric.id === "pages.indexable").value, 1);
 });
 
 test("collects public RDAP domain dates and registrar without credentials", async () => {

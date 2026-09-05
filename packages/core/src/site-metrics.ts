@@ -1,7 +1,24 @@
 import type { PageSnapshot, SiteMetric, SiteMetrics, SnapshotV2 } from "./types.js";
 
-function metric(id: string, label: { en: string; uk: string }, value: number, observedAt: string, unit: SiteMetric["unit"] = "count"): SiteMetric {
-  return { id, label, value, unit, source: { id: "crawl", label: "SEO Crawl Audit" }, observedAt, confidence: "high", status: "available" };
+function metric(
+  id: string,
+  label: { en: string; uk: string },
+  value: number,
+  observedAt: string,
+  unit: SiteMetric["unit"] = "count",
+  detail?: SiteMetric["detail"],
+): SiteMetric {
+  return {
+    id,
+    label,
+    value,
+    unit,
+    source: { id: "crawl", label: "SEO Crawl Audit" },
+    observedAt,
+    confidence: "high",
+    status: "available",
+    ...(detail ? { detail } : {}),
+  };
 }
 
 function notConnected(id: string, label: SiteMetric["label"], source: SiteMetric["source"], observedAt: string, detail: SiteMetric["detail"]): SiteMetric {
@@ -31,7 +48,7 @@ export function buildSiteMetrics(snapshot: SnapshotV2): SiteMetrics {
   const observedAt = snapshot.generatedAt;
   const htmlPages = pages.filter((page) => /(?:text\/html|application\/xhtml\+xml)/i.test(page.contentType ?? ""));
   const noindexPages = pages.filter(hasNoindex);
-  const indexablePages = pages.filter((page) => !page.error && !page.blockedByRobots && page.status !== null && page.status >= 200 && page.status < 400 && !hasNoindex(page));
+  const indexablePages = htmlPages.filter((page) => !page.error && !page.blockedByRobots && page.status !== null && page.status >= 200 && page.status < 300 && !hasNoindex(page));
   const images = new Set(pages.flatMap((page) => page.images.map((image) => image.src).filter((src): src is string => Boolean(src))));
   const products = pages.reduce((total, page) => total + page.jsonLd.reduce((sum, item) => sum + (item.valid ? countType(item.value, "Product") : 0), 0), 0);
   const totalBytes = pages.reduce((total, page) => total + page.responseBytes, 0);
@@ -44,7 +61,17 @@ export function buildSiteMetrics(snapshot: SnapshotV2): SiteMetrics {
       metric("pages.sitemap", { en: "Sitemap URLs", uk: "URL у sitemap" }, snapshot.sitemap?.urls.length ?? 0, observedAt),
       metric("pages.checked", { en: "Pages checked", uk: "Перевірено сторінок" }, pages.length, observedAt),
       metric("pages.html", { en: "HTML pages", uk: "HTML-сторінки" }, htmlPages.length, observedAt),
-      metric("pages.indexable", { en: "Potentially indexable", uk: "Потенційно індексовані" }, indexablePages.length, observedAt),
+      metric(
+        "pages.indexable",
+        { en: "Crawlable HTML pages", uk: "Доступні HTML-сторінки" },
+        indexablePages.length,
+        observedAt,
+        "count",
+        {
+          en: "Successful HTML pages without a detected noindex directive. This is not the Google index count.",
+          uk: "Успішні HTML-сторінки без виявленої директиви noindex. Це не кількість сторінок в індексі Google.",
+        },
+      ),
       notConnected("search.google-indexed", { en: "Indexed by Google", uk: "Проіндексовано Google" }, { id: "google-search-console", label: "Google Search Console" }, observedAt, { en: "Connect an authoritative provider to confirm this value; crawlability is not proof of indexing.", uk: "Підключіть авторитетне джерело для підтвердження; доступність для crawl не доводить індексацію." }),
       notConnected("search.bing-indexed", { en: "Indexed by Bing", uk: "Проіндексовано Bing" }, { id: "bing-webmaster", label: "Bing Webmaster Tools" }, observedAt, { en: "Connect an authoritative provider to confirm this value.", uk: "Підключіть авторитетне джерело для підтвердження значення." }),
       metric("pages.noindex", { en: "Noindex pages", uk: "Сторінки noindex" }, noindexPages.length, observedAt),
