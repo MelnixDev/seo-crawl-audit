@@ -36,6 +36,11 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /data-view="metrics"/);
   assert.match(html, /id="metrics-view"/);
   assert.match(html, /function renderMetrics/);
+  assert.match(html, /id="metrics-hero"/);
+  assert.match(html, /id="metrics-insights"/);
+  assert.match(html, /id="metrics-groups"/);
+  assert.match(html, /Sitemap crawl coverage/);
+  assert.match(html, /Search visibility/);
   assert.match(html, /id="severity-chart"/);
   assert.match(html, /id="rules-chart"/);
   assert.match(html, /id="distribution-chart"/);
