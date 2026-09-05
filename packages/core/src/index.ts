@@ -9,6 +9,8 @@ export { migrateSnapshot } from "./baseline.js";
 export { getRuleDefinitions } from "./rules/registry.js";
 export { groupIssuesByTemplate } from "./issue-groups.js";
 export { buildHistorySeries } from "./history.js";
+export { buildSiteMetrics } from "./site-metrics.js";
+export { collectSiteMetrics, createRdapDomainProvider } from "./site-metric-providers.js";
 export {
   DEFAULT_CONFIG_FILE,
   DEFAULT_SCAN_CONFIG,
@@ -22,6 +24,7 @@ export type {
   CheckpointIdentity,
   CheckpointState,
   CheckpointStore,
+  CollectSiteMetricsOptions,
   CrawlStatistics,
   DiffResult,
   EngineLogger,
@@ -34,6 +37,9 @@ export type {
   HistorySnapshotRecord,
   LinkGraphSummary,
   PageSnapshot,
+  PageRenderer,
+  PageRenderRequest,
+  PageRenderResult,
   PlanScanOptions,
   ReportBranding,
   ReportData,
@@ -46,6 +52,10 @@ export type {
   ScanPlan,
   ScanResult,
   Severity,
+  SiteMetric,
+  SiteMetricProvider,
+  SiteMetricProviderContext,
+  SiteMetrics,
   SitemapState,
   SnapshotV2,
   Suppression,

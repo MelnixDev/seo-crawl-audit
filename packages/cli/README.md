@@ -53,6 +53,9 @@ attention, with evidence and remediation kept alongside each issue.
   and local report branding;
 - interactive issue statistics for severity, frequent checks, ownership, and
   regression lifecycle, with chart-to-table filtering;
+- a dedicated Site Metrics view with crawl-derived measurements and optional,
+  clearly sourced public RDAP domain data;
+- a loopback-only browser interface for starting and stopping local scans;
 - safe environment-based authentication for private `doctor`, `scan`,
   `check`, Action, and production-versus-preview workflows;
 - configuration, suppressions with expiry, severity overrides, and budgets;
@@ -127,6 +130,22 @@ seo-audit doctor --offline
 
 [Read the project diagnostics guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/doctor.md).
 
+Start the local browser interface:
+
+```bash
+seo-audit serve
+seo-audit serve https://example.com/
+seo-audit serve --port 4180
+seo-audit serve --no-open
+```
+
+Pass a URL to prefill the scan target and avoid accidentally reusing a value
+restored by the browser. The command opens the interface in the default browser. Use `--no-open` in CI,
+remote shells, or when you prefer to open the printed URL manually. It binds
+only to `127.0.0.1`, runs the same core crawler, and keeps snapshots,
+checkpoints, and reports in the current directory. Public RDAP domain data is an
+explicit checkbox in the interface. [Read the Site Metrics guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/site-metrics.md).
+
 For project-scoped Codex, Claude Code, or OpenCode integration, run:
 
 ```bash
@@ -160,6 +179,16 @@ seo-audit check https://quotes.toscrape.com/ \
   --pages 10 \
   --report quotes-changes.html
 ```
+
+For a JavaScript-rendered site, install the optional adapter and Chromium:
+
+```bash
+npm install --save-dev @seo-crawl-audit/renderer-playwright playwright
+npx playwright install chromium
+seo-audit scan https://example.com/ --render playwright
+```
+
+HTTP remains the default. A Playwright scan never silently falls back to HTTP.
 
 ## Commands
 
@@ -567,7 +596,7 @@ Use `--delay 0` only for local or explicitly controlled fixtures.
 
 ## Current scope
 
-- server-rendered HTML; JavaScript rendering is not included;
+- fast HTTP crawling by default, with separate opt-in Playwright rendering;
 - same-origin crawl discovery;
 - sitemap and internal-link seeding;
 - non-HTML responses are recorded but not parsed for page metadata;

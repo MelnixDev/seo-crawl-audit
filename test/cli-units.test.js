@@ -3,14 +3,14 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { scanConfig } from "../packages/cli/dist/args.js";
+import { parseCliArgs, scanConfig } from "../packages/cli/dist/args.js";
 import { main } from "../packages/cli/dist/cli.js";
 import { headersFromEnvironment } from "../packages/cli/dist/commands.js";
 import { checkpointPathForRequestHeaders, fetchWithHeaders } from "../packages/cli/dist/request-headers.js";
 import { printIssues, summarizeIssues } from "../packages/cli/dist/report.js";
-import { formatProgress, health, printHealth, printProgress, printStatus } from "../packages/cli/dist/ui.js";
+import { createProgressReporter, formatProgress, health, printHealth, printPreflight, printProgress, printStatus } from "../packages/cli/dist/ui.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
-import { writeHistorySnapshot } from "../packages/core/dist/node.js";
+import { createFileCheckpointStore, writeHistorySnapshot, writeSnapshot } from "../packages/core/dist/node.js";
 
 function captureConsole(context) {
   const messages = [];
@@ -28,10 +28,20 @@ test("CLI dispatcher covers help and invalid input paths", async (context) => {
   assert.equal(await main(["--unknown"]), 2);
   assert.equal(await main(["unknown-command"]), 2);
   assert.equal(await main(["scan", "https://example.com/", "extra"]), 2);
+  assert.equal(await main(["serve", "--port", "invalid"]), 2);
+  assert.equal(await main(["serve", "unexpected"]), 2);
+  assert.equal(await main(["scan", "https://example.com/", "--render", "invalid"]), 2);
   assert.equal(await main(["--config", "/definitely/missing/config.json", "--version"]), 2);
   assert.match(messages.join("\n"), /Local-first SEO crawler/);
   assert.match(messages.join("\n"), /Unknown command/);
   assert.match(messages.join("\n"), /Unexpected argument/);
+});
+
+test("serve accepts the no-open switch", () => {
+  const parsed = parseCliArgs(["serve", "https://example.com/", "--port", "4180", "--no-open"]);
+  assert.deepEqual(parsed.positionals, ["serve", "https://example.com/"]);
+  assert.equal(parsed.values.port, "4180");
+  assert.equal(parsed.values["no-open"], true);
 });
 
 test("report command renders an existing baseline in JSON mode", async (context) => {
@@ -65,6 +75,37 @@ test("history command lists local runs and renders their trend report", async (c
   const report = await readFile(reportPath, "utf8");
   assert.match(report, /id="history-chart"/);
   assert.match(messages.at(-1), /"snapshots"/);
+});
+
+test("status command reports snapshots and resumable checkpoints", async (context) => {
+  const messages = captureConsole(context);
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-status-command-"));
+  const snapshotPath = join(directory, "baseline.json");
+  const checkpointPath = join(directory, "baseline.checkpoint.ndjson");
+  const snapshot = migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200 }] });
+  await writeSnapshot(snapshotPath, snapshot);
+  const store = createFileCheckpointStore(checkpointPath);
+  const identity = {
+    schemaVersion: 2,
+    pageSchemaVersion: 1,
+    siteUrl: "https://example.com/",
+    sitemapUrl: null,
+    includeQuery: false,
+    respectRobots: true,
+    timeout: 10_000,
+    maxRedirects: 10,
+    maxResponseBytes: 5 * 1024 * 1024,
+    userAgent: "seo-crawl-audit/test",
+  };
+  await store.load(identity);
+  await store.append(identity, { url: "https://example.com/saved", status: 200, error: null });
+  await store.flush();
+
+  assert.equal(await main(["status", snapshotPath, "--json"]), 0);
+  const result = JSON.parse(messages.at(-1));
+  assert.equal(result.snapshot.pages, 1);
+  assert.equal(result.checkpoint.completedPages, 1);
+  assert.equal(result.checkpoint.resumable, true);
 });
 
 test("CLI config mapping validates conflicts and explicit policies", () => {
@@ -169,8 +210,23 @@ test("CLI presentation summarizes all severities and health evidence", (context)
   printProgress(0, 0);
   printProgress(100, 100, true);
   assert.match(formatProgress(25, 100), /25%/);
+  assert.match(formatProgress(25, 100, { elapsedMs: 30_000, retries: 1, errors: 2, currentUrl: "/products/example" }), /50 pages\/min · ETA 1m 30s · retries 1 · errors 2 · \/products\/example/);
+  printPreflight({
+    startUrl: "https://example.com/",
+    config: { concurrency: 5, delay: 100, respectRobots: true },
+    sitemap: { urls: Array.from({ length: 1_001 }, (_, index) => `https://example.com/${index}`) },
+    candidateCount: 1_001,
+  }, { mode: "all", target: 1_001 }, true);
+  const progress = createProgressReporter(2, false, process.stdout, (() => {
+    let time = 0;
+    return () => { time += 30_000; return time; };
+  })());
+  progress.retry();
+  progress.progress({ url: "https://example.com/failed", status: 500, error: null }, 2);
   printStatus("Scan is running");
   assert.match(messages.join("\n"), /No SEO regressions/);
   assert.match(messages.join("\n"), /before:/);
   assert.match(messages.join("\n"), /Current health/);
+  assert.match(messages.join("\n"), /large scan/);
+  assert.match(messages.join("\n"), /retries 1 · errors 1/);
 });

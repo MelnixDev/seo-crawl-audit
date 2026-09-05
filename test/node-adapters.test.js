@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createFileCheckpointStore } from "../packages/core/dist/node.js";
+import { createFileCheckpointStore, inspectFileCheckpoint } from "../packages/core/dist/node.js";
 
 const identity = {
   schemaVersion: 2,
@@ -73,4 +73,20 @@ test("file checkpoint store rejects corruption before the final record", async (
     createFileCheckpointStore(path).load(identity),
     /corrupt checkpoint record 2/,
   );
+});
+
+test("checkpoint inspection is read-only and reports resumable pages", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-node-inspect-"));
+  const path = join(directory, "checkpoint.ndjson");
+  assert.equal((await inspectFileCheckpoint(path)).status, "missing");
+  const store = createFileCheckpointStore(path);
+  await store.load(identity);
+  await store.append(identity, page("https://example.com/saved"));
+  await store.flush();
+  const inspected = await inspectFileCheckpoint(path);
+  assert.equal(inspected.status, "ready");
+  assert.equal(inspected.siteUrl, identity.siteUrl);
+  assert.equal(inspected.completedPages, 1);
+  assert.equal(inspected.resumable, true);
+  assert.ok(inspected.updatedAt);
 });

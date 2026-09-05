@@ -1,5 +1,5 @@
 import { writeFile } from "node:fs/promises";
-import { audit, buildHistorySeries, diff, renderReport } from "../packages/core/dist/index.js";
+import { audit, buildHistorySeries, buildSiteMetrics, diff, renderReport } from "../packages/core/dist/index.js";
 import { createBaseline } from "../packages/core/dist/baseline.js";
 
 const url = "https://quotes.toscrape.com/";
@@ -57,6 +57,7 @@ const html = renderReport({
   engineVersion: current.engineVersion,
   ruleSetVersion: current.ruleSetVersion,
   branding: { agencyName: "SEO Crawl Audit", primaryColor: "#3157d5" },
+  siteMetrics: buildSiteMetrics(current),
   ...(history ? { history } : {}),
 });
 await writeFile(new URL("../examples/quotes-toscrape-report.html", import.meta.url), html, "utf8");

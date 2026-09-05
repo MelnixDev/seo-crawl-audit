@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "declarationMap": false,
+    "sourceMap": false,
+    "tsBuildInfoFile": "../../node_modules/.cache/seo-crawl-audit-renderer-playwright.tsbuildinfo"
+  },
+  "references": [{ "path": "../core" }],
+  "include": ["src/**/*.ts"]
+}

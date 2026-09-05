@@ -29,15 +29,18 @@ async function pack(workspace) {
 try {
   const core = await pack("@seo-crawl-audit/core");
   const cli = await pack("seo-crawl-audit");
+  const renderer = await pack("@seo-crawl-audit/renderer-playwright");
   const corePaths = core.metadata.files.map((file) => file.path);
   assert.equal(corePaths.some((path) => path.endsWith(".tsbuildinfo")), false);
   assert.equal(corePaths.some((path) => path.endsWith(".d.ts.map")), false);
   assert.equal(corePaths.includes("dist/index.d.ts"), true);
   assert.equal(corePaths.includes("dist/node.d.ts"), true);
   const cliBundle = cli.metadata.files.find((file) => file.path === "bundle/cli.js");
+  const serverBundle = cli.metadata.files.find((file) => file.path === "bundle/server.js");
   const mcpBundle = cli.metadata.files.find((file) => file.path === "bundle/mcp.js");
   const cliPaths = cli.metadata.files.map((file) => file.path);
   assert.ok(cliBundle && cliBundle.size <= 500 * 1024, `CLI bundle is ${cliBundle?.size ?? 0} bytes`);
+  assert.ok(serverBundle, "Local UI server bundle is missing");
   assert.ok(mcpBundle && mcpBundle.size <= 1.5 * 1024 * 1024, `MCP bundle is ${mcpBundle?.size ?? 0} bytes`);
   assert.equal(cliPaths.includes("bin/seo-audit-mcp.js"), true);
   assert.equal(cliPaths.includes("agent-skill/seo-crawl-audit/SKILL.md"), true);
@@ -49,14 +52,16 @@ try {
     dependencies: {
       "@seo-crawl-audit/core": `file:${core.path}`,
       "seo-crawl-audit": `file:${cli.path}`,
+      "@seo-crawl-audit/renderer-playwright": `file:${renderer.path}`,
     },
   }, null, 2)}\n`);
   await run("npm", ["install", "--ignore-scripts"], temporaryRoot);
 
   await writeFile(join(temporaryRoot, "smoke.mjs"), `
-    import { audit, buildHistorySeries, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan } from "@seo-crawl-audit/core";
+    import { audit, buildHistorySeries, collectSiteMetrics, createRdapDomainProvider, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan } from "@seo-crawl-audit/core";
     import { createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot } from "@seo-crawl-audit/core/node";
-    for (const value of [audit, buildHistorySeries, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan, createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot]) {
+    import { createPlaywrightRenderer } from "@seo-crawl-audit/renderer-playwright";
+    for (const value of [audit, buildHistorySeries, collectSiteMetrics, createRdapDomainProvider, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan, createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot, createPlaywrightRenderer]) {
       if (typeof value !== "function") throw new Error("packed export is not callable");
     }
   `);

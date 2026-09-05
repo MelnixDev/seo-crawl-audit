@@ -30,7 +30,18 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /Intl\.DateTimeFormat/);
   assert.match(html, /id="clear-filters"/);
   assert.match(html, /id="language"/);
+  assert.match(html, /class="logo product-mark"/);
+  assert.match(html, /aria-label="SEO Crawl Audit logo"/);
   assert.match(html, /id="analytics"/);
+  assert.match(html, /data-view="metrics"/);
+  assert.match(html, /id="metrics-view"/);
+  assert.match(html, /rel="icon" href="data:image\/svg\+xml/);
+  assert.match(html, /function renderMetrics/);
+  assert.match(html, /id="metrics-hero"/);
+  assert.match(html, /id="metrics-insights"/);
+  assert.match(html, /id="metrics-groups"/);
+  assert.match(html, /Sitemap crawl coverage/);
+  assert.match(html, /Search visibility/);
   assert.match(html, /id="severity-chart"/);
   assert.match(html, /id="rules-chart"/);
   assert.match(html, /id="distribution-chart"/);
@@ -102,7 +113,13 @@ test("embeds deterministic interactive chart statistics", () => {
     owners: { content: 2, seo: 1, developer: 1 },
     lifecycle: { new: 2, ongoing: 1, resolved: 1 },
     templates: [{ template: "/:id", issueCount: 4, affectedPages: 4 }],
+    priorities: [
+      { rule: "missing-h1", severity: "error", owner: "content", count: 2, affectedPages: 2 },
+      { rule: "missing-title", severity: "error", owner: "seo", count: 1, affectedPages: 1 },
+    ],
   });
+  assert.match(html, /What to fix first/);
+  assert.match(html, /Що виправити спочатку/);
   assert.match(html, /Select a chart item to filter the issue table/);
   assert.match(html, /Оберіть елемент графіка, щоб відфільтрувати таблицю проблем/);
   assert.match(html, /report\.mode==="check"\?text\.analytics\.lifecycle:text\.analytics\.owners/);

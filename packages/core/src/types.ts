@@ -59,6 +59,43 @@ export interface ReportData {
     previewUrl: string;
   };
   history?: HistorySeries;
+  siteMetrics?: SiteMetrics;
+}
+
+export interface SiteMetric {
+  id: string;
+  label: { en: string; uk: string };
+  value: number | string | null;
+  unit: "count" | "bytes" | "milliseconds" | "date" | "text";
+  source: { id: string; label: string; url?: string };
+  observedAt: string;
+  confidence: "high" | "medium" | "low";
+  status: "available" | "estimate" | "unavailable" | "not-connected" | "error";
+  detail?: { en: string; uk: string };
+}
+
+export interface SiteMetrics {
+  schemaVersion: 1;
+  siteUrl: string;
+  observedAt: string;
+  metrics: SiteMetric[];
+}
+
+export interface SiteMetricProviderContext {
+  snapshot: SnapshotV2;
+  fetch: typeof globalThis.fetch;
+  signal?: AbortSignal;
+}
+
+export interface SiteMetricProvider {
+  readonly id: string;
+  collect(context: SiteMetricProviderContext): Promise<SiteMetric[]>;
+}
+
+export interface CollectSiteMetricsOptions {
+  providers?: readonly SiteMetricProvider[];
+  fetch?: typeof globalThis.fetch;
+  signal?: AbortSignal;
 }
 
 export interface ReportOptions {
@@ -233,6 +270,30 @@ export interface CheckpointIdentity {
   maxRedirects: number;
   maxResponseBytes: number;
   userAgent: string;
+  rendererId?: string;
+}
+
+export interface PageRenderRequest {
+  url: string;
+  timeout: number;
+  maxResponseBytes: number;
+  userAgent: string;
+  signal?: AbortSignal;
+}
+
+export interface PageRenderResult {
+  finalUrl: string;
+  status: number;
+  headers: Record<string, string>;
+  html: string;
+  responseBytes: number;
+  redirectChain: Array<{ url: string; status: number; location: string | null }>;
+}
+
+export interface PageRenderer {
+  readonly id: string;
+  render(request: PageRenderRequest): Promise<PageRenderResult>;
+  close?(): Promise<void>;
 }
 
 export interface CheckpointState {
@@ -287,6 +348,7 @@ export interface ScanPlan {
 }
 
 export interface ScanOptions extends PlanScanOptions {
+  renderer?: PageRenderer | undefined;
   storage?: StorageAdapter | undefined;
   checkpointStore?: CheckpointStore | undefined;
   resume?: boolean | undefined;

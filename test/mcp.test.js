@@ -170,9 +170,9 @@ test("bundled stdio server negotiates MCP and advertises the complete tool set",
     child.once("close", resolve);
   });
   assert.equal(exitCode, 0, stderr);
-  assert.equal(stderr, "");
+  assert.match(stderr, /^\[seo-crawl-audit:mcp\] MCP server 0\.9\.1 is running on stdio\. Waiting for client requests; press Ctrl\+C to stop\.\n$/);
   const responses = stdout.trim().split("\n").map(JSON.parse);
-  assert.equal(responses[0].result.serverInfo.version, "0.9.0");
+  assert.equal(responses[0].result.serverInfo.version, "0.9.1");
   assert.deepEqual(responses[1].result.tools.map((tool) => tool.name).sort(), [
     "seo_audit_check",
     "seo_audit_compare",
@@ -182,4 +182,23 @@ test("bundled stdio server negotiates MCP and advertises the complete tool set",
     "seo_audit_rules",
     "seo_audit_scan",
   ]);
+});
+
+test("repository development entrypoint starts the MCP server", async () => {
+  const child = spawn(process.execPath, [join(process.cwd(), "bin/seo-audit.js"), "mcp"], {
+    cwd: process.cwd(),
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8").on("data", (chunk) => { stdout += chunk; });
+  child.stderr.setEncoding("utf8").on("data", (chunk) => { stderr += chunk; });
+  child.stdin.end();
+  const exitCode = await new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", resolve);
+  });
+  assert.equal(exitCode, 0, stderr);
+  assert.equal(stdout, "");
+  assert.match(stderr, /MCP server 0\.9\.1 is running on stdio/);
 });

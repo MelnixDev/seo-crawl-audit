@@ -1,5 +1,5 @@
 import { createInterface } from "node:readline/promises";
-import type { PageSnapshot } from "@seo-crawl-audit/core";
+import type { PageSnapshot, ScanPlan } from "@seo-crawl-audit/core";
 
 export interface ScanSelection { mode: "fixed" | "all" | "step"; target: number }
 
@@ -36,11 +36,43 @@ export async function chooseScanPlan(totalPages: number): Promise<ScanSelection>
   }
 }
 
-export function formatProgress(checked: number, target: number): string {
+export interface ProgressDetails {
+  elapsedMs: number;
+  retries: number;
+  errors: number;
+  currentUrl?: string;
+}
+
+function formatDuration(milliseconds: number): string {
+  const seconds = Math.max(0, Math.round(milliseconds / 1_000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return `${minutes}m ${remainder}s`;
+}
+
+export function formatProgress(checked: number, target: number, details?: ProgressDetails): string {
   const ratio = target === 0 ? 1 : Math.min(checked / target, 1);
   const percent = (ratio * 100).toFixed(ratio < 0.1 ? 1 : 0);
   const filled = Math.round(ratio * 20);
-  return `[${"█".repeat(filled)}${"░".repeat(20 - filled)}] ${percent}% · ${checked.toLocaleString("en-US")} / ${target.toLocaleString("en-US")} pages`;
+  const base = `[${"█".repeat(filled)}${"░".repeat(20 - filled)}] ${percent}% · ${checked.toLocaleString("en-US")} / ${target.toLocaleString("en-US")} pages`;
+  if (!details) return base;
+  const elapsedMinutes = details.elapsedMs / 60_000;
+  const pagesPerMinute = elapsedMinutes > 0 ? checked / elapsedMinutes : 0;
+  const remaining = Math.max(0, target - checked);
+  const etaMs = pagesPerMinute > 0 ? (remaining / pagesPerMinute) * 60_000 : null;
+  const metrics = [
+    `elapsed ${formatDuration(details.elapsedMs)}`,
+    `${pagesPerMinute.toFixed(pagesPerMinute < 10 ? 1 : 0)} pages/min`,
+    `ETA ${etaMs === null ? "—" : formatDuration(etaMs)}`,
+    `retries ${details.retries}`,
+    `errors ${details.errors}`,
+  ];
+  if (details.currentUrl) {
+    const clipped = details.currentUrl.length > 60 ? `${details.currentUrl.slice(0, 57)}…` : details.currentUrl;
+    metrics.push(clipped);
+  }
+  return `${base} · ${metrics.join(" · ")}`;
 }
 
 export function printProgress(
@@ -48,13 +80,68 @@ export function printProgress(
   target: number,
   persistent = false,
   output: NodeJS.WriteStream = process.stdout,
+  details?: ProgressDetails,
 ): void {
-  const message = formatProgress(checked, target);
+  const message = formatProgress(checked, target, details);
   const log = output === process.stderr ? console.error : console.log;
   if (output.isTTY && !persistent) {
     output.write(`\r${message}`);
     if (checked >= target) output.write("\n");
   } else if (output.isTTY || checked >= target || checked % 1_000 === 0) log(message);
+}
+
+export function printPreflight(
+  plan: ScanPlan,
+  selection: ScanSelection,
+  checkpointEnabled: boolean,
+  output: NodeJS.WriteStream = process.stdout,
+): void {
+  const sitemap = plan.sitemap
+    ? `found, ${(plan.candidateCount ?? plan.sitemap.urls.length).toLocaleString("en-US")} URL(s)`
+    : "not found; internal links";
+  const lines = [
+    "Scan plan",
+    `  Target: ${plan.startUrl}`,
+    `  Sitemap: ${sitemap}`,
+    `  Robots: ${plan.config.respectRobots ? "respected" : "ignored"}`,
+    `  Limit: ${selection.target.toLocaleString("en-US")} page(s)`,
+    `  Concurrency: ${plan.config.concurrency}`,
+    `  Delay: ${plan.config.delay} ms`,
+    `  Checkpoint: ${checkpointEnabled ? "enabled" : "disabled"}`,
+  ];
+  if (selection.target > 1_000) lines.push(`  Notice: this is a large scan and may take a long time.`);
+  printStatus(lines.join("\n"), output);
+}
+
+export function createProgressReporter(
+  target: number,
+  persistent: boolean,
+  output: NodeJS.WriteStream = process.stdout,
+  now: () => number = Date.now,
+): { retry(): void; progress(page: PageSnapshot, completed: number): void } {
+  const startedAt = now();
+  let retries = 0;
+  let errors = 0;
+  const failed = new Set<string>();
+  return {
+    retry() { retries += 1; },
+    progress(page, completed) {
+      if ((page.error || (page.status !== null && page.status >= 400)) && !failed.has(page.url)) {
+        failed.add(page.url);
+        errors += 1;
+      }
+      const currentUrl = (() => {
+        try { return new URL(page.url).pathname || "/"; }
+        catch { return page.url; }
+      })();
+      printProgress(completed, target, persistent, output, {
+        elapsedMs: now() - startedAt,
+        retries,
+        errors,
+        currentUrl,
+      });
+    },
+  };
 }
 
 export function printStatus(message: string, output: NodeJS.WriteStream = process.stdout): void {
