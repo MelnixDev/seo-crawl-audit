@@ -17,6 +17,9 @@ refreshing the README/GitHub Pages screenshots and GIF demos, and optional
 authenticated Search Console/Bing adapters. These are release and integration
 tasks, not prerequisites for using the local HTTP crawler.
 
+The concrete execution brief for the next implementation cycle is in
+[`docs/handoff-next-cycle.md`](handoff-next-cycle.md).
+
 ## 0.10.x — clearer local workflows
 
 - Add a scan preflight summary and actionable large-scan warning.
