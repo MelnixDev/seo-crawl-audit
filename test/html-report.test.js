@@ -107,7 +107,13 @@ test("embeds deterministic interactive chart statistics", () => {
     owners: { content: 2, seo: 1, developer: 1 },
     lifecycle: { new: 2, ongoing: 1, resolved: 1 },
     templates: [{ template: "/:id", issueCount: 4, affectedPages: 4 }],
+    priorities: [
+      { rule: "missing-h1", severity: "error", owner: "content", count: 2, affectedPages: 2 },
+      { rule: "missing-title", severity: "error", owner: "seo", count: 1, affectedPages: 1 },
+    ],
   });
+  assert.match(html, /What to fix first/);
+  assert.match(html, /Що виправити спочатку/);
   assert.match(html, /Select a chart item to filter the issue table/);
   assert.match(html, /Оберіть елемент графіка, щоб відфільтрувати таблицю проблем/);
   assert.match(html, /report\.mode==="check"\?text\.analytics\.lifecycle:text\.analytics\.owners/);
