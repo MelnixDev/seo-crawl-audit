@@ -72,3 +72,36 @@ test("scan returns partial data and resumes successful pages through the checkpo
   assert.equal(completed.pages.length, 2);
   assert.equal(requests.get(firstPagePath), beforeResume);
 });
+
+test("an opt-in renderer supplies every HTML page while planning stays on fetch", async () => {
+  const fetched = [];
+  const rendered = [];
+  const fetch = async (input) => {
+    fetched.push(String(input));
+    return new Response("User-agent: *\nAllow: /", { status: 200, headers: { "content-type": "text/plain" } });
+  };
+  const plan = await planScan({ url: "https://example.com/", sitemap: "none", maxPages: 1, delay: 0 }, { fetch });
+  const result = await scan(plan, {
+    fetch,
+    renderer: {
+      id: "fixture-renderer",
+      async render(request) {
+        rendered.push(request.url);
+        return {
+          finalUrl: request.url,
+          status: 200,
+          headers: { "content-type": "text/html", "x-robots-tag": "index" },
+          html: '<html lang="uk"><head><title>Rendered title</title><link rel="canonical" href="/"></head><body><main><h1>Rendered H1</h1><a href="/next">Next</a></main></body></html>',
+          responseBytes: 172,
+          redirectChain: [],
+        };
+      },
+    },
+  });
+
+  assert.deepEqual(fetched, ["https://example.com/robots.txt"]);
+  assert.deepEqual(rendered, ["https://example.com/"]);
+  assert.equal(result.pages[0].title, "Rendered title");
+  assert.equal(result.pages[0].h1Count, 1);
+  assert.deepEqual(result.pages[0].internalLinks, ["https://example.com/next"]);
+});

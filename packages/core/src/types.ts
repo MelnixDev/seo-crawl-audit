@@ -270,6 +270,30 @@ export interface CheckpointIdentity {
   maxRedirects: number;
   maxResponseBytes: number;
   userAgent: string;
+  rendererId?: string;
+}
+
+export interface PageRenderRequest {
+  url: string;
+  timeout: number;
+  maxResponseBytes: number;
+  userAgent: string;
+  signal?: AbortSignal;
+}
+
+export interface PageRenderResult {
+  finalUrl: string;
+  status: number;
+  headers: Record<string, string>;
+  html: string;
+  responseBytes: number;
+  redirectChain: Array<{ url: string; status: number; location: string | null }>;
+}
+
+export interface PageRenderer {
+  readonly id: string;
+  render(request: PageRenderRequest): Promise<PageRenderResult>;
+  close?(): Promise<void>;
 }
 
 export interface CheckpointState {
@@ -324,6 +348,7 @@ export interface ScanPlan {
 }
 
 export interface ScanOptions extends PlanScanOptions {
+  renderer?: PageRenderer | undefined;
   storage?: StorageAdapter | undefined;
   checkpointStore?: CheckpointStore | undefined;
   resume?: boolean | undefined;

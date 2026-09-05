@@ -20,7 +20,7 @@ function isPlan(input: ScanConfigInput | ScanPlan): input is ScanPlan {
   return "planVersion" in input;
 }
 
-function checkpointIdentity(plan: ScanPlan): CheckpointIdentity {
+function checkpointIdentity(plan: ScanPlan, rendererId?: string): CheckpointIdentity {
   return {
     schemaVersion: 2,
     pageSchemaVersion: 1,
@@ -32,6 +32,7 @@ function checkpointIdentity(plan: ScanPlan): CheckpointIdentity {
     maxRedirects: plan.config.maxRedirects,
     maxResponseBytes: plan.config.maxResponseBytes,
     userAgent: plan.userAgent,
+    ...(rendererId ? { rendererId } : {}),
   };
 }
 
@@ -42,8 +43,9 @@ function reusableCheckpointPage(page: PageSnapshot): boolean {
 /**
  * Run a local crawl through the stable engine API.
  *
- * Network access is performed exclusively through the injected fetch function
- * (or the current Node.js global fetch). No crawl data is uploaded elsewhere.
+ * Network access is performed through the injected fetch function and, when
+ * explicitly selected, the injected page renderer. No crawl data is uploaded
+ * elsewhere by core.
  */
 export async function scan(
   input: ScanConfigInput | ScanPlan,
@@ -101,7 +103,7 @@ export async function scan(
   if (!Number.isInteger(limit) || limit <= 0) throw new Error("scan limit must be a positive integer");
   const config = { ...plan.config, maxPages: limit };
   const requestGate = createPerOriginRequestGate(config.delay);
-  const identity = checkpointIdentity(plan);
+  const identity = checkpointIdentity(plan, options.renderer?.id);
   const checkpoint = options.checkpointStore && options.resume !== false
     ? await options.checkpointStore.load(identity)
     : null;
