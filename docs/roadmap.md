@@ -4,6 +4,19 @@ SEO Crawl Audit remains a free, open-source, local-first crawler. Existing CLI,
 JSON, SnapshotV2, issue fingerprints, MCP, and GitHub Action contracts remain
 backward compatible while the following phases are delivered.
 
+## Delivery status (September 2026)
+
+The core work for 0.10.x–0.12.0 is implemented on the current development
+branch: CLI preflight/progress and resume diagnostics, Site Metrics with
+public-first provider states, the localhost `serve` interface, and the
+opt-in Playwright renderer are available and covered by the automated suite.
+
+Still pending before calling these phases released: final release/tag and
+registry verification, real-browser Playwright QA on a permitted site,
+refreshing the README/GitHub Pages screenshots and GIF demos, and optional
+authenticated Search Console/Bing adapters. These are release and integration
+tasks, not prerequisites for using the local HTTP crawler.
+
 ## 0.10.x — clearer local workflows
 
 - Add a scan preflight summary and actionable large-scan warning.
