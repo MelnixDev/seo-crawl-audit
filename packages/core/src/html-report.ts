@@ -3,6 +3,8 @@ import { groupIssuesByTemplate } from "./issue-groups.js";
 import { localizeIssue, REPORT_COPY } from "./report-i18n.js";
 import { ENGINE_VERSION, RULE_SET_VERSION } from "./version.js";
 
+const PRODUCT_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%233157d5'/%3E%3Ccircle cx='27' cy='27' r='13' fill='none' stroke='white' stroke-width='6'/%3E%3Cpath d='m37 37 12 12' fill='none' stroke='white' stroke-linecap='round' stroke-width='6'/%3E%3Cpath d='m21 27 5 5 9-11' fill='none' stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E";
+
 function escapeHtml(value: unknown): string {
   return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
@@ -109,6 +111,7 @@ export function renderHtmlReport(input: ReportData, options: ReportOptions = {})
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="${PRODUCT_FAVICON}" type="image/svg+xml">
   <title>${escapeHtml(reportTitle)} · SEO Crawl Audit</title>
   <style>
     :root { color-scheme: light; --bg:#f5f7fb; --surface:#fff; --muted:#64748b; --text:#172033; --line:#dbe2ea; --accent:${primaryColor}; --error:#b42318; --warning:#9a6700; --info:#175cd3; --chart-error:#d92d20; --chart-warning:#f79009; --chart-info:#2e90fa; --chart-resolved:#12b76a; }

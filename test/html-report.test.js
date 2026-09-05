@@ -35,6 +35,7 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /id="analytics"/);
   assert.match(html, /data-view="metrics"/);
   assert.match(html, /id="metrics-view"/);
+  assert.match(html, /rel="icon" href="data:image\/svg\+xml/);
   assert.match(html, /function renderMetrics/);
   assert.match(html, /id="metrics-hero"/);
   assert.match(html, /id="metrics-insights"/);
