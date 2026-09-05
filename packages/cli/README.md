@@ -53,6 +53,9 @@ attention, with evidence and remediation kept alongside each issue.
   and local report branding;
 - interactive issue statistics for severity, frequent checks, ownership, and
   regression lifecycle, with chart-to-table filtering;
+- a dedicated Site Metrics view with crawl-derived measurements and optional,
+  clearly sourced public RDAP domain data;
+- a loopback-only browser interface for starting and stopping local scans;
 - safe environment-based authentication for private `doctor`, `scan`,
   `check`, Action, and production-versus-preview workflows;
 - configuration, suppressions with expiry, severity overrides, and budgets;
@@ -126,6 +129,17 @@ seo-audit doctor --offline
 ```
 
 [Read the project diagnostics guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/doctor.md).
+
+Start the local browser interface:
+
+```bash
+seo-audit serve
+seo-audit serve --port 4180
+```
+
+It binds only to `127.0.0.1`, runs the same core crawler, and keeps snapshots,
+checkpoints, and reports in the current directory. Public RDAP domain data is an
+explicit checkbox in the interface. [Read the Site Metrics guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/site-metrics.md).
 
 For project-scoped Codex, Claude Code, or OpenCode integration, run:
 

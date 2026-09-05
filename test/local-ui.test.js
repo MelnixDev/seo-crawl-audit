@@ -47,7 +47,7 @@ test("local UI runs a scan and exposes the generated report", async (context) =>
   const started = await fetch(new URL("/api/scan", server.url), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url: "https://example.com/", maxPages: 1, concurrency: 1, delay: 0 }),
+    body: JSON.stringify({ url: "https://example.com/", maxPages: 1, concurrency: 1, delay: 0, publicMetrics: false }),
   });
   assert.equal(started.status, 202);
   const state = await waitForCompletion(server.url);

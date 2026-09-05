@@ -38,6 +38,8 @@ test("locks the documented core function surface", () => {
     "audit",
     "buildHistorySeries",
     "buildSiteMetrics",
+    "collectSiteMetrics",
+    "createRdapDomainProvider",
     "diff",
     "getRuleDefinitions",
     "groupIssuesByTemplate",

@@ -81,6 +81,23 @@ export interface SiteMetrics {
   metrics: SiteMetric[];
 }
 
+export interface SiteMetricProviderContext {
+  snapshot: SnapshotV2;
+  fetch: typeof globalThis.fetch;
+  signal?: AbortSignal;
+}
+
+export interface SiteMetricProvider {
+  readonly id: string;
+  collect(context: SiteMetricProviderContext): Promise<SiteMetric[]>;
+}
+
+export interface CollectSiteMetricsOptions {
+  providers?: readonly SiteMetricProvider[];
+  fetch?: typeof globalThis.fetch;
+  signal?: AbortSignal;
+}
+
 export interface ReportOptions {
   branding?: ReportBranding;
 }
