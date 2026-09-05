@@ -26,7 +26,7 @@ import {
 import { scanConfig, type CliValues } from "./args.js";
 import { printIssues, summarizeIssues } from "./report.js";
 import { checkpointPathForRequestHeaders, requestFetch } from "./request-headers.js";
-import { ask, chooseScanPlan, health, printHealth, printProgress, printStatus, type ScanSelection } from "./ui.js";
+import { ask, chooseScanPlan, createProgressReporter, health, printHealth, printPreflight, printProgress, printStatus, type ScanSelection } from "./ui.js";
 
 export { headersFromEnvironment } from "./request-headers.js";
 
@@ -171,6 +171,8 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
     values["headers-env"],
   );
   const store = values["no-cache"] ? undefined : createFileCheckpointStore(checkpointPath);
+  const progressOutput = values.json ? process.stderr : process.stdout;
+  printPreflight(plan, selection, Boolean(store), progressOutput);
   const collected = new Map<string, PageSnapshot>();
   const partialReportPath = reportEnabled(values) ? resolve(values.report ?? DEFAULT_REPORT) : null;
   let lastReportAt = 0;
@@ -199,6 +201,7 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
   let result: ScanResult | null = null;
   let stoppedEarly = false;
   while (requested > 0) {
+    const progress = createProgressReporter(requested, selection.mode === "step", progressOutput);
     result = await scan(plan, {
       signal,
       fetch,
@@ -212,8 +215,11 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
       onEvent(event) {
         if (event.type === "scan-start") printStatus(`Starting crawl: up to ${event.total.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
         if (event.type === "resume") printStatus(`Resuming from checkpoint: ${event.completed.toLocaleString("en-US")} page(s) already available`, values.json ? process.stderr : process.stdout);
-        if (event.type === "retry") printStatus(`Retrying request (attempt ${event.attempt}) after ${event.delayMs} ms`, values.json ? process.stderr : process.stdout);
-        if (event.type === "progress") printProgress(event.completed, requested, selection.mode === "step", values.json ? process.stderr : process.stdout);
+        if (event.type === "retry") {
+          progress.retry();
+          printStatus(`Retrying request (attempt ${event.attempt}) after ${event.delayMs} ms`, progressOutput);
+        }
+        if (event.type === "progress") progress.progress(event.page, event.completed);
         if (event.type === "cancelled") printStatus(`Scan interrupted after ${event.completed.toLocaleString("en-US")} page(s)`, values.json ? process.stderr : process.stdout);
       },
     });

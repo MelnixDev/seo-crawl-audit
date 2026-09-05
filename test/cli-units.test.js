@@ -8,7 +8,7 @@ import { main } from "../packages/cli/dist/cli.js";
 import { headersFromEnvironment } from "../packages/cli/dist/commands.js";
 import { checkpointPathForRequestHeaders, fetchWithHeaders } from "../packages/cli/dist/request-headers.js";
 import { printIssues, summarizeIssues } from "../packages/cli/dist/report.js";
-import { formatProgress, health, printHealth, printProgress, printStatus } from "../packages/cli/dist/ui.js";
+import { createProgressReporter, formatProgress, health, printHealth, printPreflight, printProgress, printStatus } from "../packages/cli/dist/ui.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
 import { writeHistorySnapshot } from "../packages/core/dist/node.js";
 
@@ -169,8 +169,23 @@ test("CLI presentation summarizes all severities and health evidence", (context)
   printProgress(0, 0);
   printProgress(100, 100, true);
   assert.match(formatProgress(25, 100), /25%/);
+  assert.match(formatProgress(25, 100, { elapsedMs: 30_000, retries: 1, errors: 2, currentUrl: "/products/example" }), /50 pages\/min · ETA 1m 30s · retries 1 · errors 2 · \/products\/example/);
+  printPreflight({
+    startUrl: "https://example.com/",
+    config: { concurrency: 5, delay: 100, respectRobots: true },
+    sitemap: { urls: Array.from({ length: 1_001 }, (_, index) => `https://example.com/${index}`) },
+    candidateCount: 1_001,
+  }, { mode: "all", target: 1_001 }, true);
+  const progress = createProgressReporter(2, false, process.stdout, (() => {
+    let time = 0;
+    return () => { time += 30_000; return time; };
+  })());
+  progress.retry();
+  progress.progress({ url: "https://example.com/failed", status: 500, error: null }, 2);
   printStatus("Scan is running");
   assert.match(messages.join("\n"), /No SEO regressions/);
   assert.match(messages.join("\n"), /before:/);
   assert.match(messages.join("\n"), /Current health/);
+  assert.match(messages.join("\n"), /large scan/);
+  assert.match(messages.join("\n"), /retries 1 · errors 1/);
 });
