@@ -24,7 +24,7 @@ Usage:
   seo-audit doctor [url] [options]
   seo-audit agent-init [options]
   seo-audit mcp
-  seo-audit serve [--port 4179] [--no-open]
+  seo-audit serve [url] [--port 4179] [--no-open]
 
 Commands:
   <url>   Shortcut for scan.
@@ -168,13 +168,26 @@ export async function main(
     catch (error) { console.error(`seo-audit: ${error instanceof Error ? error.message : String(error)}`); return 2; }
   }
   if (positionals[0] === "serve") {
-    if (positionals.length > 1) { console.error(`Unexpected argument: ${positionals[1]}`); return 2; }
+    if (positionals.length > 2) { console.error(`Unexpected argument: ${positionals[2]}`); return 2; }
     if (values.help) { console.log(HELP); return 0; }
     const port = values.port === undefined ? 4179 : Number.parseInt(values.port, 10);
     if (!Number.isInteger(port) || port < 0 || port > 65_535) { console.error("seo-audit: --port must be an integer between 0 and 65535"); return 2; }
+    const initialUrl = positionals[1];
+    if (initialUrl) {
+      try {
+        const parsedUrl = new URL(initialUrl);
+        if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") throw new Error("unsupported protocol");
+      } catch {
+        console.error("seo-audit: serve URL must be a complete http:// or https:// URL");
+        return 2;
+      }
+    }
     try {
       const { serveCommand } = await import("./server.js");
-      return await serveCommand(port, options.signal, { openBrowser: !values["no-open"] });
+      return await serveCommand(port, options.signal, {
+        openBrowser: !values["no-open"],
+        ...(initialUrl ? { initialUrl } : {}),
+      });
     }
     catch (error) { console.error(`seo-audit: ${error instanceof Error ? error.message : String(error)}`); return 2; }
   }

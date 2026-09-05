@@ -30,7 +30,7 @@ async function waitForCompletion(url) {
 
 test("local UI binds only to loopback and serves its application shell", async (context) => {
   await assert.rejects(createLocalUiServer({ host: "0.0.0.0", port: 0 }), /loopback/);
-  const server = await createLocalUiServer({ port: 0 });
+  const server = await createLocalUiServer({ port: 0, initialUrl: "https://example.com/" });
   context.after(() => server.close());
 
   const response = await fetch(server.url);
@@ -39,6 +39,8 @@ test("local UI binds only to loopback and serves its application shell", async (
   assert.match(page, /Free, local-first site crawler/);
   assert.match(page, /new EventSource\("\/api\/events"\)/);
   assert.match(response.headers.get("content-security-policy"), /default-src 'self'/);
+  const state = await fetch(new URL("/api/state", server.url)).then((result) => result.json());
+  assert.equal(state.url, "https://example.com/");
 
   const events = await fetch(new URL("/api/events", server.url));
   assert.equal(events.headers.get("content-type"), "text/event-stream; charset=utf-8");

@@ -38,8 +38,8 @@ test("CLI dispatcher covers help and invalid input paths", async (context) => {
 });
 
 test("serve accepts the no-open switch", () => {
-  const parsed = parseCliArgs(["serve", "--port", "4180", "--no-open"]);
-  assert.deepEqual(parsed.positionals, ["serve"]);
+  const parsed = parseCliArgs(["serve", "https://example.com/", "--port", "4180", "--no-open"]);
+  assert.deepEqual(parsed.positionals, ["serve", "https://example.com/"]);
   assert.equal(parsed.values.port, "4180");
   assert.equal(parsed.values["no-open"], true);
 });

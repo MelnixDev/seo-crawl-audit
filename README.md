@@ -134,11 +134,13 @@ Start the local browser interface:
 
 ```bash
 seo-audit serve
+seo-audit serve https://example.com/
 seo-audit serve --port 4180
 seo-audit serve --no-open
 ```
 
-The command opens the interface in the default browser. Use `--no-open` in CI,
+Pass a URL to prefill the scan target and avoid accidentally reusing a value
+restored by the browser. The command opens the interface in the default browser. Use `--no-open` in CI,
 remote shells, or when you prefer to open the printed URL manually. It binds
 only to `127.0.0.1`, runs the same core crawler, and keeps snapshots,
 checkpoints, and reports in the current directory. Public RDAP domain data is an
