@@ -35,9 +35,11 @@ try {
   assert.equal(corePaths.includes("dist/index.d.ts"), true);
   assert.equal(corePaths.includes("dist/node.d.ts"), true);
   const cliBundle = cli.metadata.files.find((file) => file.path === "bundle/cli.js");
+  const serverBundle = cli.metadata.files.find((file) => file.path === "bundle/server.js");
   const mcpBundle = cli.metadata.files.find((file) => file.path === "bundle/mcp.js");
   const cliPaths = cli.metadata.files.map((file) => file.path);
   assert.ok(cliBundle && cliBundle.size <= 500 * 1024, `CLI bundle is ${cliBundle?.size ?? 0} bytes`);
+  assert.ok(serverBundle, "Local UI server bundle is missing");
   assert.ok(mcpBundle && mcpBundle.size <= 1.5 * 1024 * 1024, `MCP bundle is ${mcpBundle?.size ?? 0} bytes`);
   assert.equal(cliPaths.includes("bin/seo-audit-mcp.js"), true);
   assert.equal(cliPaths.includes("agent-skill/seo-crawl-audit/SKILL.md"), true);

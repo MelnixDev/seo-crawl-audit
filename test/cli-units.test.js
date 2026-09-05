@@ -28,6 +28,8 @@ test("CLI dispatcher covers help and invalid input paths", async (context) => {
   assert.equal(await main(["--unknown"]), 2);
   assert.equal(await main(["unknown-command"]), 2);
   assert.equal(await main(["scan", "https://example.com/", "extra"]), 2);
+  assert.equal(await main(["serve", "--port", "invalid"]), 2);
+  assert.equal(await main(["serve", "unexpected"]), 2);
   assert.equal(await main(["--config", "/definitely/missing/config.json", "--version"]), 2);
   assert.match(messages.join("\n"), /Local-first SEO crawler/);
   assert.match(messages.join("\n"), /Unknown command/);

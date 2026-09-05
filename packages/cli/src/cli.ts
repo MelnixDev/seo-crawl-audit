@@ -24,6 +24,7 @@ Usage:
   seo-audit doctor [url] [options]
   seo-audit agent-init [options]
   seo-audit mcp
+  seo-audit serve [--port 4179]
 
 Commands:
   <url>   Shortcut for scan.
@@ -37,6 +38,7 @@ Commands:
   doctor  Diagnose runtime, config, storage, and site connectivity.
   agent-init  Install project-scoped MCP configuration and agent skill files.
   mcp     Start the local STDIO MCP server for coding agents.
+  serve   Start the local browser interface on 127.0.0.1.
 
 Options:
   --baseline <file>       Baseline file for check (default: .seo-audit.json)
@@ -73,6 +75,7 @@ Options:
   --force                  Allow init to replace existing generated files
   --offline                Skip doctor network checks
   --platform <name>        Agent integration: codex, claude, opencode, or all
+  --port <number>          Local UI port (default: 4179)
   --json                  Print machine-readable command output
   --help                  Show this help
   --version               Show the version
@@ -160,6 +163,17 @@ export async function main(
     if (values.help) { console.log(HELP); return 0; }
     if (values.version) { console.log(ENGINE_VERSION); return 0; }
     try { return await statusCommand(positionals[1], values); }
+    catch (error) { console.error(`seo-audit: ${error instanceof Error ? error.message : String(error)}`); return 2; }
+  }
+  if (positionals[0] === "serve") {
+    if (positionals.length > 1) { console.error(`Unexpected argument: ${positionals[1]}`); return 2; }
+    if (values.help) { console.log(HELP); return 0; }
+    const port = values.port === undefined ? 4179 : Number.parseInt(values.port, 10);
+    if (!Number.isInteger(port) || port < 0 || port > 65_535) { console.error("seo-audit: --port must be an integer between 0 and 65535"); return 2; }
+    try {
+      const { serveCommand } = await import("./server.js");
+      return await serveCommand(port, options.signal);
+    }
     catch (error) { console.error(`seo-audit: ${error instanceof Error ? error.message : String(error)}`); return 2; }
   }
   try {
