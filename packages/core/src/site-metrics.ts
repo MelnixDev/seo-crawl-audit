@@ -4,6 +4,10 @@ function metric(id: string, label: { en: string; uk: string }, value: number, ob
   return { id, label, value, unit, source: { id: "crawl", label: "SEO Crawl Audit" }, observedAt, confidence: "high", status: "available" };
 }
 
+function notConnected(id: string, label: SiteMetric["label"], source: SiteMetric["source"], observedAt: string, detail: SiteMetric["detail"]): SiteMetric {
+  return { id, label, value: null, unit: "count", source, observedAt, confidence: "high", status: "not-connected", ...(detail ? { detail } : {}) };
+}
+
 function hasNoindex(page: PageSnapshot): boolean {
   return [page.robots, page.xRobotsTag].some((value) => /(^|[\s,])noindex($|[\s,])/i.test(value ?? ""));
 }
@@ -41,6 +45,8 @@ export function buildSiteMetrics(snapshot: SnapshotV2): SiteMetrics {
       metric("pages.checked", { en: "Pages checked", uk: "Перевірено сторінок" }, pages.length, observedAt),
       metric("pages.html", { en: "HTML pages", uk: "HTML-сторінки" }, htmlPages.length, observedAt),
       metric("pages.indexable", { en: "Potentially indexable", uk: "Потенційно індексовані" }, indexablePages.length, observedAt),
+      notConnected("search.google-indexed", { en: "Indexed by Google", uk: "Проіндексовано Google" }, { id: "google-search-console", label: "Google Search Console" }, observedAt, { en: "Connect an authoritative provider to confirm this value; crawlability is not proof of indexing.", uk: "Підключіть авторитетне джерело для підтвердження; доступність для crawl не доводить індексацію." }),
+      notConnected("search.bing-indexed", { en: "Indexed by Bing", uk: "Проіндексовано Bing" }, { id: "bing-webmaster", label: "Bing Webmaster Tools" }, observedAt, { en: "Connect an authoritative provider to confirm this value.", uk: "Підключіть авторитетне джерело для підтвердження значення." }),
       metric("pages.noindex", { en: "Noindex pages", uk: "Сторінки noindex" }, noindexPages.length, observedAt),
       metric("pages.robots-blocked", { en: "Blocked by robots.txt", uk: "Заблоковано robots.txt" }, pages.filter((page) => page.blockedByRobots).length, observedAt),
       metric("assets.images", { en: "Unique images", uk: "Унікальні зображення" }, images.size, observedAt),

@@ -25,6 +25,8 @@ test("builds deterministic local site metrics from a snapshot", () => {
   assert.equal(metrics.schemaVersion, 1);
   assert.equal(values["pages.sitemap"], 2);
   assert.equal(values["pages.indexable"], 1);
+  assert.equal(values["search.google-indexed"], null);
+  assert.equal(metrics.metrics.find((metric) => metric.id === "search.google-indexed").status, "not-connected");
   assert.equal(values["pages.noindex"], 1);
   assert.equal(values["assets.images"], 1);
   assert.equal(values["commerce.products"], 1);
@@ -74,4 +76,23 @@ test("an optional metric provider failure does not discard local metrics", async
   const failed = metrics.metrics.find((metric) => metric.id === "provider.example");
   assert.equal(failed.status, "error");
   assert.equal(failed.detail.en, "temporarily unavailable");
+});
+
+test("an authoritative provider replaces a matching not-connected metric", async () => {
+  const snapshot = migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [] });
+  const authoritative = {
+    id: "search.google-indexed",
+    label: { en: "Indexed by Google", uk: "Проіндексовано Google" },
+    value: 42,
+    unit: "count",
+    source: { id: "gsc", label: "Google Search Console" },
+    observedAt: "2026-09-05T00:00:00.000Z",
+    confidence: "high",
+    status: "available",
+  };
+  const metrics = await collectSiteMetrics(snapshot, { providers: [{ id: "gsc", collect: async () => [authoritative] }] });
+  const matches = metrics.metrics.filter((metric) => metric.id === "search.google-indexed");
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].value, 42);
+  assert.equal(matches[0].source.id, "gsc");
 });

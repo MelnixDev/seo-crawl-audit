@@ -117,5 +117,14 @@ export async function collectSiteMetrics(snapshot: SnapshotV2, options: CollectS
       }];
     }
   }));
-  return { ...local, metrics: [...local.metrics, ...external.flat()] };
+  const externalMetrics = external.flat();
+  const replacements = new Map(externalMetrics.map((metric) => [metric.id, metric]));
+  const localIds = new Set(local.metrics.map((metric) => metric.id));
+  return {
+    ...local,
+    metrics: [
+      ...local.metrics.map((metric) => replacements.get(metric.id) ?? metric),
+      ...externalMetrics.filter((metric) => !localIds.has(metric.id)),
+    ],
+  };
 }
