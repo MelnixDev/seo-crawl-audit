@@ -35,8 +35,17 @@ test("local UI binds only to loopback and serves its application shell", async (
 
   const response = await fetch(server.url);
   assert.equal(response.status, 200);
-  assert.match(await response.text(), /Free, local-first site crawler/);
+  const page = await response.text();
+  assert.match(page, /Free, local-first site crawler/);
+  assert.match(page, /new EventSource\("\/api\/events"\)/);
   assert.match(response.headers.get("content-security-policy"), /default-src 'self'/);
+
+  const events = await fetch(new URL("/api/events", server.url));
+  assert.equal(events.headers.get("content-type"), "text/event-stream; charset=utf-8");
+  const reader = events.body.getReader();
+  const first = await reader.read();
+  assert.match(new TextDecoder().decode(first.value), /"status":"idle"/);
+  await reader.cancel();
 });
 
 test("local UI runs a scan and exposes the generated report", async (context) => {
