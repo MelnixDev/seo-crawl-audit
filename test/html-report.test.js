@@ -30,6 +30,8 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /Intl\.DateTimeFormat/);
   assert.match(html, /id="clear-filters"/);
   assert.match(html, /id="language"/);
+  assert.match(html, /class="logo product-mark"/);
+  assert.match(html, /aria-label="SEO Crawl Audit logo"/);
   assert.match(html, /id="analytics"/);
   assert.match(html, /data-view="metrics"/);
   assert.match(html, /id="metrics-view"/);
