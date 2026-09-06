@@ -42,6 +42,10 @@ test("local UI binds only to loopback and serves its application shell", async (
   assert.match(page, /rel="icon" href="data:image\/svg\+xml/);
   assert.match(page, /new EventSource\("\/api\/events"\)/);
   assert.match(page, /id="reportFrame"/);
+  assert.match(page, /Compact overview preview/);
+  assert.match(page, /Open full report/);
+  assert.match(page, /\/report\?embed=1&v=/);
+  assert.doesNotMatch(page, /Overview, Site Metrics, Issues, and local scan history/);
   assert.match(response.headers.get("content-security-policy"), /default-src 'self'/);
   const state = await fetch(new URL("/api/state", server.url)).then((result) => result.json());
   assert.equal(state.url, "https://example.com/");
@@ -75,6 +79,10 @@ test("local UI runs a scan and exposes the generated report", async (context) =>
   const reportHtml = await report.text();
   assert.match(reportHtml, /Site Metrics/);
   assert.match(reportHtml, /id="history-chart"/);
+  assert.doesNotMatch(reportHtml, /seo-audit-embed-style/);
+  const embeddedReport = await (await fetch(new URL("/report?embed=1", server.url))).text();
+  assert.match(embeddedReport, /seo-audit-embed-style/);
+  assert.match(embeddedReport, /\.report-nav\{display:none/);
   await access(join(directory, ".seo-audit.json"));
   await access(join(directory, "seo-audit-report.html"));
 });
