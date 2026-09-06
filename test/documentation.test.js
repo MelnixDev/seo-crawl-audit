@@ -24,9 +24,10 @@ test("English and Ukrainian rule references cover the same built-in rules", asyn
 
 test("README report screenshots are present and linked from the npm README", async () => {
   const screenshots = new Map([
-    ["report-overview.png", [2598, 1380]],
-    ["report-analytics.png", [2580, 1128]],
-    ["report-issues.png", [2904, 1306]],
+    ["report-overview.png", [1368, 890]],
+    ["report-metrics.png", [1360, 805]],
+    ["report-analytics.png", [1362, 484]],
+    ["report-issues.png", [3212, 1358]],
   ]);
   const [rootReadme, packageReadme] = await Promise.all([
     readFile(new URL("../README.md", import.meta.url), "utf8"),
@@ -49,8 +50,8 @@ test("README report screenshots are present and linked from the npm README", asy
     );
   }
 
-  assert.doesNotMatch(rootReadme, /docs\/images\/report-(?:overview|analytics|issues)\.jpg/);
-  assert.doesNotMatch(packageReadme, /docs\/images\/report-(?:overview|analytics|issues)\.jpg/);
+  assert.doesNotMatch(rootReadme, /docs\/images\/report-(?:overview|metrics|analytics|issues)\.jpg/);
+  assert.doesNotMatch(packageReadme, /docs\/images\/report-(?:overview|metrics|analytics|issues)\.jpg/);
 });
 
 test("release documentation matches the current distribution boundary", async () => {
