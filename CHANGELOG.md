@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.10.0 — 2026-09-06
+
+- added a loopback-only browser interface for starting scans, following live
+  progress, reviewing generated reports, and reopening local history;
+- added local site metrics, grouped priority indicators, crawl and sitemap
+  coverage, HTTP status distribution, and optional public RDAP domain data;
+- added an opt-in Playwright rendering mode for JavaScript-dependent pages
+  while keeping the fast HTTP crawler as the default;
+- added resumable scan inspection and clearer crawl planning, progress, and
+  completion summaries;
+- improved report navigation, bilingual labels, local history charts,
+  self-contained product branding, and favicon support;
+- improved MCP startup visibility and kept compatibility with clients that
+  consume tool results from standard text content;
+- preserved SnapshotV2, rule IDs, fingerprints, rule-set version `1.1.0`, and
+  the local-first, telemetry-free distribution model.
+
 ## 0.9.1 — 2026-09-04
 
 - improved OpenCode compatibility by keeping MCP tool payloads in the standard
