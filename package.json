@@ -18,6 +18,7 @@
     "pack:check": "node scripts/package-contracts.mjs",
     "benchmark:10k": "npm run build && node scripts/benchmark-10k.mjs",
     "demo:generate": "npm run build && node scripts/generate-demo.mjs",
+    "screenshots:prepare": "npm run demo:generate && node scripts/prepare-screenshot-pages.mjs",
     "seo-audit": "node bin/seo-audit.js"
   },
   "engines": {

@@ -23,6 +23,13 @@ without a server.
 The overview keeps scan coverage, issue counts, and locally stored trends in
 one place.
 
+### Site metrics
+
+![SEO Crawl Audit site metrics and crawl coverage](docs/images/report-metrics.png)
+
+Site metrics separate measured crawl data from external provider values, with
+the source and connection state shown for every indicator.
+
 ### Interactive issue analytics
 
 ![SEO Crawl Audit interactive issue statistics](docs/images/report-analytics.png)
