@@ -185,7 +185,7 @@ seo-audit check https://quotes.toscrape.com/ \
 For a JavaScript-rendered site, install the optional adapter and Chromium:
 
 ```bash
-npm install --save-dev @seo-crawl-audit/renderer-playwright playwright
+npm install --save-dev playwright
 npx playwright install chromium
 seo-audit scan https://example.com/ --render playwright
 ```

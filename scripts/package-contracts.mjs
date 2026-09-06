@@ -39,11 +39,17 @@ try {
   const serverBundle = cli.metadata.files.find((file) => file.path === "bundle/server.js");
   const mcpBundle = cli.metadata.files.find((file) => file.path === "bundle/mcp.js");
   const cliPaths = cli.metadata.files.map((file) => file.path);
+  const builtCli = await readFile(resolve(projectRoot, "packages/cli/bundle/cli.js"), "utf8");
+  const builtServer = await readFile(resolve(projectRoot, "packages/cli/bundle/server.js"), "utf8");
   assert.ok(cliBundle && cliBundle.size <= 500 * 1024, `CLI bundle is ${cliBundle?.size ?? 0} bytes`);
   assert.ok(serverBundle, "Local UI server bundle is missing");
   assert.ok(mcpBundle && mcpBundle.size <= 1.5 * 1024 * 1024, `MCP bundle is ${mcpBundle?.size ?? 0} bytes`);
   assert.equal(cliPaths.includes("bin/seo-audit-mcp.js"), true);
   assert.equal(cliPaths.includes("agent-skill/seo-crawl-audit/SKILL.md"), true);
+  assert.doesNotMatch(builtCli, /@seo-crawl-audit\/renderer-playwright/);
+  assert.doesNotMatch(builtServer, /@seo-crawl-audit\/renderer-playwright/);
+  assert.match(builtCli, /npm install --save-dev playwright/);
+  assert.match(builtServer, /npm install --save-dev playwright/);
   assert.ok((await stat(resolve(projectRoot, "packages/action/action-dist/index.cjs"))).size <= 1.2 * 1024 * 1024);
 
   await writeFile(join(temporaryRoot, "package.json"), `${JSON.stringify({
