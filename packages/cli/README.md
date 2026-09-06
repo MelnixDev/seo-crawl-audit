@@ -16,6 +16,13 @@ The report is a self-contained HTML file: open it locally, share it as an
 artifact, or publish the same file on GitHub Pages. Charts and filters work
 without a server.
 
+### Local web UI
+
+![SEO Crawl Audit local scan interface](https://raw.githubusercontent.com/MelnixDev/seo-crawl-audit/main/docs/images/report-local-ui.png)
+
+Run `seo-audit serve` to start scans from a loopback-only browser interface,
+follow progress, and open the generated local report.
+
 ### Overview and local history
 
 ![SEO Crawl Audit summary cards and local scan history](https://raw.githubusercontent.com/MelnixDev/seo-crawl-audit/main/docs/images/report-overview.png)
