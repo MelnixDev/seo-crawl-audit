@@ -26,6 +26,7 @@ import {
   writeSnapshot,
   writeHistorySnapshot,
 } from "@seo-crawl-audit/core/node";
+import { createPlaywrightRenderer } from "@seo-crawl-audit/renderer-playwright";
 import { scanConfig, type CliValues } from "./args.js";
 import { printIssues, summarizeIssues } from "./report.js";
 import { checkpointPathForRequestHeaders, requestFetch } from "./request-headers.js";
@@ -45,14 +46,7 @@ async function selectedRenderer(values: CliValues): Promise<PageRenderer | undef
   validateRendererMode(values);
   const mode = values.render ?? "http";
   if (mode === "http") return undefined;
-  try {
-    const moduleName = "@seo-crawl-audit/renderer-playwright";
-    const adapter = await import(moduleName) as { createPlaywrightRenderer(): Promise<PageRenderer> };
-    return await adapter.createPlaywrightRenderer();
-  } catch (error) {
-    if (error instanceof Error && /Playwright|Chromium|playwright/.test(error.message)) throw error;
-    throw new Error("Playwright rendering is optional. Install it with: npm install --save-dev @seo-crawl-audit/renderer-playwright playwright && npx playwright install chromium", { cause: error });
-  }
+  return createPlaywrightRenderer();
 }
 
 export async function statusCommand(inputPath: string | undefined, values: CliValues): Promise<number> {

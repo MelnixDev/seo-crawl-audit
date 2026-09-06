@@ -59,7 +59,7 @@ async function loadPlaywright(value?: unknown): Promise<PwModule> {
     const moduleName = "playwright";
     return await import(moduleName) as unknown as PwModule;
   } catch (error) {
-    throw new Error("Playwright is not installed. Run: npm install --save-dev @seo-crawl-audit/renderer-playwright playwright && npx playwright install chromium", { cause: error });
+    throw new Error("Playwright is not installed. Run: npm install --save-dev playwright && npx playwright install chromium", { cause: error });
   }
 }
 

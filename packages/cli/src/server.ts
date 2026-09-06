@@ -22,6 +22,7 @@ import {
   writeReport,
   writeSnapshot,
 } from "@seo-crawl-audit/core/node";
+import { createPlaywrightRenderer } from "@seo-crawl-audit/renderer-playwright";
 
 interface UiState {
   status: "idle" | "planning" | "scanning" | "complete" | "cancelled" | "error";
@@ -84,14 +85,7 @@ export async function launchDefaultBrowser(url: string): Promise<void> {
 async function loadRenderer(mode: unknown): Promise<PageRenderer | undefined> {
   if (mode === undefined || mode === "http") return undefined;
   if (mode !== "playwright") throw new Error("render mode must be http or playwright");
-  try {
-    const moduleName = "@seo-crawl-audit/renderer-playwright";
-    const adapter = await import(moduleName) as { createPlaywrightRenderer(): Promise<PageRenderer> };
-    return await adapter.createPlaywrightRenderer();
-  } catch (error) {
-    if (error instanceof Error && /Playwright|Chromium|playwright/.test(error.message)) throw error;
-    throw new Error("Install Playwright rendering with: npm install --save-dev @seo-crawl-audit/renderer-playwright playwright && npx playwright install chromium", { cause: error });
-  }
+  return createPlaywrightRenderer();
 }
 
 const PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="${PRODUCT_FAVICON}" type="image/svg+xml"><title>SEO Crawl Audit</title><style>

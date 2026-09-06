@@ -1,6 +1,6 @@
 {
   "name": "seo-crawl-audit",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Free, open-source, local-first SEO crawler and regression audit tool.",
   "type": "module",
   "bin": {
@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "build": "tsc -b",
-    "bundle": "esbuild dist/cli.js --bundle --platform=node --target=node20 --format=esm --minify --external:./server.js --outfile=bundle/cli.js && esbuild dist/server.js --bundle --platform=node --target=node20 --format=esm --minify --outfile=bundle/server.js"
+    "bundle": "esbuild dist/cli.js --bundle --platform=node --target=node20 --format=esm --minify --external:./server.js --external:playwright --outfile=bundle/cli.js && esbuild dist/server.js --bundle --platform=node --target=node20 --format=esm --minify --external:playwright --outfile=bundle/server.js"
   },
   "keywords": [
     "seo",
@@ -47,7 +47,16 @@
   "engines": {
     "node": ">=20.19"
   },
+  "peerDependencies": {
+    "playwright": ">=1.50.0 <2"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  },
   "devDependencies": {
-    "@seo-crawl-audit/core": "0.9.1"
+    "@seo-crawl-audit/core": "0.10.0",
+    "@seo-crawl-audit/renderer-playwright": "0.10.0"
   }
 }
