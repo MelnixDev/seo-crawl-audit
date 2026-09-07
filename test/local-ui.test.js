@@ -45,6 +45,8 @@ test("local UI binds only to loopback and serves its application shell", async (
   assert.match(page, /Compact overview preview/);
   assert.match(page, /Open full report/);
   assert.match(page, /\/report\?embed=1&v=/);
+  assert.match(page, /id="googleEstimate"/);
+  assert.match(page, /Check site: query in Google/);
   assert.doesNotMatch(page, /Overview, Site Metrics, Issues, and local scan history/);
   assert.match(response.headers.get("content-security-policy"), /default-src 'self'/);
   const state = await fetch(new URL("/api/state", server.url)).then((result) => result.json());
@@ -66,7 +68,7 @@ test("local UI runs a scan and exposes the generated report", async (context) =>
   const started = await fetch(new URL("/api/scan", server.url), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url: "https://example.com/", maxPages: 1, concurrency: 1, delay: 0, publicMetrics: false }),
+    body: JSON.stringify({ url: "https://example.com/", maxPages: 1, concurrency: 1, delay: 0, publicMetrics: false, googleEstimate: 19_300 }),
   });
   assert.equal(started.status, 202);
   const state = await waitForCompletion(server.url);
@@ -79,6 +81,9 @@ test("local UI runs a scan and exposes the generated report", async (context) =>
   const reportHtml = await report.text();
   assert.match(reportHtml, /Site Metrics/);
   assert.match(reportHtml, /id="history-chart"/);
+  assert.match(reportHtml, /"id":"search.google-site-estimate"/);
+  assert.match(reportHtml, /"value":19300/);
+  assert.match(reportHtml, /google-site-search-manual/);
   assert.doesNotMatch(reportHtml, /seo-audit-embed-style/);
   const embeddedReport = await (await fetch(new URL("/report?embed=1", server.url))).text();
   assert.match(embeddedReport, /seo-audit-embed-style/);

@@ -7,12 +7,15 @@ import {
   buildHistorySeries,
   buildSiteMetrics,
   collectSiteMetrics,
+  createGoogleSiteEstimateProvider,
   createRdapDomainProvider,
   planScan,
   resolveConfig,
   scan,
   type ScanEvent,
   type PageRenderer,
+  type SiteMetric,
+  type SiteMetrics,
 } from "@seo-crawl-audit/core";
 import {
   createFileCheckpointStore,
@@ -43,6 +46,23 @@ const PRODUCT_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000
 function embedReport(html: string): string {
   const style = `<style id="seo-audit-embed-style">header,.report-nav{display:none!important}main{width:min(1600px,calc(100% - 24px));margin:16px auto 32px}.analytics{margin-bottom:12px}</style>`;
   return html.replace("</head>", `${style}</head>`);
+}
+
+function withManualGoogleEstimate(metrics: SiteMetrics, input: unknown): SiteMetrics {
+  const value = typeof input === "number" ? input : Number(input);
+  if (!Number.isSafeInteger(value) || value <= 0) return metrics;
+  const estimate: SiteMetric = {
+    id: "search.google-site-estimate",
+    label: { en: "Google site: estimate", uk: "Приблизно в Google (site:)" },
+    value,
+    unit: "count",
+    source: { id: "google-site-search-manual", label: "Google site:" },
+    observedAt: new Date().toISOString(),
+    confidence: "low",
+    status: "estimate",
+    detail: { en: "Approximate public `site:` count entered locally after checking Google. It is not authoritative Search Console coverage.", uk: "Приблизну публічну кількість `site:` введено локально після перевірки Google. Це не точні дані Search Console." },
+  };
+  return { ...metrics, metrics: [...metrics.metrics.filter((metric) => metric.id !== estimate.id), estimate] };
 }
 
 export interface LocalUiOptions {
@@ -103,7 +123,10 @@ const PAGE = PAGE_TEMPLATE
   .replace("Overview, Site Metrics, Issues, and local scan history", "Compact overview preview")
   .replace('target="_blank">Open full size', 'target="_blank" rel="noopener">Open full report')
   .replace('title="SEO Crawl Audit report"', 'title="Compact SEO Crawl Audit report"')
-  .replace('src="/report?v="', 'src="/report?embed=1&v="');
+  .replace('src="/report?v="', 'src="/report?embed=1&v="')
+  .replace('</select></label></div><label class="check">', '</select></label><label><span>Google site: estimate (optional)</span><input id="googleEstimate" type="number" min="1" step="1" placeholder="e.g. 19300"><a id="googleCheck" href="https://www.google.com/" target="_blank" rel="noopener">Check site: query in Google</a></label></div><label class="check">')
+  .replace('publicMetrics:byId("publicMetrics").checked}', 'publicMetrics:byId("publicMetrics").checked,googleEstimate:Number(byId("googleEstimate").value)||null}')
+  .replace('state();\n</script>', 'const updateGoogleLink=()=>{try{byId("googleCheck").href="https://www.google.com/search?q="+encodeURIComponent("site:"+new URL(byId("url").value).hostname)}catch{byId("googleCheck").href="https://www.google.com/"}};byId("url").addEventListener("input",updateGoogleLink);updateGoogleLink();state();\n</script>');
 
 function json(response: ServerResponse, status: number, value: unknown): void {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
@@ -173,9 +196,10 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
       const result = await scan(plan, { fetch, signal: controller.signal, renderer, checkpointStore: createFileCheckpointStore(checkpointPath), onEvent });
       const issues = audit(result.snapshot);
       const counts = issues.reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
-      const siteMetrics = input.publicMetrics === false
+      const collectedMetrics = input.publicMetrics === false
         ? buildSiteMetrics(result.snapshot)
-        : await collectSiteMetrics(result.snapshot, { providers: [createRdapDomainProvider()], fetch, signal: controller.signal });
+        : await collectSiteMetrics(result.snapshot, { providers: [createGoogleSiteEstimateProvider(), createRdapDomainProvider()], fetch, signal: controller.signal });
+      const siteMetrics = withManualGoogleEstimate(collectedMetrics, input.googleEstimate);
       const reportData = { mode: "scan" as const, startUrl: result.snapshot.siteUrl, generatedAt: result.snapshot.generatedAt, pages: result.snapshot.pages, issues, partial: result.snapshot.partial, targetPages: config.maxPages, engineVersion: result.snapshot.engineVersion, ruleSetVersion: result.snapshot.ruleSetVersion, branding: result.snapshot.config.report, siteMetrics };
       if (!result.snapshot.partial) await writeHistorySnapshot(historyPath, result.snapshot);
       const historyRecords = await readHistorySnapshots(historyPath, result.snapshot.siteUrl);
