@@ -46,6 +46,9 @@ test("local UI binds only to loopback and serves its application shell", async (
   assert.match(page, /Open full report/);
   assert.match(page, /\/report\?embed=1&v=/);
   assert.match(page, /id="googleEstimate"/);
+  assert.match(page, /id="updateMetrics"/);
+  assert.match(page, /does not crawl pages again/);
+  assert.doesNotMatch(page, /id="publicMetrics"/);
   assert.match(page, /Check site: query in Google/);
   assert.doesNotMatch(page, /Overview, Site Metrics, Issues, and local scan history/);
   assert.match(response.headers.get("content-security-policy"), /default-src 'self'/);
@@ -68,13 +71,23 @@ test("local UI runs a scan and exposes the generated report", async (context) =>
   const started = await fetch(new URL("/api/scan", server.url), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url: "https://example.com/", maxPages: 1, concurrency: 1, delay: 0, publicMetrics: false, googleEstimate: 19_300 }),
+    body: JSON.stringify({ url: "https://example.com/", maxPages: 1, concurrency: 1, delay: 0 }),
   });
   assert.equal(started.status, 202);
   const state = await waitForCompletion(server.url);
   assert.equal(state.status, "complete", state.message);
   assert.equal(state.summary.pages, 1);
   assert.equal(state.reportReady, true);
+
+  const localReport = await fetch(new URL("/report", server.url));
+  assert.doesNotMatch(await localReport.text(), /"id":"search.google-site-estimate"/);
+
+  const metrics = await fetch(new URL("/api/metrics", server.url), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ googleEstimate: 19_300 }),
+  });
+  assert.equal(metrics.status, 200);
 
   const report = await fetch(new URL("/report", server.url));
   assert.equal(report.status, 200);
@@ -90,6 +103,19 @@ test("local UI runs a scan and exposes the generated report", async (context) =>
   assert.match(embeddedReport, /\.report-nav\{display:none/);
   await access(join(directory, ".seo-audit.json"));
   await access(join(directory, "seo-audit-report.html"));
+});
+
+test("public metrics require an existing snapshot", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-local-ui-metrics-"));
+  const server = await createLocalUiServer({ port: 0, directory, fetch: siteFetch });
+  context.after(() => server.close());
+  const response = await fetch(new URL("/api/metrics", server.url), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  });
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /run an SEO scan/);
 });
 
 test("local UI requires confirmation before replacing another site's results", async (context) => {

@@ -6,16 +6,16 @@ backward compatible while the following phases are delivered.
 
 ## Delivery status (September 2026)
 
-The core work for 0.10.x–0.12.0 is implemented on the current development
-branch: CLI preflight/progress and resume diagnostics, Site Metrics with
-public-first provider states, the localhost `serve` interface, and the
-opt-in Playwright renderer are available and covered by the automated suite.
+Versions `0.10.0` and `0.10.1` shipped CLI preflight/progress and resume
+diagnostics, Site Metrics, the loopback-only `serve` interface, the opt-in
+Playwright renderer, refreshed screenshots, and bilingual Google `site:` and
+local indexability estimates. Public Google/RDAP metrics are now a separate
+post-scan action and never repeat the page crawl.
 
-Still pending before calling these phases released: final release/tag and
-registry verification, real-browser Playwright QA on a permitted site,
-refreshing the README/GitHub Pages screenshots and GIF demos, and optional
-authenticated Search Console/Bing adapters. These are release and integration
-tasks, not prerequisites for using the local HTTP crawler.
+Authenticated Search Console/Bing adapters and GIF/WebM demonstrations are
+intentionally deferred. They are not prerequisites for the local product.
+Remaining work is real-browser Playwright dogfooding and normal reliability
+maintenance.
 
 The concrete execution brief for the next implementation cycle is in
 [`docs/handoff-next-cycle.md`](handoff-next-cycle.md).
@@ -34,10 +34,8 @@ The concrete execution brief for the next implementation cycle is in
 - Collect public-first metrics without credentials. Every external value must
   expose its source, observation time, confidence, and availability; estimates
   must never be presented as exact values.
-- Offer optional local Google Search Console and Bing Webmaster connections
-  only when public data is unavailable or the user asks for authoritative data.
-  Credentials must never enter snapshots, reports, history, checkpoints, logs,
-  or telemetry.
+- Keep authoritative Google Search Console and Bing Webmaster connections
+  deferred until users explicitly need exact provider data.
 
 ## 0.11.0 — local web interface
 
@@ -62,8 +60,7 @@ The concrete execution brief for the next implementation cycle is in
 
 - Add a self-contained inline SVG product mark with a text fallback while
   preserving local agency name, custom logo, and primary-colour branding.
-- After the UI is stable, refresh README screenshots, the GitHub Pages demo,
-  and add short GIF/WebM demonstrations of scanning and report filtering.
+- README screenshots are refreshed. GIF/WebM demonstrations are deferred.
 - Public examples must not contain private or customer data.
 
 ## Quality gates

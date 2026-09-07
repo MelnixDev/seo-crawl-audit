@@ -158,8 +158,9 @@ restored by the browser. The command opens the interface in the default browser.
 remote shells, or when you prefer to open the printed URL manually. It binds
 only to `127.0.0.1`, runs the same core crawler, and keeps snapshots,
 checkpoints, and reports in the current directory. Best-effort Google `site:`
-and public RDAP data use an explicit checkbox in the interface; every estimate
-is labelled and kept separate from authoritative Search Console data.
+and public RDAP data are updated through a separate Site Metrics action after a
+scan, without crawling the pages again; every estimate is labelled and kept
+separate from authoritative Search Console data.
 [Read the Site Metrics guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/site-metrics.md).
 
 For project-scoped Codex, Claude Code, or OpenCode integration, run:

@@ -1,8 +1,6 @@
 # Handoff: next SEO Crawl Audit cycle
 
-This document is the execution brief for the next implementation model. The
-current branch is `feat/0.10-user-experience`; the worktree is clean and the
-latest commits are already part of the branch.
+This document records the remaining work after the `0.10.1` release.
 
 ## Current baseline
 
@@ -17,13 +15,14 @@ Already implemented:
   distribution, bilingual labels, and explicit Google/Bing `not-connected`
   states;
 - optional RDAP domain metrics;
+- a separate post-scan public metrics action with Google `site:` approximation,
+  manual fallback, and no repeated page crawl;
 - opt-in Playwright renderer package;
 - favicon/product mark in the UI, reports, and demo;
 - MCP, GitHub Action, English/Ukrainian report output, and existing API
   compatibility.
 
-The latest targeted UI/report/history tests pass. A post-change full gate must
-still be run when the execution environment allows localhost integration tests.
+The complete automated quality gate passes.
 
 ## P0 — finish local product reliability
 
@@ -37,42 +36,27 @@ still be run when the execution environment allows localhost integration tests.
 3. Run `npm run check` and `npm audit --omit=dev`. Record versions, runtime,
    test count, coverage, tarball size, and any environment blocker.
 
-## P1 — authoritative search metrics
+## Deferred — authoritative search metrics
 
-Implement local-only, opt-in providers behind the existing
-`SiteMetricProvider` contract:
+Google Search Console and Bing Webmaster integrations are explicitly deferred.
+The current product keeps public estimates visibly separate from authoritative
+provider data and does not request search-account credentials.
 
-- Google Search Console provider using explicit local OAuth/device setup;
-- Bing Webmaster provider using an explicitly supplied local credential;
-- credentials only in process memory or the OS credential mechanism;
-- no credentials in snapshots, reports, history, checkpoints, logs, telemetry,
-  or MCP responses;
-- provider failures remain visible as `unavailable`/`error` while local metrics
-  remain usable;
-- without a provider, keep the value as `null` and explain why.
+## Completed — local UI polish
 
-Add unit tests with mocked provider responses and tests proving secret
-isolation. Do not scrape Google or Bing result pages.
+- The compact preview opens a dedicated full report.
+- History remains local and cross-domain replacement requires confirmation.
+- UI requests remain same-origin and the server remains loopback-only.
+- Public metrics run separately from the crawler against the saved snapshot.
 
-## P1 — local UI polish
+## Deferred demonstration and remaining release maintenance
 
-- Make the report preview resizable or openable in a dedicated full-size view.
-- Show the active domain and snapshot timestamp in the scan panel.
-- Add a read-only history list and links to previous local reports.
-- Keep artifacts namespaced or clearly warn before cross-domain replacement.
-- Keep all UI network requests same-origin and bound to loopback.
-
-## P2 — public demonstration and release
-
-- Regenerate `examples/quotes-toscrape-report.html` after every renderer
-  change and refresh README/GitHub Pages screenshots.
-- Add a short scan/filter GIF or WebM using only public demo data.
+- Keep the existing public screenshots current after material renderer changes.
+- GIF/WebM capture is deferred.
 - Perform browser QA on the Pages demo.
 - Decide whether the Playwright adapter is published as a scoped package or a
   standalone unscoped package; do not publish it accidentally.
-- Update versions/changelog, create the release PR, preserve logical commits,
-  run clean-install smoke tests, publish through trusted npm publishing, move
-  the compatible Action tag, and delete the merged feature branch.
+- Continue using trusted npm publishing and preserve logical commits.
 
 ## Non-goals
 
