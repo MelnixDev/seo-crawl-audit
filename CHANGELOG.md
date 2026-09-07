@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.2 — 2026-09-07
+
+- separated optional Google and RDAP collection from the main page crawl;
+- added a dedicated `Update public metrics` action that reuses the latest
+  local snapshot without requesting site pages again;
+- kept local crawl metrics available immediately after each SEO scan;
+- updated the roadmap to distinguish completed, deferred, and remaining work.
+
 ## 0.10.1 — 2026-09-07
 
 - added a clearly labelled Google `site:` estimate with a manual local fallback;
