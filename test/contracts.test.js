@@ -39,6 +39,7 @@ test("locks the documented core function surface", () => {
     "buildHistorySeries",
     "buildSiteMetrics",
     "collectSiteMetrics",
+    "createGoogleSiteEstimateProvider",
     "createRdapDomainProvider",
     "diff",
     "getRuleDefinitions",

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildSiteMetrics, collectSiteMetrics, createRdapDomainProvider, migrateSnapshot } from "../packages/core/dist/index.js";
+import { buildSiteMetrics, collectSiteMetrics, createGoogleSiteEstimateProvider, createRdapDomainProvider, migrateSnapshot } from "../packages/core/dist/index.js";
 
 test("builds deterministic local site metrics from a snapshot", () => {
   const snapshot = migrateSnapshot({
@@ -28,6 +28,12 @@ test("builds deterministic local site metrics from a snapshot", () => {
   const crawlable = metrics.metrics.find((metric) => metric.id === "pages.indexable");
   assert.equal(crawlable.label.en, "Crawlable HTML pages");
   assert.match(crawlable.detail.en, /not the Google index count/);
+  const estimate = metrics.metrics.find((metric) => metric.id === "search.indexable-estimate");
+  assert.equal(estimate.value, 1);
+  assert.equal(estimate.status, "estimate");
+  assert.equal(estimate.confidence, "low");
+  assert.equal(estimate.label.uk, "Орієнтовна кількість індексованих сторінок");
+  assert.match(estimate.detail.en, /not the number indexed by Google/);
   assert.equal(values["search.google-indexed"], null);
   assert.equal(metrics.metrics.find((metric) => metric.id === "search.google-indexed").status, "not-connected");
   assert.equal(values["pages.noindex"], 1);
@@ -36,6 +42,23 @@ test("builds deterministic local site metrics from a snapshot", () => {
   assert.equal(values["crawl.max-depth"], 1);
   assert.equal(values["crawl.transfer"], 3_072);
   assert.equal(values["crawl.average-time"], 200);
+});
+
+test("estimates indexable pages from a partial sitemap crawl without claiming Google coverage", () => {
+  const sitemapUrls = Array.from({ length: 100 }, (_, index) => `https://example.com/page-${index + 1}`);
+  const snapshot = migrateSnapshot({
+    schemaVersion: 1,
+    startUrl: "https://example.com/",
+    sitemap: { url: "https://example.com/sitemap.xml", urls: sitemapUrls, sitemapCount: 1, truncated: false },
+    pages: [
+      { url: sitemapUrls[0], status: 200, contentType: "text/html" },
+      { url: sitemapUrls[1], status: 200, contentType: "text/html", robots: "noindex" },
+    ],
+  });
+  const estimate = buildSiteMetrics(snapshot).metrics.find((metric) => metric.id === "search.indexable-estimate");
+  assert.equal(estimate.value, 50);
+  assert.equal(estimate.source.id, "crawl-estimate");
+  assert.notEqual(estimate.id, "search.google-indexed");
 });
 
 test("crawlable page count excludes redirects and non-HTML responses", () => {
@@ -71,6 +94,37 @@ test("collects public RDAP domain dates and registrar without credentials", asyn
   assert.equal(values["domain.registration-date"], "1995-08-14T04:00:00Z");
   assert.equal(values["domain.expiration-date"], "2027-08-13T04:00:00Z");
   assert.equal(values["domain.registrar"], "Example Registrar");
+});
+
+test("collects a clearly labelled best-effort Google site estimate", async () => {
+  const snapshot = migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [] });
+  const requests = [];
+  const metrics = await collectSiteMetrics(snapshot, {
+    providers: [createGoogleSiteEstimateProvider({ endpoint: "https://google.test/search" })],
+    fetch: async (input) => {
+      requests.push(String(input));
+      return new Response('<div id="result-stats">About 19,300 results (0.16 seconds)</div>', { status: 200 });
+    },
+  });
+  const estimate = metrics.metrics.find((metric) => metric.id === "search.google-site-estimate");
+  assert.deepEqual(requests, ["https://google.test/search?q=site%3Aexample.com&hl=en&filter=0"]);
+  assert.equal(estimate.value, 19_300);
+  assert.equal(estimate.status, "estimate");
+  assert.equal(estimate.confidence, "low");
+  assert.equal(estimate.label.uk, "Приблизно в Google (site:)");
+  assert.match(estimate.detail.en, /not authoritative/);
+});
+
+test("keeps the Google site estimate unavailable when no public count is exposed", async () => {
+  const snapshot = migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [] });
+  const metrics = await collectSiteMetrics(snapshot, {
+    providers: [createGoogleSiteEstimateProvider()],
+    fetch: async () => new Response("<html><body>Consent required</body></html>", { status: 200 }),
+  });
+  const estimate = metrics.metrics.find((metric) => metric.id === "search.google-site-estimate");
+  assert.equal(estimate.value, null);
+  assert.equal(estimate.status, "unavailable");
+  assert.match(estimate.detail.en, /did not expose/);
 });
 
 test("RDAP metrics remain explicit when public data is unavailable", async () => {

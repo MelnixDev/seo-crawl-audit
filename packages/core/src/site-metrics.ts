@@ -25,6 +25,10 @@ function notConnected(id: string, label: SiteMetric["label"], source: SiteMetric
   return { id, label, value: null, unit: "count", source, observedAt, confidence: "high", status: "not-connected", ...(detail ? { detail } : {}) };
 }
 
+function estimate(id: string, label: SiteMetric["label"], value: number, observedAt: string, detail: SiteMetric["detail"]): SiteMetric {
+  return { id, label, value, unit: "count", source: { id: "crawl-estimate", label: "SEO Crawl Audit" }, observedAt, confidence: "low", status: "estimate", ...(detail ? { detail } : {}) };
+}
+
 function hasNoindex(page: PageSnapshot): boolean {
   return [page.robots, page.xRobotsTag].some((value) => /(^|[\s,])noindex($|[\s,])/i.test(value ?? ""));
 }
@@ -49,6 +53,10 @@ export function buildSiteMetrics(snapshot: SnapshotV2): SiteMetrics {
   const htmlPages = pages.filter((page) => /(?:text\/html|application\/xhtml\+xml)/i.test(page.contentType ?? ""));
   const noindexPages = pages.filter(hasNoindex);
   const indexablePages = htmlPages.filter((page) => !page.error && !page.blockedByRobots && page.status !== null && page.status >= 200 && page.status < 300 && !hasNoindex(page));
+  const sitemapCount = snapshot.sitemap?.urls.length ?? 0;
+  const estimatedIndexablePages = sitemapCount > pages.length && pages.length > 0
+    ? Math.min(sitemapCount, Math.round((indexablePages.length / pages.length) * sitemapCount))
+    : indexablePages.length;
   const images = new Set(pages.flatMap((page) => page.images.map((image) => image.src).filter((src): src is string => Boolean(src))));
   const products = pages.reduce((total, page) => total + page.jsonLd.reduce((sum, item) => sum + (item.valid ? countType(item.value, "Product") : 0), 0), 0);
   const totalBytes = pages.reduce((total, page) => total + page.responseBytes, 0);
@@ -58,7 +66,7 @@ export function buildSiteMetrics(snapshot: SnapshotV2): SiteMetrics {
     siteUrl: snapshot.siteUrl,
     observedAt,
     metrics: [
-      metric("pages.sitemap", { en: "Sitemap URLs", uk: "URL у sitemap" }, snapshot.sitemap?.urls.length ?? 0, observedAt),
+      metric("pages.sitemap", { en: "Sitemap URLs", uk: "URL у sitemap" }, sitemapCount, observedAt),
       metric("pages.checked", { en: "Pages checked", uk: "Перевірено сторінок" }, pages.length, observedAt),
       metric("pages.html", { en: "HTML pages", uk: "HTML-сторінки" }, htmlPages.length, observedAt),
       metric(
@@ -70,6 +78,16 @@ export function buildSiteMetrics(snapshot: SnapshotV2): SiteMetrics {
         {
           en: "Successful HTML pages without a detected noindex directive. This is not the Google index count.",
           uk: "Успішні HTML-сторінки без виявленої директиви noindex. Це не кількість сторінок в індексі Google.",
+        },
+      ),
+      estimate(
+        "search.indexable-estimate",
+        { en: "Estimated indexable pages", uk: "Орієнтовна кількість індексованих сторінок" },
+        estimatedIndexablePages,
+        observedAt,
+        {
+          en: "Estimated from the crawlable-page ratio and sitemap size. This is not the number indexed by Google.",
+          uk: "Оцінка за часткою доступних для індексації сторінок і розміром sitemap. Це не кількість сторінок в індексі Google.",
         },
       ),
       notConnected("search.google-indexed", { en: "Indexed by Google", uk: "Проіндексовано Google" }, { id: "google-search-console", label: "Google Search Console" }, observedAt, { en: "Connect an authoritative provider to confirm this value; crawlability is not proof of indexing.", uk: "Підключіть авторитетне джерело для підтвердження; доступність для crawl не доводить індексацію." }),

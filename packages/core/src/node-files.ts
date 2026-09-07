@@ -1,4 +1,5 @@
 import { access, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { join, resolve } from "node:path";
 import { migrateSnapshot } from "./baseline.js";
 import { DEFAULT_CONFIG_FILE, validateConfig } from "./config.js";
@@ -26,7 +27,7 @@ export async function loadConfig(path?: string | null): Promise<Partial<ScanConf
 }
 
 export async function writeSnapshot(path: string, snapshot: SnapshotV2): Promise<void> {
-  const temporaryPath = `${path}.${process.pid}.tmp`;
+  const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(temporaryPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
   await rename(temporaryPath, path);
 }
@@ -54,7 +55,7 @@ export async function writeReport(
   data: ReportData,
   options: ReportOptions = {},
 ): Promise<void> {
-  const temporaryPath = `${path}.${process.pid}.tmp`;
+  const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(temporaryPath, renderHtmlReport(data, options), "utf8");
   await rename(temporaryPath, path);
 }
