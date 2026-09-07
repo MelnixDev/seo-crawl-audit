@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.1 — 2026-09-07
+
+- added a clearly labelled Google `site:` estimate with a manual local fallback;
+- kept crawl-derived estimates separate from authoritative Search Console data;
+- completed Ukrainian labels for estimates and availability states;
+- prevented concurrent atomic snapshot and report writes from sharing a
+  temporary filename.
+
 ## 0.10.0 — 2026-09-06
 
 - added a loopback-only browser interface for starting scans, following live
