@@ -22,6 +22,73 @@ export interface RdapProviderOptions {
   endpoint?: string;
 }
 
+export interface GoogleSiteEstimateProviderOptions {
+  endpoint?: string;
+}
+
+function googleEstimateUnavailable(sourceUrl: string, observedAt: string, detail: { en: string; uk: string }): SiteMetric[] {
+  return [{
+    id: "search.google-site-estimate",
+    label: { en: "Google site: estimate", uk: "Приблизно в Google (site:)" },
+    value: null,
+    unit: "count",
+    source: { id: "google-site-search", label: "Google site:", url: sourceUrl },
+    observedAt,
+    confidence: "low",
+    status: "unavailable",
+    detail,
+  }];
+}
+
+function googleResultCount(html: string): number | null {
+  const stats = html.match(/id=["']result-stats["'][^>]*>([\s\S]{0,500}?)<\/[^>]+>/i)?.[1];
+  if (!stats) return null;
+  const text = stats.replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;|\u00a0/gi, " ");
+  const number = text.match(/\d[\d.,\s\u00a0]*/)?.[0]?.replace(/\D/g, "");
+  if (!number) return null;
+  const value = Number(number);
+  return Number.isSafeInteger(value) ? value : null;
+}
+
+/** Creates a best-effort public estimate from Google's `site:` result count. */
+export function createGoogleSiteEstimateProvider(options: GoogleSiteEstimateProviderOptions = {}): SiteMetricProvider {
+  const endpoint = options.endpoint ?? "https://www.google.com/search";
+  return {
+    id: "google-site-search",
+    async collect(context: SiteMetricProviderContext): Promise<SiteMetric[]> {
+      const hostname = new URL(context.snapshot.siteUrl).hostname;
+      const sourceUrl = `${endpoint}?q=${encodeURIComponent(`site:${hostname}`)}&hl=en&filter=0`;
+      const observedAt = new Date().toISOString();
+      let response: Response;
+      try {
+        response = await context.fetch(sourceUrl, {
+          headers: { accept: "text/html", "user-agent": "Mozilla/5.0 (compatible; SEO-Crawl-Audit/0.10; +https://github.com/MelnixDev/seo-crawl-audit)" },
+          redirect: "follow",
+          ...(context.signal ? { signal: context.signal } : {}),
+        });
+      } catch {
+        return googleEstimateUnavailable(sourceUrl, observedAt, { en: "Google site search could not be reached.", uk: "Не вдалося виконати Google site-пошук." });
+      }
+      if (!response.ok) return googleEstimateUnavailable(sourceUrl, observedAt, { en: `Google site search returned HTTP ${response.status}.`, uk: `Google site-пошук повернув HTTP ${response.status}.` });
+      const html = await response.text();
+      if (html.length > 2 * 1024 * 1024) return googleEstimateUnavailable(sourceUrl, observedAt, { en: "Google's response exceeded the 2 MiB safety limit.", uk: "Відповідь Google перевищила безпечний ліміт 2 МіБ." });
+      const value = googleResultCount(html);
+      if (value === null) return googleEstimateUnavailable(sourceUrl, observedAt, { en: "Google did not expose a result count, possibly because of consent or automated-request protection.", uk: "Google не показав кількість результатів, можливо через запит згоди або захист від автоматичних запитів." });
+      return [{
+        id: "search.google-site-estimate",
+        label: { en: "Google site: estimate", uk: "Приблизно в Google (site:)" },
+        value,
+        unit: "count",
+        source: { id: "google-site-search", label: "Google site:", url: sourceUrl },
+        observedAt,
+        confidence: "low",
+        status: "estimate",
+        detail: { en: "Approximate public `site:` result count. It is not authoritative Search Console index coverage.", uk: "Приблизна публічна кількість результатів `site:`. Це не точні дані індексації Search Console." },
+      }];
+    },
+  };
+}
+
 function unavailable(id: string, label: SiteMetric["label"], sourceUrl: string, observedAt: string, status: SiteMetric["status"], detail: { en: string; uk: string }): SiteMetric {
   return { id, label, value: null, unit: "date", source: { id: "rdap", label: "RDAP", url: sourceUrl }, observedAt, confidence: "high", status, detail };
 }

@@ -167,6 +167,7 @@ test("embeds Ukrainian text for every built-in rule without changing issue ident
   }
   assert.match(html, /Сторінка не містить заголовка H1/);
   assert.match(html, /Додайте один зрозумілий основний заголовок/);
+  assert.match(html, /estimate:\{en:"Estimate",uk:"Орієнтовно"\}/);
 });
 
 test("marks an in-progress scan as partial and shows its target", () => {

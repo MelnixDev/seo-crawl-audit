@@ -67,8 +67,8 @@ attention, with evidence and remediation kept alongside each issue.
   and local report branding;
 - interactive issue statistics for severity, frequent checks, ownership, and
   regression lifecycle, with chart-to-table filtering;
-- a dedicated Site Metrics view with crawl-derived measurements and optional,
-  clearly sourced public RDAP domain data;
+- a dedicated Site Metrics view with crawl-derived measurements, a clearly
+  labelled Google `site:` estimate, and optional public RDAP domain data;
 - a loopback-only browser interface for starting and stopping local scans;
 - safe environment-based authentication for private `doctor`, `scan`,
   `check`, Action, and production-versus-preview workflows;
@@ -157,8 +157,10 @@ Pass a URL to prefill the scan target and avoid accidentally reusing a value
 restored by the browser. The command opens the interface in the default browser. Use `--no-open` in CI,
 remote shells, or when you prefer to open the printed URL manually. It binds
 only to `127.0.0.1`, runs the same core crawler, and keeps snapshots,
-checkpoints, and reports in the current directory. Public RDAP domain data is an
-explicit checkbox in the interface. [Read the Site Metrics guide](docs/site-metrics.md).
+checkpoints, and reports in the current directory. Best-effort Google `site:`
+and public RDAP data use an explicit checkbox in the interface; every estimate
+is labelled and kept separate from authoritative Search Console data.
+[Read the Site Metrics guide](docs/site-metrics.md).
 
 Agents can use the local STDIO MCP server and a portable project skill:
 
