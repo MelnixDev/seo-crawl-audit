@@ -16,6 +16,7 @@ import {
   type PageRenderer,
   type SiteMetric,
   type SiteMetrics,
+  type SnapshotV2,
 } from "@seo-crawl-audit/core";
 import {
   createFileCheckpointStore,
@@ -115,8 +116,8 @@ async function loadRenderer(mode: unknown): Promise<PageRenderer | undefined> {
 
 const PAGE_TEMPLATE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="${PRODUCT_FAVICON}" type="image/svg+xml"><title>SEO Crawl Audit</title><style>
 :root{color-scheme:light;--accent:#3157d5;--bg:#f5f7fb;--surface:#fff;--text:#172033;--muted:#64748b;--line:#dbe2ea}*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}main{width:min(1200px,calc(100% - 32px));margin:48px auto}.brand{display:flex;align-items:center;gap:14px}.mark{display:grid;width:52px;height:52px;border-radius:14px;background:var(--accent);color:#fff;font-size:25px;font-weight:900;place-items:center}h1{margin:0;font-size:32px}.muted{color:var(--muted)}.panel{margin-top:24px;padding:24px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:0 16px 45px rgba(31,42,68,.08)}.form{display:grid;grid-template-columns:2fr repeat(3,1fr);gap:12px}label span{display:block;margin-bottom:5px;color:var(--muted)}input,select,button{width:100%;min-height:44px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font:inherit}.check{display:flex;align-items:center;gap:8px;margin-top:14px}.check input{width:18px;min-height:18px}.check span{margin:0}button{width:auto;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}button.secondary{background:#fff;color:var(--text)}button:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;gap:10px;margin-top:16px}.progress{height:13px;margin:20px 0 10px;overflow:hidden;border-radius:999px;background:#e8edf3}.progress i{display:block;width:0;height:100%;background:var(--accent);transition:width .25s}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}.stat{padding:14px;border-radius:12px;background:#f8fafc}.stat strong{display:block;font-size:23px}.status{font-weight:800;text-transform:capitalize}.links{display:flex;gap:14px;margin-top:18px}a{color:var(--accent)}.report-preview{padding:0;overflow:hidden}.report-preview-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 20px;border-bottom:1px solid var(--line)}.report-preview-header h2{margin:0;font-size:18px}.report-frame{display:block;width:100%;height:900px;border:0;background:#fff}@media(max-width:760px){.form,.stats{grid-template-columns:1fr 1fr}.form label:first-child{grid-column:1/-1}.report-frame{height:760px}}@media(max-width:430px){.form,.stats{grid-template-columns:1fr}}
-</style></head><body><main><div class="brand"><div class="mark">✓</div><div><h1>SEO Crawl Audit</h1><div class="muted">Free, local-first site crawler</div></div></div><section class="panel"><div class="form"><label><span>Website URL</span><input id="url" type="url" placeholder="https://example.com/" required></label><label><span>Pages</span><input id="pages" type="number" min="1" max="10000" value="100"></label><label><span>Concurrency</span><input id="concurrency" type="number" min="1" max="20" value="5"></label><label><span>Delay, ms</span><input id="delay" type="number" min="0" max="60000" value="100"></label><label><span>Rendering</span><select id="render"><option value="http">Fast HTTP</option><option value="playwright">Playwright (optional)</option></select></label></div><label class="check"><input id="publicMetrics" type="checkbox" checked><span>Include public domain data from RDAP</span></label><div class="actions"><button id="start">Start scan</button><button id="cancel" class="secondary" disabled>Stop safely</button></div><div class="progress"><i id="bar"></i></div><div><span class="status" id="status">Idle</span> <span class="muted" id="message">Ready to scan locally.</span></div><div class="muted" id="current"></div><div class="stats"><div class="stat"><strong id="completed">0</strong>Pages</div><div class="stat"><strong id="errors">0</strong>Errors</div><div class="stat"><strong id="warnings">0</strong>Warnings</div><div class="stat"><strong id="info">0</strong>Info</div></div><div class="links"><a id="report" href="/report" target="_blank" hidden>Open full report in a new tab</a></div></section><section id="reportPanel" class="panel report-preview" hidden><div class="report-preview-header"><div><h2>Latest local report</h2><div class="muted">Overview, Site Metrics, Issues, and local scan history</div></div><a href="/report" target="_blank">Open full size</a></div><iframe id="reportFrame" class="report-frame" title="SEO Crawl Audit report"></iframe></section></main><script>
-const byId=(id)=>document.querySelector("#"+id);let loadedReport="";function renderState(value){const running=["planning","scanning"].includes(value.status);if(value.url&&!byId("url").value)byId("url").value=value.url;byId("status").textContent=value.status;byId("message").textContent=value.message||"";byId("current").textContent=value.currentUrl||"";byId("completed").textContent=value.completed+(value.total?" / "+value.total:"");byId("bar").style.width=(value.total?Math.min(100,value.completed/value.total*100):0)+"%";byId("start").disabled=running;byId("cancel").disabled=!running;byId("report").hidden=!value.reportReady;byId("reportPanel").hidden=!value.reportReady;if(value.reportReady&&value.startedAt&&loadedReport!==value.startedAt){loadedReport=value.startedAt;byId("reportFrame").src="/report?v="+encodeURIComponent(value.startedAt)}if(value.summary){byId("errors").textContent=value.summary.error;byId("warnings").textContent=value.summary.warning;byId("info").textContent=value.summary.info}}async function state(){const response=await fetch("/api/state");renderState(await response.json())}async function submitScan(body){const response=await fetch("/api/scan",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});const result=await response.json();if(response.status===409&&result.requiresConfirmation){if(window.confirm(result.error+" Existing files will be replaced, while saved history remains available.")){return submitScan({...body,replaceExisting:true})}}if(!response.ok)byId("message").textContent=result.error||"Could not start scan"}const events=new EventSource("/api/events");events.onmessage=(event)=>renderState(JSON.parse(event.data));events.onerror=()=>{byId("message").textContent="Live updates disconnected; reconnecting…"};byId("start").addEventListener("click",()=>submitScan({url:byId("url").value,maxPages:Number(byId("pages").value),concurrency:Number(byId("concurrency").value),delay:Number(byId("delay").value),render:byId("render").value,publicMetrics:byId("publicMetrics").checked}));byId("cancel").addEventListener("click",async()=>{await fetch("/api/cancel",{method:"POST"})});state();
+</style></head><body><main><div class="brand"><div class="mark">✓</div><div><h1>SEO Crawl Audit</h1><div class="muted">Free, local-first site crawler</div></div></div><section class="panel"><div class="form"><label><span>Website URL</span><input id="url" type="url" placeholder="https://example.com/" required></label><label><span>Pages</span><input id="pages" type="number" min="1" max="10000" value="100"></label><label><span>Concurrency</span><input id="concurrency" type="number" min="1" max="20" value="5"></label><label><span>Delay, ms</span><input id="delay" type="number" min="0" max="60000" value="100"></label><label><span>Rendering</span><select id="render"><option value="http">Fast HTTP</option><option value="playwright">Playwright (optional)</option></select></label></div><div class="actions"><button id="start">Start SEO scan</button><button id="cancel" class="secondary" disabled>Stop safely</button></div><div class="progress"><i id="bar"></i></div><div><span class="status" id="status">Idle</span> <span class="muted" id="message">Ready to scan locally.</span></div><div class="muted" id="current"></div><div class="stats"><div class="stat"><strong id="completed">0</strong>Pages</div><div class="stat"><strong id="errors">0</strong>Errors</div><div class="stat"><strong id="warnings">0</strong>Warnings</div><div class="stat"><strong id="info">0</strong>Info</div></div><div class="links"><a id="report" href="/report" target="_blank" hidden>Open full report in a new tab</a></div></section><section id="reportPanel" class="panel report-preview" hidden><div class="report-preview-header"><div><h2>Latest local report</h2><div class="muted">Overview, Site Metrics, Issues, and local scan history</div></div><a href="/report" target="_blank">Open full size</a></div><iframe id="reportFrame" class="report-frame" title="SEO Crawl Audit report"></iframe></section></main><script>
+const byId=(id)=>document.querySelector("#"+id);let loadedReport="";function renderState(value){const running=["planning","scanning"].includes(value.status);if(value.url&&!byId("url").value)byId("url").value=value.url;byId("status").textContent=value.status;byId("message").textContent=value.message||"";byId("current").textContent=value.currentUrl||"";byId("completed").textContent=value.completed+(value.total?" / "+value.total:"");byId("bar").style.width=(value.total?Math.min(100,value.completed/value.total*100):0)+"%";byId("start").disabled=running;byId("cancel").disabled=!running;byId("report").hidden=!value.reportReady;byId("reportPanel").hidden=!value.reportReady;if(value.reportReady&&value.startedAt&&loadedReport!==value.startedAt){loadedReport=value.startedAt;byId("reportFrame").src="/report?v="+encodeURIComponent(value.startedAt)}if(value.summary){byId("errors").textContent=value.summary.error;byId("warnings").textContent=value.summary.warning;byId("info").textContent=value.summary.info}}async function state(){const response=await fetch("/api/state");renderState(await response.json())}async function submitScan(body){const response=await fetch("/api/scan",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});const result=await response.json();if(response.status===409&&result.requiresConfirmation){if(window.confirm(result.error+" Existing files will be replaced, while saved history remains available.")){return submitScan({...body,replaceExisting:true})}}if(!response.ok)byId("message").textContent=result.error||"Could not start scan"}const events=new EventSource("/api/events");events.onmessage=(event)=>renderState(JSON.parse(event.data));events.onerror=()=>{byId("message").textContent="Live updates disconnected; reconnecting…"};byId("start").addEventListener("click",()=>submitScan({url:byId("url").value,maxPages:Number(byId("pages").value),concurrency:Number(byId("concurrency").value),delay:Number(byId("delay").value),render:byId("render").value}));byId("cancel").addEventListener("click",async()=>{await fetch("/api/cancel",{method:"POST"})});state();
 </script></body></html>`;
 
 const PAGE = PAGE_TEMPLATE
@@ -124,9 +125,8 @@ const PAGE = PAGE_TEMPLATE
   .replace('target="_blank">Open full size', 'target="_blank" rel="noopener">Open full report')
   .replace('title="SEO Crawl Audit report"', 'title="Compact SEO Crawl Audit report"')
   .replace('src="/report?v="', 'src="/report?embed=1&v="')
-  .replace('</select></label></div><label class="check">', '</select></label><label><span>Google site: estimate (optional)</span><input id="googleEstimate" type="number" min="1" step="1" placeholder="e.g. 19300"><a id="googleCheck" href="https://www.google.com/" target="_blank" rel="noopener">Check site: query in Google</a></label></div><label class="check">')
-  .replace('publicMetrics:byId("publicMetrics").checked}', 'publicMetrics:byId("publicMetrics").checked,googleEstimate:Number(byId("googleEstimate").value)||null}')
-  .replace('state();\n</script>', 'const updateGoogleLink=()=>{try{byId("googleCheck").href="https://www.google.com/search?q="+encodeURIComponent("site:"+new URL(byId("url").value).hostname)}catch{byId("googleCheck").href="https://www.google.com/"}};byId("url").addEventListener("input",updateGoogleLink);updateGoogleLink();state();\n</script>');
+  .replace('<section id="reportPanel"', '<section class="panel"><h2>Site Metrics</h2><p class="muted">Optional public Google and RDAP data. Uses the latest local snapshot and does not crawl pages again.</p><div class="form"><label><span>Google site: estimate (optional)</span><input id="googleEstimate" type="number" min="1" step="1" placeholder="e.g. 19300"></label></div><div class="actions"><button id="updateMetrics" class="secondary">Update public metrics</button><a id="googleCheck" href="https://www.google.com/" target="_blank" rel="noopener">Check site: query in Google</a></div><div id="metricsMessage" class="muted">Run an SEO scan first.</div></section><section id="reportPanel"')
+  .replace('state();\n</script>', 'const updateGoogleLink=()=>{try{byId("googleCheck").href="https://www.google.com/search?q="+encodeURIComponent("site:"+new URL(byId("url").value).hostname)}catch{byId("googleCheck").href="https://www.google.com/"}};byId("url").addEventListener("input",updateGoogleLink);updateGoogleLink();byId("updateMetrics").addEventListener("click",async()=>{const button=byId("updateMetrics");button.disabled=true;byId("metricsMessage").textContent="Updating public metrics…";try{const response=await fetch("/api/metrics",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({googleEstimate:Number(byId("googleEstimate").value)||null})});const result=await response.json();if(!response.ok)throw new Error(result.error||"Could not update metrics");byId("metricsMessage").textContent="Public metrics updated. No pages were crawled.";loadedReport="";await state()}catch(error){byId("metricsMessage").textContent=error.message}finally{button.disabled=false}});state();\n</script>');
 
 function json(response: ServerResponse, status: number, value: unknown): void {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
@@ -168,6 +168,29 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
     for (const stream of eventStreams) stream.write(event);
   };
 
+  const renderCurrentReport = async (snapshot: SnapshotV2, siteMetrics: SiteMetrics) => {
+    const issues = audit(snapshot);
+    const historyRecords = await readHistorySnapshots(historyPath, snapshot.siteUrl);
+    const history = buildHistorySeries(historyRecords.map((record) => record.snapshot)) ?? undefined;
+    const reportData = {
+      mode: "scan" as const,
+      startUrl: snapshot.siteUrl,
+      generatedAt: snapshot.generatedAt,
+      pages: snapshot.pages,
+      issues,
+      partial: snapshot.partial,
+      targetPages: snapshot.config.maxPages,
+      engineVersion: snapshot.engineVersion,
+      ruleSetVersion: snapshot.ruleSetVersion,
+      branding: snapshot.config.report,
+      siteMetrics,
+      ...(history ? { history } : {}),
+    };
+    await writeReport(reportPath, reportData);
+    reportHtml = await readFile(reportPath, "utf8");
+    return issues;
+  };
+
   const startScan = async (input: Record<string, unknown>) => {
     let renderer: PageRenderer | undefined;
     try {
@@ -194,19 +217,12 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
       };
       const plan = await planScan(config, { fetch, signal: controller.signal, onEvent });
       const result = await scan(plan, { fetch, signal: controller.signal, renderer, checkpointStore: createFileCheckpointStore(checkpointPath), onEvent });
-      const issues = audit(result.snapshot);
-      const counts = issues.reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
-      const collectedMetrics = input.publicMetrics === false
-        ? buildSiteMetrics(result.snapshot)
-        : await collectSiteMetrics(result.snapshot, { providers: [createGoogleSiteEstimateProvider(), createRdapDomainProvider()], fetch, signal: controller.signal });
-      const siteMetrics = withManualGoogleEstimate(collectedMetrics, input.googleEstimate);
-      const reportData = { mode: "scan" as const, startUrl: result.snapshot.siteUrl, generatedAt: result.snapshot.generatedAt, pages: result.snapshot.pages, issues, partial: result.snapshot.partial, targetPages: config.maxPages, engineVersion: result.snapshot.engineVersion, ruleSetVersion: result.snapshot.ruleSetVersion, branding: result.snapshot.config.report, siteMetrics };
       if (!result.snapshot.partial) await writeHistorySnapshot(historyPath, result.snapshot);
-      const historyRecords = await readHistorySnapshots(historyPath, result.snapshot.siteUrl);
-      const history = buildHistorySeries(historyRecords.map((record) => record.snapshot)) ?? undefined;
-      const completeReportData = { ...reportData, ...(history ? { history } : {}) };
-      await Promise.all([writeSnapshot(snapshotPath, result.snapshot), writeReport(reportPath, completeReportData)]);
-      reportHtml = await readFile(reportPath, "utf8");
+      const [issues] = await Promise.all([
+        renderCurrentReport(result.snapshot, buildSiteMetrics(result.snapshot)),
+        writeSnapshot(snapshotPath, result.snapshot),
+      ]);
+      const counts = issues.reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
       existingSiteUrl = result.snapshot.siteUrl;
       state = { ...state, status: result.partial ? "cancelled" : "complete", completed: result.snapshot.pages.length, currentUrl: null, message: result.partial ? "Partial results and checkpoint were saved." : "Scan complete. Snapshot and report were saved locally.", reportReady: true, summary: { pages: result.snapshot.pages.length, ...counts } };
       publish();
@@ -265,6 +281,33 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         }
         void startScan(input);
         json(response, 202, { status: "started" });
+        return;
+      }
+      if (request.method === "POST" && path === "/api/metrics") {
+        const origin = request.headers.origin;
+        const address = server.address();
+        if (origin && address && typeof address !== "string") {
+          const source = new URL(origin);
+          if ((source.hostname !== "127.0.0.1" && source.hostname !== "[::1]" && source.hostname !== "::1") || source.port !== String(address.port)) {
+            json(response, 403, { error: "cross-origin requests are not allowed" }); return;
+          }
+        }
+        if (controller) { json(response, 409, { error: "wait for the current scan to finish" }); return; }
+        const input = await body(request);
+        let snapshot: SnapshotV2;
+        try {
+          snapshot = await readSnapshot(snapshotPath);
+        } catch (error) {
+          if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+            json(response, 409, { error: "run an SEO scan before updating public metrics" }); return;
+          }
+          throw error;
+        }
+        const collected = await collectSiteMetrics(snapshot, { providers: [createGoogleSiteEstimateProvider(), createRdapDomainProvider()], fetch });
+        await renderCurrentReport(snapshot, withManualGoogleEstimate(collected, input.googleEstimate));
+        state = { ...state, url: snapshot.siteUrl, startedAt: new Date().toISOString(), reportReady: true, message: "Public metrics updated without crawling pages." };
+        publish();
+        json(response, 200, { status: "complete", report: "/report" });
         return;
       }
       if (request.method === "POST" && path === "/api/cancel") {

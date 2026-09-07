@@ -19,11 +19,12 @@ RDAP data. It sends only the audited hostname and can add:
   `site:` query;
 - the domain registration date, expiration date, and registrar from RDAP.
 
-The checkbox is visible before the scan and can be disabled. Google may hide
-the result count behind a consent page or automated-request protection. When
-that happens, the local interface keeps the value unavailable and offers a
-Google `site:` link plus an optional field for entering the visible count
-manually.
+After an SEO scan, the local interface exposes a separate **Update public
+metrics** action. It reads the saved snapshot and does not crawl site pages
+again. Google may hide the result count behind a consent page or
+automated-request protection. When that happens, the interface keeps the value
+unavailable and offers a Google `site:` link plus an optional field for entering
+the visible count manually.
 
 Missing or failed external values remain visibly `unavailable` or `error`.
 They are never replaced with invented values or presented as exact search-index
