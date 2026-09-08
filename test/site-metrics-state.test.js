@@ -8,8 +8,9 @@ import {
   markStaleSiteMetrics,
   mergeSiteMetrics,
   validateSiteMetricsState,
-} from "../packages/core/dist/index.js";
-import { readSiteMetricsState, writeSiteMetricsState } from "../packages/core/dist/node.js";
+  readSiteMetricsState,
+  writeSiteMetricsState,
+} from "../packages/core/dist/node.js";
 
 const externalMetric = (id, source, observedAt) => ({
   id,

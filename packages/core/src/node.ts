@@ -19,3 +19,9 @@ export {
 } from "./file-checkpoint-store.js";
 export type { FileCheckpointInspection } from "./file-checkpoint-store.js";
 export { checkpointPathForOutput } from "./checkpoint.js";
+export {
+  externalSiteMetrics,
+  markStaleSiteMetrics,
+  mergeSiteMetrics,
+  validateSiteMetricsState,
+} from "./site-metrics-state.js";

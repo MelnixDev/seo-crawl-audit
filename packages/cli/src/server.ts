@@ -6,8 +6,6 @@ import {
   audit,
   buildHistorySeries,
   buildSiteMetrics,
-  externalSiteMetrics,
-  mergeSiteMetrics,
   planScan,
   scan,
   type ScanEvent,
@@ -18,6 +16,8 @@ import {
 } from "@seo-crawl-audit/core";
 import {
   createFileCheckpointStore,
+  externalSiteMetrics,
+  mergeSiteMetrics,
   readHistorySnapshots,
   readSiteMetricsState,
   readSnapshot,
