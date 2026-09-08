@@ -21,7 +21,9 @@ without a server.
 ![SEO Crawl Audit local scan interface](docs/images/report-local-ui.png)
 
 Run `seo-audit serve` to start scans from a loopback-only browser interface,
-follow progress, and open the generated local report.
+follow progress, and open the generated local report. Choose Quick (100),
+Standard (1,000), Full sitemap, or a Custom page limit. Full sitemap first shows
+the discovered URL count and requires explicit confirmation above 5,000 URLs.
 
 ### Overview and local history
 
@@ -162,6 +164,7 @@ and public RDAP data are updated through a separate Site Metrics action after a
 scan, without crawling the pages again; every estimate is labelled and kept
 separate from authoritative Search Console data.
 [Read the Site Metrics guide](docs/site-metrics.md).
+[Read the large-scan and resume guide](docs/large-scans.md).
 
 Agents can use the local STDIO MCP server and a portable project skill:
 
@@ -489,6 +492,10 @@ compatible command resumes without requesting saved pages again. The checkpoint
 is removed after completion and retained after interruption. Successful pages
 are reused; transient failures and HTTP 5xx results are refreshed. Only an
 unfinished final NDJSON record is recoverable—earlier corruption is reported.
+For large runs, the NDJSON journal stays on disk until the final snapshot and
+report are written successfully. Checkpoint inspection is streamed instead of
+loading the entire journal as text. The supported local UI and MCP ceiling is
+50,000 pages; use a responsible delay and scan only sites you may crawl.
 
 Every completed scan and check also saves a full SnapshotV2 beside the selected
 baseline under `.seo-audit/history/`. Use `--history-dir` to move it or
@@ -517,6 +524,10 @@ It includes:
 - print-friendly PDF layout;
 - optional local agency name, logo, and primary color;
 - clear clean-report and no-filter-match states.
+
+Reports render only the current paginated issue rows, debounce text search, and
+build CSV only when requested. Reports above 25,000 issues show a performance
+notice while remaining self-contained.
 
 Template grouping turns repeated findings such as `/products/red-shoe` and
 `/products/blue-shirt` into `/products/:slug`. Numeric IDs, UUIDs, dates, and
