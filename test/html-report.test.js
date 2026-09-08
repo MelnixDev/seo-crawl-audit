@@ -56,6 +56,8 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /SEO-проблем не знайдено/);
   assert.match(html, /Статистика проблем/);
   assert.match(html, /language\.addEventListener\("change"/);
+  assert.match(html, /const issueSearchIndex=report\.issues\.map/);
+  assert.match(html, /setTimeout\(\(\)=>\{currentPage=1;render\(\)\},150\)/);
   assert.match(html, /locale==="uk"\?issue\.documentationUrl\.replace\("\/docs\/rules\.md#","\/docs\/rules\.uk\.md#"\)/);
   assert.match(html, /seo-crawl-audit-"\+locale\+"\.csv/);
   assert.match(html, /SEO baseline audit/);
@@ -67,6 +69,20 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1];
   assert.ok(script);
   assert.doesNotThrow(() => new Function(script));
+});
+
+test("large reports warn users and continue to render only paginated rows", () => {
+  const issue = {
+    severity: "warning",
+    rule: "missing-description",
+    url: "https://example.com/page",
+    message: "Missing description",
+  };
+  const html = renderHtmlReport({ pages: [], issues: Array.from({ length: 25_001 }, () => issue) });
+  assert.match(html, /id="large-report-notice"/);
+  assert.match(html, /понад 25 000 проблем/);
+  assert.match(html, /const visible=lastFiltered\.slice/);
+  assert.doesNotMatch(html, /<tbody id="issues"><tr>/);
 });
 
 test("embeds deterministic interactive chart statistics", () => {
