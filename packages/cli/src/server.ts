@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   audit,
@@ -9,6 +9,8 @@ import {
   collectSiteMetrics,
   createGoogleSiteEstimateProvider,
   createRdapDomainProvider,
+  externalSiteMetrics,
+  mergeSiteMetrics,
   planScan,
   resolveConfig,
   scan,
@@ -21,10 +23,12 @@ import {
 import {
   createFileCheckpointStore,
   readHistorySnapshots,
+  readSiteMetricsState,
   readSnapshot,
   writeHistorySnapshot,
   writeReport,
   writeSnapshot,
+  writeSiteMetricsState,
 } from "@seo-crawl-audit/core/node";
 import { createPlaywrightRenderer } from "@seo-crawl-audit/renderer-playwright";
 
@@ -151,6 +155,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
   const snapshotPath = resolve(directory, ".seo-audit.json");
   const reportPath = resolve(directory, "seo-audit-report.html");
   const checkpointPath = resolve(directory, ".seo-audit.checkpoint.ndjson");
+  const metricsPath = resolve(directory, ".seo-audit.metrics.json");
   const historyPath = resolve(directory, ".seo-audit/history");
   const fetch = options.fetch ?? globalThis.fetch;
   let reportHtml: string | null = null;
@@ -227,7 +232,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
       const result = await scan(plan, { fetch, signal: controller.signal, renderer, checkpointStore: createFileCheckpointStore(checkpointPath), onEvent });
       if (!result.snapshot.partial) await writeHistorySnapshot(historyPath, result.snapshot);
       const [issues] = await Promise.all([
-        renderCurrentReport(result.snapshot, buildSiteMetrics(result.snapshot)),
+        renderCurrentReport(result.snapshot, mergeSiteMetrics(buildSiteMetrics(result.snapshot), await readSiteMetricsState(metricsPath, result.snapshot.siteUrl))),
         writeSnapshot(snapshotPath, result.snapshot),
       ]);
       const counts = issues.reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
@@ -287,6 +292,11 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
           });
           return;
         }
+        if (existingSiteUrl && new URL(existingSiteUrl).origin !== requestedUrl.origin) {
+          try { await unlink(metricsPath); } catch (error) {
+            if (!error || typeof error !== "object" || !("code" in error) || error.code !== "ENOENT") throw error;
+          }
+        }
         void startScan(input);
         json(response, 202, { status: "started" });
         return;
@@ -313,8 +323,12 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
           }
           throw error;
         }
-        const collected = await collectSiteMetrics(snapshot, { providers: [createGoogleSiteEstimateProvider(), createRdapDomainProvider()], fetch });
-        await renderCurrentReport(snapshot, withManualGoogleEstimate(collected, input.googleEstimate));
+        const collected = withManualGoogleEstimate(
+          await collectSiteMetrics(snapshot, { providers: [createGoogleSiteEstimateProvider(), createRdapDomainProvider()], fetch }),
+          input.googleEstimate,
+        );
+        await writeSiteMetricsState(metricsPath, externalSiteMetrics(collected));
+        await renderCurrentReport(snapshot, collected);
         state = { ...state, url: snapshot.siteUrl, startedAt: new Date().toISOString(), reportReady: true, message: "Public metrics updated without crawling pages." };
         publish();
         json(response, 200, { status: "complete", report: "/report" });
