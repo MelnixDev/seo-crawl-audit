@@ -155,13 +155,21 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
   const fetch = options.fetch ?? globalThis.fetch;
   let reportHtml: string | null = null;
   let existingSiteUrl: string | null = null;
+  let savedSnapshot: SnapshotV2 | null = null;
   try {
-    existingSiteUrl = (await readSnapshot(snapshotPath)).siteUrl;
+    savedSnapshot = await readSnapshot(snapshotPath);
+    existingSiteUrl = savedSnapshot.siteUrl;
+    reportHtml = await readFile(reportPath, "utf8");
   } catch (error) {
     if (!error || typeof error !== "object" || !("code" in error) || error.code !== "ENOENT") throw error;
   }
   let controller: AbortController | null = null;
+  let metricsRunning = false;
   let state: UiState = { status: "idle", url: options.initialUrl ?? existingSiteUrl, completed: 0, total: 0, retries: 0, errors: 0, startedAt: null, currentUrl: null, message: "Ready to scan locally.", reportReady: false, summary: null };
+  if (savedSnapshot && reportHtml) {
+    const counts = audit(savedSnapshot).reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
+    state = { ...state, completed: savedSnapshot.pages.length, total: savedSnapshot.config.maxPages, startedAt: savedSnapshot.generatedAt, reportReady: true, summary: { pages: savedSnapshot.pages.length, ...counts }, message: `Saved report available for ${savedSnapshot.siteUrl}.` };
+  }
   const eventStreams = new Set<ServerResponse>();
   const publish = () => {
     const event = `data: ${JSON.stringify(state)}\n\n`;
@@ -267,8 +275,8 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
             json(response, 403, { error: "cross-origin requests are not allowed" }); return;
           }
         }
-        if (controller) { json(response, 409, { error: "a scan is already running" }); return; }
         const input = await body(request);
+        if (controller || metricsRunning) { json(response, 409, { error: "a scan or metrics update is already running" }); return; }
         const requestedUrl = new URL(String(input.url ?? ""));
         if (existingSiteUrl && new URL(existingSiteUrl).origin !== requestedUrl.origin && input.replaceExisting !== true) {
           json(response, 409, {
@@ -292,8 +300,10 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
             json(response, 403, { error: "cross-origin requests are not allowed" }); return;
           }
         }
-        if (controller) { json(response, 409, { error: "wait for the current scan to finish" }); return; }
         const input = await body(request);
+        if (controller || metricsRunning) { json(response, 409, { error: "a scan or metrics update is already running" }); return; }
+        metricsRunning = true;
+        try {
         let snapshot: SnapshotV2;
         try {
           snapshot = await readSnapshot(snapshotPath);
@@ -308,6 +318,9 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         state = { ...state, url: snapshot.siteUrl, startedAt: new Date().toISOString(), reportReady: true, message: "Public metrics updated without crawling pages." };
         publish();
         json(response, 200, { status: "complete", report: "/report" });
+        } finally {
+          metricsRunning = false;
+        }
         return;
       }
       if (request.method === "POST" && path === "/api/cancel") {
