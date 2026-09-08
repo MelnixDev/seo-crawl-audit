@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.3 — 2026-09-08
+
+- restored saved reports and scan summaries after restarting the local UI;
+- prevented scans and public metrics updates from overwriting each other's
+  reports by rejecting overlapping operations;
+- verified JavaScript rendering, redirects, HTTP errors, and cancellation in
+  real Chromium.
+
 ## 0.10.2 — 2026-09-07
 
 - separated optional Google and RDAP collection from the main page crawl;
