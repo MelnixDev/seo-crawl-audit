@@ -110,9 +110,9 @@ test("local UI full profile requires a sitemap", async (context) => {
   assert.equal((await response.json()).fullSitemapUnavailable, true);
 });
 
-test("local UI confirms a large sitemap without repeating preflight", async (context) => {
+test("local UI confirms a 46k sitemap without repeating preflight", async (context) => {
   const directory = await mkdtemp(join(tmpdir(), "seo-audit-local-ui-large-"));
-  const fixture = sitemapFetch(5_001);
+  const fixture = sitemapFetch(45_999);
   const server = await createLocalUiServer({ port: 0, directory, fetch: fixture.fetch });
   context.after(() => server.close());
   const post = (body) => fetch(new URL("/api/scan", server.url), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -121,7 +121,7 @@ test("local UI confirms a large sitemap without repeating preflight", async (con
   assert.equal(preflight.status, 409);
   const warning = await preflight.json();
   assert.equal(warning.requiresLargeScanConfirmation, true);
-  assert.equal(warning.candidateCount, 5_002);
+  assert.equal(warning.candidateCount, 46_000);
   assert.ok(warning.estimatedSeconds > 0);
   assert.equal((await post({ ...input, confirmLargeScan: true })).status, 202);
   await fetch(new URL("/api/cancel", server.url), { method: "POST" });
