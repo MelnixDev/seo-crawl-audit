@@ -4,7 +4,8 @@ import { join, resolve } from "node:path";
 import { migrateSnapshot } from "./baseline.js";
 import { DEFAULT_CONFIG_FILE, validateConfig } from "./config.js";
 import { renderHtmlReport } from "./html-report.js";
-import type { HistorySnapshotRecord, ReportData, ReportOptions, ScanConfigV1, SnapshotV2 } from "./types.js";
+import { markStaleSiteMetrics, validateSiteMetricsState } from "./site-metrics-state.js";
+import type { HistorySnapshotRecord, ReportData, ReportOptions, ScanConfigV1, SiteMetricsStateV1, SnapshotV2 } from "./types.js";
 
 export async function findConfigFile(cwd = process.cwd()): Promise<string | null> {
   const path = resolve(cwd, DEFAULT_CONFIG_FILE);
@@ -49,6 +50,27 @@ export async function readSnapshot(path: string): Promise<SnapshotV2> {
 }
 
 export const readBaseline = readSnapshot;
+
+export async function writeSiteMetricsState(path: string, state: SiteMetricsStateV1): Promise<void> {
+  const validated = validateSiteMetricsState(state);
+  const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
+  await writeFile(temporaryPath, `${JSON.stringify(validated, null, 2)}\n`, "utf8");
+  await rename(temporaryPath, path);
+}
+
+export async function readSiteMetricsState(path: string, expectedSiteUrl?: string, now = new Date()): Promise<SiteMetricsStateV1 | null> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(path, "utf8"));
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return null;
+    if (error instanceof SyntaxError) throw new Error(`invalid site metrics JSON: ${path}`, { cause: error });
+    throw error;
+  }
+  const state = markStaleSiteMetrics(validateSiteMetricsState(parsed), now);
+  if (expectedSiteUrl && new URL(state.siteUrl).origin !== new URL(expectedSiteUrl).origin) return null;
+  return state;
+}
 
 export async function writeReport(
   path: string,

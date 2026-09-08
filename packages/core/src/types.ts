@@ -71,6 +71,8 @@ export interface SiteMetric {
   observedAt: string;
   confidence: "high" | "medium" | "low";
   status: "available" | "estimate" | "unavailable" | "not-connected" | "error";
+  /** True when a persisted external observation has exceeded its freshness window. */
+  stale?: boolean;
   detail?: { en: string; uk: string };
 }
 
@@ -78,6 +80,14 @@ export interface SiteMetrics {
   schemaVersion: 1;
   siteUrl: string;
   observedAt: string;
+  metrics: SiteMetric[];
+}
+
+/** Versioned local persistence envelope for external site metrics. */
+export interface SiteMetricsStateV1 {
+  schemaVersion: 1;
+  siteUrl: string;
+  updatedAt: string;
   metrics: SiteMetric[];
 }
 

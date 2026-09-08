@@ -11,6 +11,7 @@ export { groupIssuesByTemplate } from "./issue-groups.js";
 export { buildHistorySeries } from "./history.js";
 export { buildSiteMetrics } from "./site-metrics.js";
 export { collectSiteMetrics, createGoogleSiteEstimateProvider, createRdapDomainProvider } from "./site-metric-providers.js";
+export { externalSiteMetrics, markStaleSiteMetrics, mergeSiteMetrics, validateSiteMetricsState } from "./site-metrics-state.js";
 export {
   DEFAULT_CONFIG_FILE,
   DEFAULT_SCAN_CONFIG,
@@ -56,6 +57,7 @@ export type {
   SiteMetricProvider,
   SiteMetricProviderContext,
   SiteMetrics,
+  SiteMetricsStateV1,
   SitemapState,
   SnapshotV2,
   Suppression,

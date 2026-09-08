@@ -9,6 +9,8 @@ export {
   writeReport,
   readHistorySnapshots,
   writeHistorySnapshot,
+  readSiteMetricsState,
+  writeSiteMetricsState,
 } from "./node-files.js";
 export {
   FileCheckpointStore,
