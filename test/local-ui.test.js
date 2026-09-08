@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { access, mkdtemp } from "node:fs/promises";
+import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { browserLaunchCommand, createLocalUiServer, serveCommand } from "../packages/cli/dist/server.js";
@@ -116,6 +116,41 @@ test("public metrics require an existing snapshot", async (context) => {
   });
   assert.equal(response.status, 409);
   assert.match((await response.json()).error, /run an SEO scan/);
+});
+
+test("restart restores the saved report and summary without requests", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-restart-"));
+  await writeSnapshot(join(directory, ".seo-audit.json"), migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200 }] }));
+  const report = "<!doctype html><h1>Saved report with public metrics</h1>";
+  await writeFile(join(directory, "seo-audit-report.html"), report);
+  const server = await createLocalUiServer({ port: 0, directory, fetch: () => { throw new Error("unexpected network request"); } });
+  context.after(() => server.close());
+  assert.equal(await (await fetch(new URL("/report", server.url))).text(), report);
+  const state = await (await fetch(new URL("/api/state", server.url))).json();
+  assert.equal(state.reportReady, true);
+  assert.equal(state.summary.pages, 1);
+  assert.ok(state.startedAt);
+});
+
+test("metrics update excludes concurrent scans and updates, then releases its lock", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-metrics-lock-"));
+  const snapshotPath = join(directory, ".seo-audit.json");
+  await writeSnapshot(snapshotPath, migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200 }] }));
+  const before = await readFile(snapshotPath, "utf8");
+  let release, entered;
+  const gate = new Promise(resolve => { release = resolve; });
+  const started = new Promise(resolve => { entered = resolve; });
+  const server = await createLocalUiServer({ port: 0, directory, fetch: async () => { entered(); await gate; return new Response("{}", { status: 404 }); } });
+  context.after(() => { release(); return server.close(); });
+  const post = (path, body = {}) => fetch(new URL(path, server.url), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const updating = post("/api/metrics");
+  await started;
+  assert.equal((await post("/api/metrics")).status, 409);
+  assert.equal((await post("/api/scan", { url: "https://example.com/" })).status, 409);
+  release();
+  assert.equal((await updating).status, 200);
+  assert.equal((await post("/api/metrics")).status, 200);
+  assert.equal(await readFile(snapshotPath, "utf8"), before);
 });
 
 test("local UI requires confirmation before replacing another site's results", async (context) => {
