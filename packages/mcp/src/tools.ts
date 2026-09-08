@@ -194,11 +194,13 @@ export async function scanTool(context: ToolContext, input: ScanToolInput): Prom
     limit,
     resume: input.resume !== false,
     checkpointStore: store,
+    retainCheckpoint: true,
     fetch,
   });
   await writeSnapshot(output, result.snapshot);
   const issues = audit(result.snapshot);
   await writeReport(report, reportData(result.snapshot, issues, "scan"));
+  if (!result.partial) await store.clearCurrent();
   return { ...summary(result.snapshot), startUrl: result.startUrl, artifacts: { snapshot: relativeArtifact(context.root, output), report: relativeArtifact(context.root, report), checkpoint: result.partial ? relativeArtifact(context.root, checkpoint) : null } };
 }
 
@@ -213,12 +215,13 @@ export async function checkTool(context: ToolContext, input: CommonInput & { bas
   const checkpoint = await checkpointPath(context, input.checkpoint, input.headersEnv);
   await ensureParents(output, report, checkpoint);
   const store = createFileCheckpointStore(checkpoint);
-  const result = await scan(plan, { signal: context.signal, limit: input.maxPages ?? config.maxPages, resume: input.resume !== false, checkpointStore: store, fetch });
+  const result = await scan(plan, { signal: context.signal, limit: input.maxPages ?? config.maxPages, resume: input.resume !== false, checkpointStore: store, retainCheckpoint: true, fetch });
   await writeSnapshot(output, result.snapshot);
   const comparison = diff(baseline, result.snapshot);
   await writeReport(report, reportData(result.snapshot, comparison.issues, "check", {
     newIssues: comparison.newIssues, ongoingIssues: comparison.ongoingIssues, resolvedIssues: comparison.resolvedIssues, unchangedIssues: comparison.unchangedIssues, complete: comparison.complete,
   }));
+  if (!result.partial) await store.clearCurrent();
   return {
     baseline: relativeArtifact(context.root, baselinePath),
     ...summary(result.snapshot),

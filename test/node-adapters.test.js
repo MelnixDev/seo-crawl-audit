@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createFileCheckpointStore, inspectFileCheckpoint } from "../packages/core/dist/node.js";
@@ -89,4 +89,15 @@ test("checkpoint inspection is read-only and reports resumable pages", async () 
   assert.equal(inspected.completedPages, 1);
   assert.equal(inspected.resumable, true);
   assert.ok(inspected.updatedAt);
+});
+
+test("file checkpoint store clears its current journal only when finalized", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-node-finalize-"));
+  const path = join(directory, "checkpoint.ndjson");
+  const store = createFileCheckpointStore(path);
+  await store.load(identity);
+  await store.append(identity, page("https://example.com/saved"));
+  await store.clearCurrent();
+  await assert.rejects(access(path), { code: "ENOENT" });
+  await store.clearCurrent();
 });

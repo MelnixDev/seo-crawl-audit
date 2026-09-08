@@ -181,13 +181,15 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         }
         publish();
       };
-      const result = await scan(plan, { fetch, signal: activeController.signal, renderer, checkpointStore: createFileCheckpointStore(checkpointPath), onEvent });
+      const store = createFileCheckpointStore(checkpointPath);
+      const result = await scan(plan, { fetch, signal: activeController.signal, renderer, checkpointStore: store, retainCheckpoint: true, onEvent });
       if (!result.snapshot.partial) await writeHistorySnapshot(historyPath, result.snapshot);
       const [issues] = await Promise.all([
         renderCurrentReport(result.snapshot, mergeSiteMetrics(buildSiteMetrics(result.snapshot), await readSiteMetricsState(metricsPath, result.snapshot.siteUrl))),
         writeSnapshot(snapshotPath, result.snapshot),
       ]);
       const counts = issues.reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
+      if (!result.snapshot.partial) await store.clearCurrent();
       existingSiteUrl = result.snapshot.siteUrl;
       state = { ...state, status: result.partial ? "cancelled" : "complete", completed: result.snapshot.pages.length, currentUrl: null, message: result.partial ? "Partial results and checkpoint were saved." : "Scan complete. Snapshot and report were saved locally.", reportReady: true, summary: { pages: result.snapshot.pages.length, ...counts } };
       publish();
