@@ -83,6 +83,32 @@ test("MCP tools plan, scan, inspect, compare, and render local artifacts", async
   assert.match(rules.rules[0].documentationUrl, /docs\/rules\.md#/);
 });
 
+test("MCP full sitemap scans require confirmation above 5,000 pages", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-audit-mcp-full-"));
+  let pageRequests = 0;
+  const sitemap = `<?xml version="1.0"?><urlset>${Array.from({ length: 5_001 }, (_, index) => `<url><loc>https://example.com/page-${index}</loc></url>`).join("")}</urlset>`;
+  const fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nSitemap: https://example.com/sitemap.xml\n", { status: 200 });
+    if (url.endsWith("/sitemap.xml")) return new Response(sitemap, { status: 200, headers: { "content-type": "application/xml" } });
+    pageRequests += 1;
+    return new Response("<!doctype html><title>Page</title><h1>Page</h1>", { status: 200, headers: { "content-type": "text/html" } });
+  };
+  const result = await scanTool({ root, fetch }, { url: "https://example.com/", fullSitemap: true, delay: 0 });
+  assert.equal(result.status, "confirmation-required");
+  assert.equal(result.requiresConfirmation, true);
+  assert.equal(result.candidateCount, 5_002);
+  assert.equal(pageRequests, 0);
+});
+
+test("MCP full sitemap mode rejects link-only plans", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-audit-mcp-links-"));
+  await assert.rejects(
+    scanTool({ root, fetch: siteFetch() }, { url: "https://example.com/", sitemap: "none", fullSitemap: true }),
+    /requires a discovered sitemap/,
+  );
+});
+
 test("MCP artifact paths cannot escape the workspace", () => {
   const root = resolve("project");
   assert.equal(workspacePath(root, join("reports", "audit.html"), "fallback"), join(root, "reports", "audit.html"));
