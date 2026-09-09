@@ -71,3 +71,12 @@ test("external metrics merge by stable id without replacing crawl-only values", 
   assert.equal(merged.metrics.find((metric) => metric.id === "pages.checked").value, 3);
   assert.equal(merged.metrics.find((metric) => metric.id === "search.google-site-estimate").value, 42);
 });
+
+test("external metrics state records the latest provider observation", () => {
+  const state = externalSiteMetrics({
+    siteUrl: "https://example.com/",
+    observedAt: "2026-01-01T00:00:00.000Z",
+    metrics: [externalMetric("domain.registrar", "rdap", "2026-09-09T09:00:00.000Z")],
+  });
+  assert.equal(state.updatedAt, "2026-09-09T09:00:00.000Z");
+});

@@ -4,6 +4,7 @@ import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { browserLaunchCommand, createLocalUiServer, serveCommand } from "../packages/cli/dist/server.js";
+import { resolveLocalScanConfig } from "../packages/cli/dist/local-ui-scan-controller.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
 import { writeSnapshot } from "../packages/core/dist/node.js";
 
@@ -43,6 +44,15 @@ async function waitForCompletion(url) {
   }
   throw new Error("local UI scan did not finish");
 }
+
+test("local UI scan profiles resolve quick standard full and custom limits", () => {
+  const url = "https://example.com/";
+  assert.equal(resolveLocalScanConfig({ profile: "quick" }, url).maxPages, 100);
+  assert.equal(resolveLocalScanConfig({ profile: "standard" }, url).maxPages, 1_000);
+  assert.equal(resolveLocalScanConfig({ profile: "full" }, url).maxPages, 50_000);
+  assert.equal(resolveLocalScanConfig({ profile: "custom", maxPages: 321 }, url).maxPages, 321);
+  assert.throws(() => resolveLocalScanConfig({ profile: "custom", maxPages: 50_001 }, url), /between 1 and 50000/);
+});
 
 test("local UI binds only to loopback and serves its application shell", async (context) => {
   await assert.rejects(createLocalUiServer({ host: "0.0.0.0", port: 0 }), /loopback/);

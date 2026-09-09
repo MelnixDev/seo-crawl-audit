@@ -97,10 +97,14 @@ export function mergeSiteMetrics(local: SiteMetrics, external: SiteMetricsStateV
 }
 
 export function externalSiteMetrics(metrics: SiteMetrics): SiteMetricsStateV1 {
+  const external = metrics.metrics.filter((item) => item.source.id !== "crawl" && item.source.id !== "crawl-estimate");
   return {
     schemaVersion: 1,
     siteUrl: new URL(metrics.siteUrl).href,
-    updatedAt: metrics.observedAt,
-    metrics: metrics.metrics.filter((item) => item.source.id !== "crawl" && item.source.id !== "crawl-estimate"),
+    updatedAt: external.reduce(
+      (latest, item) => item.observedAt > latest ? item.observedAt : latest,
+      metrics.observedAt,
+    ),
+    metrics: external,
   };
 }
