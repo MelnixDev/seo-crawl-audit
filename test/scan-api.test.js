@@ -73,6 +73,37 @@ test("scan returns partial data and resumes successful pages through the checkpo
   assert.equal(requests.get(firstPagePath), beforeResume);
 });
 
+test("scan resumes deterministically after interruption near 25, 50, and 90 percent", async () => {
+  const urls = ["https://example.com/", ...Array.from({ length: 19 }, (_, index) => `https://example.com/page-${index}`)];
+  const sitemap = `<urlset>${urls.map((url) => `<url><loc>${url}</loc></url>`).join("")}</urlset>`;
+  const fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nSitemap: https://example.com/sitemap.xml\n");
+    if (url.endsWith("/sitemap.xml")) return new Response(sitemap, { headers: { "content-type": "application/xml" } });
+    return new Response(`<title>${url}</title><h1>Page</h1>`, { headers: { "content-type": "text/html" } });
+  };
+  const plan = await planScan({ url: urls[0], maxPages: 20, delay: 0, concurrency: 1 }, { fetch });
+
+  for (const completedPages of [5, 10, 18]) {
+    const directory = await mkdtemp(join(tmpdir(), `seo-resume-${completedPages}-`));
+    const store = createFileCheckpointStore(join(directory, "checkpoint.ndjson"));
+    const controller = new AbortController();
+    const partial = await scan(plan, {
+      fetch,
+      checkpointStore: store,
+      signal: controller.signal,
+      onEvent(event) {
+        if (event.type === "page" && event.completed === completedPages) controller.abort();
+      },
+    });
+    assert.equal(partial.pages.length, completedPages);
+    assert.equal(partial.partial, true);
+    const resumed = await scan(plan, { fetch, checkpointStore: createFileCheckpointStore(store.path) });
+    assert.equal(resumed.partial, false);
+    assert.deepEqual(resumed.pages.map((page) => page.url), urls.slice().sort());
+  }
+});
+
 test("an opt-in renderer supplies every HTML page while planning stays on fetch", async () => {
   const fetched = [];
   const rendered = [];

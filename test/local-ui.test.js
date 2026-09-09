@@ -4,6 +4,7 @@ import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { browserLaunchCommand, createLocalUiServer, serveCommand } from "../packages/cli/dist/server.js";
+import { resolveLocalScanConfig } from "../packages/cli/dist/local-ui-scan-controller.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
 import { writeSnapshot } from "../packages/core/dist/node.js";
 
@@ -21,6 +22,20 @@ function siteFetch(input) {
   ));
 }
 
+function sitemapFetch(count, counters = { robots: 0, sitemap: 0, pages: 0 }) {
+  const xml = `<?xml version="1.0"?><urlset>${Array.from({ length: count }, (_, index) => `<url><loc>https://example.com/page-${index}</loc></url>`).join("")}</urlset>`;
+  return {
+    counters,
+    fetch: async (input) => {
+      const url = String(input);
+      if (url.endsWith("/robots.txt")) { counters.robots += 1; return new Response("User-agent: *\nSitemap: https://example.com/sitemap.xml\n", { status: 200 }); }
+      if (url.endsWith("/sitemap.xml")) { counters.sitemap += 1; return new Response(xml, { status: 200, headers: { "content-type": "application/xml" } }); }
+      counters.pages += 1;
+      return new Response("<!doctype html><title>Page</title><h1>Page</h1>", { status: 200, headers: { "content-type": "text/html" } });
+    },
+  };
+}
+
 async function waitForCompletion(url) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const state = await fetch(new URL("/api/state", url)).then((response) => response.json());
@@ -29,6 +44,15 @@ async function waitForCompletion(url) {
   }
   throw new Error("local UI scan did not finish");
 }
+
+test("local UI scan profiles resolve quick standard full and custom limits", () => {
+  const url = "https://example.com/";
+  assert.equal(resolveLocalScanConfig({ profile: "quick" }, url).maxPages, 100);
+  assert.equal(resolveLocalScanConfig({ profile: "standard" }, url).maxPages, 1_000);
+  assert.equal(resolveLocalScanConfig({ profile: "full" }, url).maxPages, 50_000);
+  assert.equal(resolveLocalScanConfig({ profile: "custom", maxPages: 321 }, url).maxPages, 321);
+  assert.throws(() => resolveLocalScanConfig({ profile: "custom", maxPages: 50_001 }, url), /between 1 and 50000/);
+});
 
 test("local UI binds only to loopback and serves its application shell", async (context) => {
   await assert.rejects(createLocalUiServer({ host: "0.0.0.0", port: 0 }), /loopback/);
@@ -45,7 +69,11 @@ test("local UI binds only to loopback and serves its application shell", async (
   assert.match(page, /Compact overview preview/);
   assert.match(page, /Open full report/);
   assert.match(page, /\/report\?embed=1&v=/);
+  assert.match(page, /reportFrame\.contentDocument/);
   assert.match(page, /id="googleEstimate"/);
+  assert.match(page, /id="profile"/);
+  assert.match(page, /Full sitemap/);
+  assert.match(page, /max="50000"/);
   assert.match(page, /id="updateMetrics"/);
   assert.match(page, /does not crawl pages again/);
   assert.doesNotMatch(page, /id="publicMetrics"/);
@@ -61,6 +89,56 @@ test("local UI binds only to loopback and serves its application shell", async (
   const first = await reader.read();
   assert.match(new TextDecoder().decode(first.value), /"status":"idle"/);
   await reader.cancel();
+});
+
+test("local UI full profile scans a discovered sitemap", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-local-ui-full-"));
+  const fixture = sitemapFetch(3);
+  const server = await createLocalUiServer({ port: 0, directory, fetch: fixture.fetch });
+  context.after(() => server.close());
+  const response = await fetch(new URL("/api/scan", server.url), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url: "https://example.com/", profile: "full", concurrency: 2, delay: 0 }),
+  });
+  assert.equal(response.status, 202);
+  const state = await waitForCompletion(server.url);
+  assert.equal(state.status, "complete", state.message);
+  assert.equal(state.summary.pages, 4);
+  assert.equal(state.total, 4);
+});
+
+test("local UI full profile requires a sitemap", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-local-ui-no-full-"));
+  const server = await createLocalUiServer({ port: 0, directory, fetch: siteFetch });
+  context.after(() => server.close());
+  const response = await fetch(new URL("/api/scan", server.url), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url: "https://example.com/", profile: "full", delay: 0 }),
+  });
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).fullSitemapUnavailable, true);
+});
+
+test("local UI confirms a 46k sitemap without repeating preflight", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-local-ui-large-"));
+  const fixture = sitemapFetch(45_999);
+  const server = await createLocalUiServer({ port: 0, directory, fetch: fixture.fetch });
+  context.after(() => server.close());
+  const post = (body) => fetch(new URL("/api/scan", server.url), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const input = { url: "https://example.com/", profile: "full", concurrency: 1, delay: 0 };
+  const preflight = await post(input);
+  assert.equal(preflight.status, 409);
+  const warning = await preflight.json();
+  assert.equal(warning.requiresLargeScanConfirmation, true);
+  assert.equal(warning.candidateCount, 46_000);
+  assert.ok(warning.estimatedSeconds > 0);
+  assert.equal((await post({ ...input, confirmLargeScan: true })).status, 202);
+  await fetch(new URL("/api/cancel", server.url), { method: "POST" });
+  assert.equal((await waitForCompletion(server.url)).status, "cancelled");
+  assert.equal(fixture.counters.robots, 1);
+  assert.equal(fixture.counters.sitemap, 1);
 });
 
 test("local UI runs a scan and exposes the generated report", async (context) => {
@@ -99,8 +177,7 @@ test("local UI runs a scan and exposes the generated report", async (context) =>
   assert.match(reportHtml, /google-site-search-manual/);
   assert.doesNotMatch(reportHtml, /seo-audit-embed-style/);
   const embeddedReport = await (await fetch(new URL("/report?embed=1", server.url))).text();
-  assert.match(embeddedReport, /seo-audit-embed-style/);
-  assert.match(embeddedReport, /\.report-nav\{display:none/);
+  assert.equal(embeddedReport, reportHtml);
   await access(join(directory, ".seo-audit.json"));
   await access(join(directory, "seo-audit-report.html"));
 });

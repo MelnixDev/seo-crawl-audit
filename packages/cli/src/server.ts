@@ -1,32 +1,35 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   audit,
   buildHistorySeries,
   buildSiteMetrics,
-  collectSiteMetrics,
-  createGoogleSiteEstimateProvider,
-  createRdapDomainProvider,
   planScan,
-  resolveConfig,
   scan,
   type ScanEvent,
+  type ScanPlan,
   type PageRenderer,
-  type SiteMetric,
   type SiteMetrics,
   type SnapshotV2,
 } from "@seo-crawl-audit/core";
 import {
   createFileCheckpointStore,
+  externalSiteMetrics,
+  mergeSiteMetrics,
   readHistorySnapshots,
+  readSiteMetricsState,
   readSnapshot,
   writeHistorySnapshot,
   writeReport,
   writeSnapshot,
+  writeSiteMetricsState,
 } from "@seo-crawl-audit/core/node";
 import { createPlaywrightRenderer } from "@seo-crawl-audit/renderer-playwright";
+import { collectLocalUiMetrics } from "./local-ui-metrics-controller.js";
+import { LOCAL_UI_PAGE } from "./local-ui-page.js";
+import { decideFullScan, resolveLocalScanConfig } from "./local-ui-scan-controller.js";
 
 interface UiState {
   status: "idle" | "planning" | "scanning" | "complete" | "cancelled" | "error";
@@ -40,30 +43,6 @@ interface UiState {
   message: string | null;
   reportReady: boolean;
   summary: { pages: number; error: number; warning: number; info: number } | null;
-}
-
-const PRODUCT_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%233157d5'/%3E%3Ccircle cx='27' cy='27' r='13' fill='none' stroke='white' stroke-width='6'/%3E%3Cpath d='m37 37 12 12' fill='none' stroke='white' stroke-linecap='round' stroke-width='6'/%3E%3Cpath d='m21 27 5 5 9-11' fill='none' stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E";
-
-function embedReport(html: string): string {
-  const style = `<style id="seo-audit-embed-style">header,.report-nav{display:none!important}main{width:min(1600px,calc(100% - 24px));margin:16px auto 32px}.analytics{margin-bottom:12px}</style>`;
-  return html.replace("</head>", `${style}</head>`);
-}
-
-function withManualGoogleEstimate(metrics: SiteMetrics, input: unknown): SiteMetrics {
-  const value = typeof input === "number" ? input : Number(input);
-  if (!Number.isSafeInteger(value) || value <= 0) return metrics;
-  const estimate: SiteMetric = {
-    id: "search.google-site-estimate",
-    label: { en: "Google site: estimate", uk: "Приблизно в Google (site:)" },
-    value,
-    unit: "count",
-    source: { id: "google-site-search-manual", label: "Google site:" },
-    observedAt: new Date().toISOString(),
-    confidence: "low",
-    status: "estimate",
-    detail: { en: "Approximate public `site:` count entered locally after checking Google. It is not authoritative Search Console coverage.", uk: "Приблизну публічну кількість `site:` введено локально після перевірки Google. Це не точні дані Search Console." },
-  };
-  return { ...metrics, metrics: [...metrics.metrics.filter((metric) => metric.id !== estimate.id), estimate] };
 }
 
 export interface LocalUiOptions {
@@ -114,20 +93,6 @@ async function loadRenderer(mode: unknown): Promise<PageRenderer | undefined> {
   return createPlaywrightRenderer();
 }
 
-const PAGE_TEMPLATE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="${PRODUCT_FAVICON}" type="image/svg+xml"><title>SEO Crawl Audit</title><style>
-:root{color-scheme:light;--accent:#3157d5;--bg:#f5f7fb;--surface:#fff;--text:#172033;--muted:#64748b;--line:#dbe2ea}*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}main{width:min(1200px,calc(100% - 32px));margin:48px auto}.brand{display:flex;align-items:center;gap:14px}.mark{display:grid;width:52px;height:52px;border-radius:14px;background:var(--accent);color:#fff;font-size:25px;font-weight:900;place-items:center}h1{margin:0;font-size:32px}.muted{color:var(--muted)}.panel{margin-top:24px;padding:24px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:0 16px 45px rgba(31,42,68,.08)}.form{display:grid;grid-template-columns:2fr repeat(3,1fr);gap:12px}label span{display:block;margin-bottom:5px;color:var(--muted)}input,select,button{width:100%;min-height:44px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font:inherit}.check{display:flex;align-items:center;gap:8px;margin-top:14px}.check input{width:18px;min-height:18px}.check span{margin:0}button{width:auto;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}button.secondary{background:#fff;color:var(--text)}button:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;gap:10px;margin-top:16px}.progress{height:13px;margin:20px 0 10px;overflow:hidden;border-radius:999px;background:#e8edf3}.progress i{display:block;width:0;height:100%;background:var(--accent);transition:width .25s}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}.stat{padding:14px;border-radius:12px;background:#f8fafc}.stat strong{display:block;font-size:23px}.status{font-weight:800;text-transform:capitalize}.links{display:flex;gap:14px;margin-top:18px}a{color:var(--accent)}.report-preview{padding:0;overflow:hidden}.report-preview-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 20px;border-bottom:1px solid var(--line)}.report-preview-header h2{margin:0;font-size:18px}.report-frame{display:block;width:100%;height:900px;border:0;background:#fff}@media(max-width:760px){.form,.stats{grid-template-columns:1fr 1fr}.form label:first-child{grid-column:1/-1}.report-frame{height:760px}}@media(max-width:430px){.form,.stats{grid-template-columns:1fr}}
-</style></head><body><main><div class="brand"><div class="mark">✓</div><div><h1>SEO Crawl Audit</h1><div class="muted">Free, local-first site crawler</div></div></div><section class="panel"><div class="form"><label><span>Website URL</span><input id="url" type="url" placeholder="https://example.com/" required></label><label><span>Pages</span><input id="pages" type="number" min="1" max="10000" value="100"></label><label><span>Concurrency</span><input id="concurrency" type="number" min="1" max="20" value="5"></label><label><span>Delay, ms</span><input id="delay" type="number" min="0" max="60000" value="100"></label><label><span>Rendering</span><select id="render"><option value="http">Fast HTTP</option><option value="playwright">Playwright (optional)</option></select></label></div><div class="actions"><button id="start">Start SEO scan</button><button id="cancel" class="secondary" disabled>Stop safely</button></div><div class="progress"><i id="bar"></i></div><div><span class="status" id="status">Idle</span> <span class="muted" id="message">Ready to scan locally.</span></div><div class="muted" id="current"></div><div class="stats"><div class="stat"><strong id="completed">0</strong>Pages</div><div class="stat"><strong id="errors">0</strong>Errors</div><div class="stat"><strong id="warnings">0</strong>Warnings</div><div class="stat"><strong id="info">0</strong>Info</div></div><div class="links"><a id="report" href="/report" target="_blank" hidden>Open full report in a new tab</a></div></section><section id="reportPanel" class="panel report-preview" hidden><div class="report-preview-header"><div><h2>Latest local report</h2><div class="muted">Overview, Site Metrics, Issues, and local scan history</div></div><a href="/report" target="_blank">Open full size</a></div><iframe id="reportFrame" class="report-frame" title="SEO Crawl Audit report"></iframe></section></main><script>
-const byId=(id)=>document.querySelector("#"+id);let loadedReport="";function renderState(value){const running=["planning","scanning"].includes(value.status);if(value.url&&!byId("url").value)byId("url").value=value.url;byId("status").textContent=value.status;byId("message").textContent=value.message||"";byId("current").textContent=value.currentUrl||"";byId("completed").textContent=value.completed+(value.total?" / "+value.total:"");byId("bar").style.width=(value.total?Math.min(100,value.completed/value.total*100):0)+"%";byId("start").disabled=running;byId("cancel").disabled=!running;byId("report").hidden=!value.reportReady;byId("reportPanel").hidden=!value.reportReady;if(value.reportReady&&value.startedAt&&loadedReport!==value.startedAt){loadedReport=value.startedAt;byId("reportFrame").src="/report?v="+encodeURIComponent(value.startedAt)}if(value.summary){byId("errors").textContent=value.summary.error;byId("warnings").textContent=value.summary.warning;byId("info").textContent=value.summary.info}}async function state(){const response=await fetch("/api/state");renderState(await response.json())}async function submitScan(body){const response=await fetch("/api/scan",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});const result=await response.json();if(response.status===409&&result.requiresConfirmation){if(window.confirm(result.error+" Existing files will be replaced, while saved history remains available.")){return submitScan({...body,replaceExisting:true})}}if(!response.ok)byId("message").textContent=result.error||"Could not start scan"}const events=new EventSource("/api/events");events.onmessage=(event)=>renderState(JSON.parse(event.data));events.onerror=()=>{byId("message").textContent="Live updates disconnected; reconnecting…"};byId("start").addEventListener("click",()=>submitScan({url:byId("url").value,maxPages:Number(byId("pages").value),concurrency:Number(byId("concurrency").value),delay:Number(byId("delay").value),render:byId("render").value}));byId("cancel").addEventListener("click",async()=>{await fetch("/api/cancel",{method:"POST"})});state();
-</script></body></html>`;
-
-const PAGE = PAGE_TEMPLATE
-  .replace("Overview, Site Metrics, Issues, and local scan history", "Compact overview preview")
-  .replace('target="_blank">Open full size', 'target="_blank" rel="noopener">Open full report')
-  .replace('title="SEO Crawl Audit report"', 'title="Compact SEO Crawl Audit report"')
-  .replace('src="/report?v="', 'src="/report?embed=1&v="')
-  .replace('<section id="reportPanel"', '<section class="panel"><h2>Site Metrics</h2><p class="muted">Optional public Google and RDAP data. Uses the latest local snapshot and does not crawl pages again.</p><div class="form"><label><span>Google site: estimate (optional)</span><input id="googleEstimate" type="number" min="1" step="1" placeholder="e.g. 19300"></label></div><div class="actions"><button id="updateMetrics" class="secondary">Update public metrics</button><a id="googleCheck" href="https://www.google.com/" target="_blank" rel="noopener">Check site: query in Google</a></div><div id="metricsMessage" class="muted">Run an SEO scan first.</div></section><section id="reportPanel"')
-  .replace('state();\n</script>', 'const updateGoogleLink=()=>{try{byId("googleCheck").href="https://www.google.com/search?q="+encodeURIComponent("site:"+new URL(byId("url").value).hostname)}catch{byId("googleCheck").href="https://www.google.com/"}};byId("url").addEventListener("input",updateGoogleLink);updateGoogleLink();byId("updateMetrics").addEventListener("click",async()=>{const button=byId("updateMetrics");button.disabled=true;byId("metricsMessage").textContent="Updating public metrics…";try{const response=await fetch("/api/metrics",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({googleEstimate:Number(byId("googleEstimate").value)||null})});const result=await response.json();if(!response.ok)throw new Error(result.error||"Could not update metrics");byId("metricsMessage").textContent="Public metrics updated. No pages were crawled.";loadedReport="";await state()}catch(error){byId("metricsMessage").textContent=error.message}finally{button.disabled=false}});state();\n</script>');
-
 function json(response: ServerResponse, status: number, value: unknown): void {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
   response.end(JSON.stringify(value));
@@ -151,6 +116,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
   const snapshotPath = resolve(directory, ".seo-audit.json");
   const reportPath = resolve(directory, "seo-audit-report.html");
   const checkpointPath = resolve(directory, ".seo-audit.checkpoint.ndjson");
+  const metricsPath = resolve(directory, ".seo-audit.metrics.json");
   const historyPath = resolve(directory, ".seo-audit/history");
   const fetch = options.fetch ?? globalThis.fetch;
   let reportHtml: string | null = null;
@@ -165,6 +131,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
   }
   let controller: AbortController | null = null;
   let metricsRunning = false;
+  let pendingFullPlan: { key: string; plan: ScanPlan; expiresAt: number } | null = null;
   let state: UiState = { status: "idle", url: options.initialUrl ?? existingSiteUrl, completed: 0, total: 0, retries: 0, errors: 0, startedAt: null, currentUrl: null, message: "Ready to scan locally.", reportReady: false, summary: null };
   if (savedSnapshot && reportHtml) {
     const counts = audit(savedSnapshot).reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
@@ -199,19 +166,10 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
     return issues;
   };
 
-  const startScan = async (input: Record<string, unknown>) => {
+  const startScan = async (input: Record<string, unknown>, plan: ScanPlan, activeController: AbortController) => {
     let renderer: PageRenderer | undefined;
     try {
-      const config = resolveConfig({
-        url: String(input.url ?? ""),
-        maxPages: Number(input.maxPages ?? 100),
-        concurrency: Number(input.concurrency ?? 5),
-        delay: Number(input.delay ?? 100),
-      });
-      controller = new AbortController();
       renderer = await loadRenderer(input.render);
-      state = { status: "planning", url: config.url, completed: 0, total: config.maxPages, retries: 0, errors: 0, startedAt: new Date().toISOString(), currentUrl: null, message: "Discovering robots.txt and sitemap…", reportReady: false, summary: null };
-      publish();
       const onEvent = (event: ScanEvent) => {
         if (event.type === "sitemap") state.message = event.sitemap ? `Sitemap found with ${event.candidateCount ?? event.sitemap.urls.length} URL(s).` : "No sitemap found; discovering internal links.";
         if (event.type === "scan-start") { state.status = "scanning"; state.total = event.total; state.message = "Crawling pages…"; }
@@ -223,23 +181,24 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         }
         publish();
       };
-      const plan = await planScan(config, { fetch, signal: controller.signal, onEvent });
-      const result = await scan(plan, { fetch, signal: controller.signal, renderer, checkpointStore: createFileCheckpointStore(checkpointPath), onEvent });
+      const store = createFileCheckpointStore(checkpointPath);
+      const result = await scan(plan, { fetch, signal: activeController.signal, renderer, checkpointStore: store, retainCheckpoint: true, onEvent });
       if (!result.snapshot.partial) await writeHistorySnapshot(historyPath, result.snapshot);
       const [issues] = await Promise.all([
-        renderCurrentReport(result.snapshot, buildSiteMetrics(result.snapshot)),
+        renderCurrentReport(result.snapshot, mergeSiteMetrics(buildSiteMetrics(result.snapshot), await readSiteMetricsState(metricsPath, result.snapshot.siteUrl))),
         writeSnapshot(snapshotPath, result.snapshot),
       ]);
       const counts = issues.reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
+      if (!result.snapshot.partial) await store.clearCurrent();
       existingSiteUrl = result.snapshot.siteUrl;
       state = { ...state, status: result.partial ? "cancelled" : "complete", completed: result.snapshot.pages.length, currentUrl: null, message: result.partial ? "Partial results and checkpoint were saved." : "Scan complete. Snapshot and report were saved locally.", reportReady: true, summary: { pages: result.snapshot.pages.length, ...counts } };
       publish();
     } catch (error) {
-      state = { ...state, status: controller?.signal.aborted ? "cancelled" : "error", message: error instanceof Error ? error.message : String(error), currentUrl: null };
+      state = { ...state, status: activeController.signal.aborted ? "cancelled" : "error", message: error instanceof Error ? error.message : String(error), currentUrl: null };
       publish();
     } finally {
       await renderer?.close?.();
-      controller = null;
+      if (controller === activeController) controller = null;
     }
   };
 
@@ -249,7 +208,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
       const path = requestUrl.pathname;
       if (request.method === "GET" && path === "/") {
         response.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:", "x-content-type-options": "nosniff" });
-        response.end(PAGE);
+        response.end(LOCAL_UI_PAGE);
         return;
       }
       if (request.method === "GET" && path === "/api/state") { json(response, 200, state); return; }
@@ -262,9 +221,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
       }
       if (request.method === "GET" && path === "/report") {
         if (!reportHtml) { json(response, 404, { error: "report is not ready" }); return; }
-        const embedded = requestUrl.searchParams.get("embed") === "1" || request.headers["sec-fetch-dest"] === "iframe";
-        const content = embedded ? embedReport(reportHtml) : reportHtml;
-        response.writeHead(200, { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff" }); response.end(content); return;
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff" }); response.end(reportHtml); return;
       }
       if (request.method === "POST" && path === "/api/scan") {
         const origin = request.headers.origin;
@@ -287,7 +244,57 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
           });
           return;
         }
-        void startScan(input);
+        const baseConfig = resolveLocalScanConfig(input, requestedUrl.href);
+        const activeController = new AbortController();
+        controller = activeController;
+        state = { status: "planning", url: baseConfig.url, completed: 0, total: baseConfig.maxPages, retries: 0, errors: 0, startedAt: new Date().toISOString(), currentUrl: null, message: "Discovering robots.txt and sitemap…", reportReady: false, summary: null };
+        publish();
+        const planKey = JSON.stringify([baseConfig.url, baseConfig.concurrency, baseConfig.delay]);
+        let plan: ScanPlan;
+        const reusablePlan = input.profile === "full" && input.confirmLargeScan === true && pendingFullPlan?.key === planKey && pendingFullPlan.expiresAt > Date.now()
+          ? pendingFullPlan.plan
+          : null;
+        pendingFullPlan = null;
+        if (reusablePlan) {
+          plan = reusablePlan;
+        } else {
+          try {
+            plan = await planScan(baseConfig, { fetch, signal: activeController.signal });
+          } catch (error) {
+            controller = null;
+            state = { ...state, status: activeController.signal.aborted ? "cancelled" : "error", message: error instanceof Error ? error.message : String(error) };
+            publish();
+            throw error;
+          }
+        }
+        let decision;
+        try {
+          decision = decideFullScan(plan, input);
+        } catch (error) {
+          controller = null;
+          state = { ...state, status: "idle", message: error instanceof Error ? error.message : String(error) };
+          publish();
+          json(response, 409, { error: state.message, ...(input.profile === "full" && plan.mode !== "sitemap" ? { fullSitemapUnavailable: true } : {}) });
+          return;
+        }
+        const limit = decision.limit;
+        if (decision.confirmation) {
+          pendingFullPlan = { key: planKey, plan, expiresAt: Date.now() + 5 * 60 * 1_000 };
+          controller = null;
+          state = { ...state, status: "idle", total: limit, message: `Ready to scan ${limit.toLocaleString("en-US")} sitemap URLs after confirmation.` };
+          publish();
+          json(response, 409, { requiresLargeScanConfirmation: true, ...decision.confirmation });
+          return;
+        }
+        const config = { ...baseConfig, maxPages: limit };
+        plan = { ...plan, config };
+        if (existingSiteUrl && new URL(existingSiteUrl).origin !== requestedUrl.origin) {
+          try { await unlink(metricsPath); } catch (error) {
+            if (!error || typeof error !== "object" || !("code" in error) || error.code !== "ENOENT") throw error;
+          }
+        }
+        state = { ...state, total: limit };
+        void startScan(input, plan, activeController);
         json(response, 202, { status: "started" });
         return;
       }
@@ -313,8 +320,9 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
           }
           throw error;
         }
-        const collected = await collectSiteMetrics(snapshot, { providers: [createGoogleSiteEstimateProvider(), createRdapDomainProvider()], fetch });
-        await renderCurrentReport(snapshot, withManualGoogleEstimate(collected, input.googleEstimate));
+        const collected = await collectLocalUiMetrics(snapshot, input.googleEstimate, fetch);
+        await writeSiteMetricsState(metricsPath, externalSiteMetrics(collected));
+        await renderCurrentReport(snapshot, collected);
         state = { ...state, url: snapshot.siteUrl, startedAt: new Date().toISOString(), reportReady: true, message: "Public metrics updated without crawling pages." };
         publish();
         json(response, 200, { status: "complete", report: "/report" });

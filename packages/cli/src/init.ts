@@ -34,6 +34,7 @@ const DEFAULT_CONFIG_FILE = "seo-audit.config.json";
 const DEFAULT_WORKFLOW_FILE = ".github/workflows/seo-audit.yml";
 const GITIGNORE_RECOMMENDATIONS = [
   ".seo-audit.checkpoint.ndjson",
+  ".seo-audit.metrics.json",
   ".seo-audit/history/",
   "seo-audit-report.html",
   "seo-audit-report.html.json",

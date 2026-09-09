@@ -56,6 +56,7 @@ export type {
   SiteMetricProvider,
   SiteMetricProviderContext,
   SiteMetrics,
+  SiteMetricsStateV1,
   SitemapState,
   SnapshotV2,
   Suppression,

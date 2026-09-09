@@ -9,6 +9,8 @@ export {
   writeReport,
   readHistorySnapshots,
   writeHistorySnapshot,
+  readSiteMetricsState,
+  writeSiteMetricsState,
 } from "./node-files.js";
 export {
   FileCheckpointStore,
@@ -17,3 +19,9 @@ export {
 } from "./file-checkpoint-store.js";
 export type { FileCheckpointInspection } from "./file-checkpoint-store.js";
 export { checkpointPathForOutput } from "./checkpoint.js";
+export {
+  externalSiteMetrics,
+  markStaleSiteMetrics,
+  mergeSiteMetrics,
+  validateSiteMetricsState,
+} from "./site-metrics-state.js";

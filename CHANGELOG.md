@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11.0 — 2026-09-09
+
+- added Quick, Standard, Full sitemap, and Custom local scan profiles with a
+  50,000-page ceiling and explicit confirmation above 5,000 discovered URLs;
+- extended MCP full-sitemap scans with the same preflight and confirmation
+  safety contract;
+- split the bundled local UI into template, runtime, scan controller, metrics
+  controller, and HTTP routing modules;
+- kept the durable NDJSON page journal until snapshot and report outputs are
+  safely written, and streamed checkpoint loading and inspection;
+- persisted external Site Metrics in `.seo-audit.metrics.json` without changing
+  SnapshotV2, including same-origin validation and stale-state labels;
+- optimized self-contained reports with paginated DOM rendering, debounced
+  search, a compact search index, on-demand CSV, and a large-report notice;
+- validated a 50,000-page crawl and report below the 900 MiB and 30-second
+  release limits while preserving CLI, snapshot, fingerprint, and exit-code
+  compatibility.
+
 ## 0.10.3 — 2026-09-08
 
 - restored saved reports and scan summaries after restarting the local UI;

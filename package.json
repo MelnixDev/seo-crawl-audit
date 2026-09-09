@@ -1,6 +1,6 @@
 {
   "name": "seo-crawl-audit-workspace",
-  "version": "0.10.3",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -17,6 +17,7 @@
     "check": "npm run lint && npm run build && npm run test:coverage && npm run pack:check",
     "pack:check": "node scripts/package-contracts.mjs",
     "benchmark:10k": "npm run build && node scripts/benchmark-10k.mjs",
+    "benchmark:50k": "npm run build && node scripts/benchmark-50k.mjs",
     "demo:generate": "npm run build && node scripts/generate-demo.mjs",
     "screenshots:prepare": "npm run demo:generate && node scripts/prepare-screenshot-pages.mjs",
     "seo-audit": "node bin/seo-audit.js"

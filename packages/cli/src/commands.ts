@@ -276,7 +276,7 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
       renderer,
       limit: requested,
       checkpointStore: store,
-      retainCheckpoint: selection.mode === "step" && requested < selection.target,
+      retainCheckpoint: Boolean(store),
       async onBatch(pages) {
         for (const page of pages) collected.set(page.url, page);
         await writePartial();
@@ -309,6 +309,7 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
   const finalReport = incomplete
     ? partialReportPath
     : await saveReport(values, reportData(result.snapshot, "scan", audit(result.snapshot), history ? { history } : {}));
+  if (!incomplete) await store?.clearCurrent();
   const summary = health(result.snapshot.pages);
   if (values.json) {
     console.log(JSON.stringify({

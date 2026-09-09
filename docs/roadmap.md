@@ -1,74 +1,63 @@
 # Product roadmap
 
-SEO Crawl Audit remains a free, open-source, local-first crawler. Existing CLI,
-JSON, SnapshotV2, issue fingerprints, MCP, and GitHub Action contracts remain
-backward compatible while the following phases are delivered.
+SEO Crawl Audit remains a free, open-source, local-first crawler. CLI, MCP,
+GitHub Action, SnapshotV2, issue fingerprints, and report contracts remain
+backward compatible while the product grows.
 
 ## Delivery status (September 2026)
 
-Versions `0.10.0` and `0.10.1` shipped CLI preflight/progress and resume
-diagnostics, Site Metrics, the loopback-only `serve` interface, the opt-in
-Playwright renderer, refreshed screenshots, and bilingual Google `site:` and
-local indexability estimates. Public Google/RDAP metrics are now a separate
-post-scan action and never repeat the page crawl.
+Version `0.10.3` is the current stable release. It includes scan preflight and
+progress, checkpoint/resume diagnostics, Site Metrics, the loopback-only local
+web interface, opt-in Playwright rendering, MCP and agent documentation,
+English/Ukrainian reports, refreshed screenshots, public RDAP data, and clearly
+labelled Google `site:` and local indexability estimates.
 
-Authenticated Search Console/Bing adapters and GIF/WebM demonstrations are
+Authenticated Search Console/Bing adapters and animated demonstrations remain
 intentionally deferred. They are not prerequisites for the local product.
-Remaining work is real-browser Playwright dogfooding and normal reliability
-maintenance.
 
-The concrete execution brief for the next implementation cycle is in
-[`docs/handoff-next-cycle.md`](handoff-next-cycle.md).
+## 0.11.0 — scale and local-product reliability
 
-## 0.10.x — clearer local workflows
+- Support safe full-sitemap scans of up to 50,000 pages from the local UI and
+  MCP, with preflight estimates and explicit confirmation above 5,000 pages.
+- Add Quick, Standard, Full sitemap, and Custom scan profiles while keeping HTTP
+  as the default and Playwright as a separate opt-in rendering mode.
+- Use the durable NDJSON page journal for large scans and preserve reliable
+  interruption/resume behaviour.
+- Persist external Site Metrics in a separate versioned local file without
+  changing SnapshotV2.
+- Split the local UI template, browser runtime, controllers, and HTTP routing
+  into maintainable modules that are still bundled into the CLI package.
+- Keep self-contained HTML reports responsive with tens of thousands of issues.
 
-- Add a scan preflight summary and actionable large-scan warning.
-- Show crawl phase, elapsed time, throughput, ETA, retries, failures, and the
-  current URL without contaminating JSON stdout.
-- Make checkpoint discovery and resume behaviour explicit and add a read-only
-  `seo-audit status` command.
-- Add actionable network, configuration, sitemap, and filesystem diagnostics.
-- Add a "What to fix first" summary to terminal and HTML reports.
-- Add a `Site Metrics` report view with local crawl, sitemap, image, product,
-  indexability, status, link, depth, response-time, and transfer metrics.
-- Collect public-first metrics without credentials. Every external value must
-  expose its source, observation time, confidence, and availability; estimates
-  must never be presented as exact values.
-- Keep authoritative Google Search Console and Bing Webmaster connections
-  deferred until users explicitly need exact provider data.
+## 0.12.0 — Page Explorer
 
-## 0.11.0 — local web interface
+- Add a per-URL view for status, redirects, indexability, metadata, headings,
+  structured data, response timing, transfer size, depth, links, and issues.
+- Reuse existing SnapshotV2 data and avoid fetching pages from the report.
 
-- Add `seo-audit serve`, bound to `127.0.0.1` only.
-- Reuse the existing core for setup, scans, cancellation, issues, history,
-  metrics, and report previews.
-- Stream live progress to the browser and keep all artifacts on the device.
-- Do not introduce a hosted backend, accounts, billing, or telemetry.
+## 0.13.0 — site architecture
 
-## 0.12.0 — optional JavaScript rendering
+- Surface inlinks, low-linked and orphan pages, broken-link sources, redirect
+  chains, deep pages, and URL-template distributions.
+- Provide practical tables and exports before considering a heavy graph view.
 
-- Keep the HTTP crawler as the fast default.
-- Ship Playwright support as the separate opt-in
-  `@seo-crawl-audit/renderer-playwright` package.
-- Apply the selected renderer consistently to every page in a scan.
-- Reuse one browser with default browser concurrency 2; allow CSS, fonts, and
-  images while blocking video, audio, and downloads.
-- Fail with an actionable installation message when Playwright or its browser
-  binary is unavailable. Never silently fall back to HTTP.
+## 0.14.0 — regression workflow
 
-## Brand and demonstration
+- Add rule and template trends, local run comparison, a focused "what became
+  worse" view, and concise change-summary exports.
 
-- Add a self-contained inline SVG product mark with a text fallback while
-  preserving local agency name, custom logo, and primary-colour branding.
-- README screenshots are refreshed. GIF/WebM demonstrations are deferred.
-- Public examples must not contain private or customer data.
+## Deferred
+
+- Google Search Console and Bing Webmaster authentication;
+- GIF/WebM demonstrations;
+- cloud crawling, accounts, billing, telemetry, paid features, or an opaque SEO
+  score;
+- JavaScript rendering by default;
+- low-confidence rules added only to increase the rule count.
 
 ## Quality gates
 
-- Keep all existing compatibility and coverage gates green.
-- Cover interactive and JSON progress, checkpoint status and resume, partial
-  reports, public/connected metric states, localhost isolation, cancellation,
-  Playwright SSR/SPA behaviour, missing browser dependencies, and safe SVG
-  rendering.
-- Dogfood short and full scans on explicitly permitted sites before each
-  release.
+- Preserve current public contracts and complete automated checks.
+- Cover full-sitemap confirmation, 50k journals, resume, metrics persistence,
+  large-report interaction, localhost isolation, cancellation, and Playwright.
+- Dogfood short and full scans only on explicitly permitted sites.

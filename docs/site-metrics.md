@@ -30,6 +30,13 @@ Missing or failed external values remain visibly `unavailable` or `error`.
 They are never replaced with invented values or presented as exact search-index
 counts.
 
+External observations are stored locally in `.seo-audit.metrics.json`, separate
+from SnapshotV2. A new scan of the same origin keeps these observations; a
+confirmed switch to another origin clears them. RDAP observations are marked
+stale after seven days and a manually entered Google estimate after 30 days.
+Stale values remain visible with their original observation date until updated.
+Add `.seo-audit.metrics.json` to `.gitignore`; it is machine-local state.
+
 The core API accepts explicit providers:
 
 ```js
