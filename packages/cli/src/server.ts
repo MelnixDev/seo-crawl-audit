@@ -28,7 +28,7 @@ import {
 } from "@seo-crawl-audit/core/node";
 import { createPlaywrightRenderer } from "@seo-crawl-audit/renderer-playwright";
 import { collectLocalUiMetrics } from "./local-ui-metrics-controller.js";
-import { embedLocalReport, LOCAL_UI_PAGE } from "./local-ui-page.js";
+import { LOCAL_UI_PAGE } from "./local-ui-page.js";
 import { decideFullScan, resolveLocalScanConfig } from "./local-ui-scan-controller.js";
 
 interface UiState {
@@ -221,9 +221,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
       }
       if (request.method === "GET" && path === "/report") {
         if (!reportHtml) { json(response, 404, { error: "report is not ready" }); return; }
-        const embedded = requestUrl.searchParams.get("embed") === "1" || request.headers["sec-fetch-dest"] === "iframe";
-        const content = embedded ? embedLocalReport(reportHtml) : reportHtml;
-        response.writeHead(200, { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff" }); response.end(content); return;
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff" }); response.end(reportHtml); return;
       }
       if (request.method === "POST" && path === "/api/scan") {
         const origin = request.headers.origin;

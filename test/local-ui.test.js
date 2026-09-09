@@ -59,6 +59,7 @@ test("local UI binds only to loopback and serves its application shell", async (
   assert.match(page, /Compact overview preview/);
   assert.match(page, /Open full report/);
   assert.match(page, /\/report\?embed=1&v=/);
+  assert.match(page, /reportFrame\.contentDocument/);
   assert.match(page, /id="googleEstimate"/);
   assert.match(page, /id="profile"/);
   assert.match(page, /Full sitemap/);
@@ -166,8 +167,7 @@ test("local UI runs a scan and exposes the generated report", async (context) =>
   assert.match(reportHtml, /google-site-search-manual/);
   assert.doesNotMatch(reportHtml, /seo-audit-embed-style/);
   const embeddedReport = await (await fetch(new URL("/report?embed=1", server.url))).text();
-  assert.match(embeddedReport, /seo-audit-embed-style/);
-  assert.match(embeddedReport, /\.report-nav\{display:none/);
+  assert.equal(embeddedReport, reportHtml);
   await access(join(directory, ".seo-audit.json"));
   await access(join(directory, "seo-audit-report.html"));
 });
