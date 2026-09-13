@@ -20,6 +20,7 @@ import {
   checkpointPathForOutput,
   createFileCheckpointStore,
   inspectFileCheckpoint,
+  loadReportSiteMetrics,
   readSnapshot,
   readHistorySnapshots,
   writeReport,
@@ -167,6 +168,20 @@ function reportData(snapshot: SnapshotV2, mode: "scan" | "check", issues = audit
   };
 }
 
+async function reportDataWithMetrics(
+  snapshot: SnapshotV2,
+  mode: "scan" | "check",
+  issues: ReturnType<typeof audit>,
+  referencePath: string,
+  extra: Partial<ReportData> = {},
+): Promise<ReportData> {
+  const metricsPath = join(dirname(referencePath), ".seo-audit.metrics.json");
+  const siteMetrics = await loadReportSiteMetrics(snapshot, metricsPath, {
+    onWarning: (message) => console.error(`Warning: ${message}`),
+  });
+  return reportData(snapshot, mode, issues, { ...extra, siteMetrics });
+}
+
 function historyDirectory(values: CliValues, referencePath?: string): string {
   if (values["history-dir"]) return resolve(values["history-dir"]);
   return referencePath ? join(dirname(referencePath), DEFAULT_HISTORY_DIRECTORY) : resolve(DEFAULT_HISTORY_DIRECTORY);
@@ -259,7 +274,7 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
       partial: true,
       truncated: true,
     });
-    await writeReport(partialReportPath, reportData(partialSnapshot, "scan", audit(partialSnapshot), { partial: true, targetPages: selection.target }));
+    await writeReport(partialReportPath, await reportDataWithMetrics(partialSnapshot, "scan", audit(partialSnapshot), output, { partial: true, targetPages: selection.target }));
     lastReportAt = now;
     lastReportCount = collected.size;
   };
@@ -308,7 +323,7 @@ export async function scanCommand(url: string | undefined, values: CliValues, si
   const history = await updateHistory(values, result.snapshot, output, !incomplete);
   const finalReport = incomplete
     ? partialReportPath
-    : await saveReport(values, reportData(result.snapshot, "scan", audit(result.snapshot), history ? { history } : {}));
+    : await saveReport(values, await reportDataWithMetrics(result.snapshot, "scan", audit(result.snapshot), output, history ? { history } : {}));
   if (!incomplete) await store?.clearCurrent();
   const summary = health(result.snapshot.pages);
   if (values.json) {
@@ -393,7 +408,7 @@ export async function checkCommand(url: string | undefined, values: CliValues, s
   const issues = comparison.newIssues;
   const summary = summarizeIssues(issues);
   const history = await updateHistory(values, current, baselinePath, !result.partial);
-  const report = await saveReport(values, reportData(current, "check", issues, { ...comparison, ...(history ? { history } : {}) }));
+  const report = await saveReport(values, await reportDataWithMetrics(current, "check", issues, baselinePath, { ...comparison, ...(history ? { history } : {}) }));
   if (values.json) console.log(JSON.stringify({ command: "check", baseline: baselinePath, pages: current.pages.length, summary, issues, lifecycle: comparison, report }, null, 2));
   else {
     console.log(`Checked ${current.pages.length} page(s).\n`);
@@ -484,7 +499,7 @@ export async function compareCommand(values: CliValues, signal?: AbortSignal): P
   });
   const issues = comparison.newIssues;
   const summary = summarizeIssues(issues);
-  const report = await saveReport(values, reportData(current, "check", issues, {
+  const report = await saveReport(values, await reportDataWithMetrics(current, "check", issues, resolve(DEFAULT_BASELINE), {
     ...comparison,
     comparison: { kind: "preview", productionUrl, previewUrl },
   }), true);
@@ -503,7 +518,7 @@ export async function reportCommand(inputPath: string | undefined, values: CliVa
   const baselinePath = resolve(inputPath ?? values.baseline ?? DEFAULT_BASELINE);
   const baseline = await readSnapshot(baselinePath);
   const history = await updateHistory(values, baseline, baselinePath, false);
-  const report = await saveReport(values, reportData(baseline, "scan", audit(baseline), history ? { history } : {}), true);
+  const report = await saveReport(values, await reportDataWithMetrics(baseline, "scan", audit(baseline), baselinePath, history ? { history } : {}), true);
   if (values.json) console.log(JSON.stringify({ command: "report", baseline: baselinePath, pages: baseline.pages.length, report }, null, 2));
   else console.log(`HTML report saved to ${report}`);
   return 0;
@@ -523,7 +538,7 @@ export async function historyCommand(siteUrl: string | undefined, values: CliVal
       severityOverrides: current.config.severityOverrides,
       suppressions: current.config.suppressions,
     });
-    const report = await saveReport(values, reportData(current, "check", comparison.newIssues, {
+    const report = await saveReport(values, await reportDataWithMetrics(current, "check", comparison.newIssues, resolve(values.to), {
       ...comparison,
       ...(history ? { history } : {}),
     }), true);
@@ -549,7 +564,7 @@ export async function historyCommand(siteUrl: string | undefined, values: CliVal
   }
   const latest = records.at(-1)!;
   const history = buildHistorySeries(records.map((record) => record.snapshot));
-  const report = await saveReport(values, reportData(latest.snapshot, "scan", audit(latest.snapshot), history ? { history } : {}), true);
+  const report = await saveReport(values, await reportDataWithMetrics(latest.snapshot, "scan", audit(latest.snapshot), latest.path, history ? { history } : {}), true);
   const points = history?.points ?? [];
   if (values.json) console.log(JSON.stringify({ command: "history", directory, snapshots: records.map((record, index) => ({ path: record.path, ...points[index] })), report }, null, 2));
   else {

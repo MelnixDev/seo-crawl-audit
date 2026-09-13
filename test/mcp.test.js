@@ -98,6 +98,25 @@ test("MCP full sitemap scans require confirmation above 5,000 pages", async () =
   assert.equal(result.status, "confirmation-required");
   assert.equal(result.requiresConfirmation, true);
   assert.equal(result.candidateCount, 5_002);
+  assert.match(result.confirmationId, /^[a-f0-9]{24}$/);
+  assert.equal(pageRequests, 0);
+});
+
+test("MCP custom large scans require parameter-bound confirmation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-audit-mcp-custom-large-"));
+  let pageRequests = 0;
+  const fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nAllow: /\n", { status: 200 });
+    pageRequests += 1;
+    return new Response("<!doctype html><title>Page</title><h1>Page</h1>", { status: 200, headers: { "content-type": "text/html" } });
+  };
+  const initial = await scanTool({ root, fetch }, { url: "https://example.com/", sitemap: "none", maxPages: 6_000, delay: 0 });
+  assert.equal(initial.status, "confirmation-required");
+  assert.equal(pageRequests, 0);
+  const changed = await scanTool({ root, fetch }, { url: "https://example.com/", sitemap: "none", maxPages: 6_001, delay: 0, confirmLargeScan: true, confirmationId: initial.confirmationId });
+  assert.equal(changed.status, "confirmation-required");
+  assert.notEqual(changed.confirmationId, initial.confirmationId);
   assert.equal(pageRequests, 0);
 });
 

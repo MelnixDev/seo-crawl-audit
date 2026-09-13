@@ -5,7 +5,6 @@ import { resolve } from "node:path";
 import {
   audit,
   buildHistorySeries,
-  buildSiteMetrics,
   planScan,
   scan,
   type ScanEvent,
@@ -17,9 +16,8 @@ import {
 import {
   createFileCheckpointStore,
   externalSiteMetrics,
-  mergeSiteMetrics,
+  loadReportSiteMetrics,
   readHistorySnapshots,
-  readSiteMetricsState,
   readSnapshot,
   writeHistorySnapshot,
   writeReport,
@@ -131,7 +129,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
   }
   let controller: AbortController | null = null;
   let metricsRunning = false;
-  let pendingFullPlan: { key: string; plan: ScanPlan; expiresAt: number } | null = null;
+  let pendingLargePlan: { key: string; plan: ScanPlan; expiresAt: number } | null = null;
   let state: UiState = { status: "idle", url: options.initialUrl ?? existingSiteUrl, completed: 0, total: 0, retries: 0, errors: 0, startedAt: null, currentUrl: null, message: "Ready to scan locally.", reportReady: false, summary: null };
   if (savedSnapshot && reportHtml) {
     const counts = audit(savedSnapshot).reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
@@ -166,6 +164,13 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
     return issues;
   };
 
+  if (savedSnapshot && reportHtml) {
+    const siteMetrics = await loadReportSiteMetrics(savedSnapshot, metricsPath, {
+      onWarning: (message) => console.error(`Warning: ${message}`),
+    });
+    await renderCurrentReport(savedSnapshot, siteMetrics);
+  }
+
   const startScan = async (input: Record<string, unknown>, plan: ScanPlan, activeController: AbortController) => {
     let renderer: PageRenderer | undefined;
     try {
@@ -185,7 +190,9 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
       const result = await scan(plan, { fetch, signal: activeController.signal, renderer, checkpointStore: store, retainCheckpoint: true, onEvent });
       if (!result.snapshot.partial) await writeHistorySnapshot(historyPath, result.snapshot);
       const [issues] = await Promise.all([
-        renderCurrentReport(result.snapshot, mergeSiteMetrics(buildSiteMetrics(result.snapshot), await readSiteMetricsState(metricsPath, result.snapshot.siteUrl))),
+        renderCurrentReport(result.snapshot, await loadReportSiteMetrics(result.snapshot, metricsPath, {
+          onWarning: (message) => console.error(`Warning: ${message}`),
+        })),
         writeSnapshot(snapshotPath, result.snapshot),
       ]);
       const counts = issues.reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
@@ -249,12 +256,12 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         controller = activeController;
         state = { status: "planning", url: baseConfig.url, completed: 0, total: baseConfig.maxPages, retries: 0, errors: 0, startedAt: new Date().toISOString(), currentUrl: null, message: "Discovering robots.txt and sitemap…", reportReady: false, summary: null };
         publish();
-        const planKey = JSON.stringify([baseConfig.url, baseConfig.concurrency, baseConfig.delay]);
+        const planKey = JSON.stringify([baseConfig, String(input.render ?? "http")]);
         let plan: ScanPlan;
-        const reusablePlan = input.profile === "full" && input.confirmLargeScan === true && pendingFullPlan?.key === planKey && pendingFullPlan.expiresAt > Date.now()
-          ? pendingFullPlan.plan
+        const reusablePlan = input.confirmLargeScan === true && pendingLargePlan?.key === planKey && pendingLargePlan.expiresAt > Date.now()
+          ? pendingLargePlan.plan
           : null;
-        pendingFullPlan = null;
+        pendingLargePlan = null;
         if (reusablePlan) {
           plan = reusablePlan;
         } else {
@@ -279,7 +286,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         }
         const limit = decision.limit;
         if (decision.confirmation) {
-          pendingFullPlan = { key: planKey, plan, expiresAt: Date.now() + 5 * 60 * 1_000 };
+          pendingLargePlan = { key: planKey, plan, expiresAt: Date.now() + 5 * 60 * 1_000 };
           controller = null;
           state = { ...state, status: "idle", total: limit, message: `Ready to scan ${limit.toLocaleString("en-US")} sitemap URLs after confirmation.` };
           publish();

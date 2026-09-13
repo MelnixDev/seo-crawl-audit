@@ -23,6 +23,7 @@ import {
   writeSnapshot,
 } from "@seo-crawl-audit/core/node";
 import { mkdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { dirname } from "node:path";
 import { assertRealWorkspacePath, workspacePath, relativeArtifact } from "./paths.js";
 import { authenticatedCheckpointPath, requestFetch } from "./request-headers.js";
@@ -49,6 +50,7 @@ interface CommonInput {
 interface ScanToolInput extends CommonInput {
   fullSitemap?: boolean | undefined;
   confirmLargeScan?: boolean | undefined;
+  confirmationId?: string | undefined;
   output?: string | undefined;
   report?: string | undefined;
   checkpoint?: string | undefined;
@@ -59,7 +61,26 @@ const LARGE_SCAN_THRESHOLD = 5_000;
 const MAX_TOOL_PAGES = 50_000;
 
 function estimatedSeconds(pages: number, delay: number, concurrency: number): number {
-  return Math.ceil(pages * (delay + 250) / Math.max(1, concurrency) / 1_000);
+  const gateBoundMs = pages * Math.max(0, delay);
+  const workerBoundMs = pages * (Math.max(0, delay) + 250) / Math.max(1, concurrency);
+  return Math.ceil(Math.max(gateBoundMs, workerBoundMs) / 1_000);
+}
+
+function confirmationId(plan: Awaited<ReturnType<typeof planScan>>, limit: number): string {
+  const identity = JSON.stringify({
+    startUrl: plan.startUrl,
+    sitemapUrl: plan.sitemap?.url ?? null,
+    candidateCount: plan.candidateCount,
+    limit,
+    concurrency: plan.config.concurrency,
+    delay: plan.config.delay,
+    timeout: plan.config.timeout,
+    respectRobots: plan.config.respectRobots,
+    includeQuery: plan.config.includeQuery,
+    maxRedirects: plan.config.maxRedirects,
+    maxResponseBytes: plan.config.maxResponseBytes,
+  });
+  return createHash("sha256").update(identity).digest("hex").slice(0, 24);
 }
 
 async function localPath(context: ToolContext, requested: string | undefined, fallback: string): Promise<string> {
@@ -174,15 +195,21 @@ export async function scanTool(context: ToolContext, input: ScanToolInput): Prom
       throw new Error(`full sitemap scans are limited to ${MAX_TOOL_PAGES.toLocaleString("en-US")} URLs`);
     }
     limit = plan.candidateCount;
-    if (limit > LARGE_SCAN_THRESHOLD && input.confirmLargeScan !== true) {
-      return {
-        status: "confirmation-required",
-        requiresConfirmation: true,
-        candidateCount: limit,
-        estimatedSeconds: estimatedSeconds(limit, config.delay, config.concurrency),
-        message: `This full sitemap scan will request up to ${limit.toLocaleString("en-US")} pages. Call seo_audit_scan again with fullSitemap and confirmLargeScan set to true.`,
-      };
-    }
+  }
+  if (limit > MAX_TOOL_PAGES) throw new Error(`scans are limited to ${MAX_TOOL_PAGES.toLocaleString("en-US")} pages`);
+  const expectedConfirmationId = confirmationId(plan, limit);
+  if (limit > LARGE_SCAN_THRESHOLD && (input.confirmLargeScan !== true || input.confirmationId !== expectedConfirmationId)) {
+    return {
+      status: "confirmation-required",
+      requiresConfirmation: true,
+      candidateCount: plan.candidateCount,
+      requestedPages: limit,
+      confirmationId: expectedConfirmationId,
+      concurrency: config.concurrency,
+      delay: config.delay,
+      estimatedSeconds: estimatedSeconds(limit, config.delay, config.concurrency),
+      message: `This scan may request up to ${limit.toLocaleString("en-US")} pages, plus redirects and retries. Call seo_audit_scan again with unchanged load parameters, confirmLargeScan set to true, and this confirmationId.`,
+    };
   }
   const output = await localPath(context, input.output, ".seo-audit.json");
   const report = await localPath(context, input.report, "seo-audit-report.html");

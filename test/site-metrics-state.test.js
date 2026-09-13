@@ -72,6 +72,22 @@ test("external metrics merge by stable id without replacing crawl-only values", 
   assert.equal(merged.metrics.find((metric) => metric.id === "search.google-site-estimate").value, 42);
 });
 
+test("untrusted persisted metrics cannot replace crawler-owned values", () => {
+  const local = {
+    schemaVersion: 1,
+    siteUrl: "https://example.com/",
+    observedAt: "2026-09-01T00:00:00.000Z",
+    metrics: [{ ...externalMetric("pages.checked", "crawl", "2026-09-01T00:00:00.000Z"), value: 3, confidence: "high", status: "available" }],
+  };
+  const external = {
+    schemaVersion: 1,
+    siteUrl: "https://example.com/",
+    updatedAt: "2026-09-02T00:00:00.000Z",
+    metrics: [externalMetric("pages.checked", "rdap", "2026-09-02T00:00:00.000Z")],
+  };
+  assert.equal(mergeSiteMetrics(local, external).metrics[0].value, 3);
+});
+
 test("external metrics state records the latest provider observation", () => {
   const state = externalSiteMetrics({
     siteUrl: "https://example.com/",

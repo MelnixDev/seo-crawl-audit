@@ -84,14 +84,15 @@ export function markStaleSiteMetrics(state: SiteMetricsStateV1, now = new Date()
 /** Merges persisted external observations into freshly computed crawl metrics. */
 export function mergeSiteMetrics(local: SiteMetrics, external: SiteMetricsStateV1 | null): SiteMetrics {
   if (!external || new URL(local.siteUrl).origin !== new URL(external.siteUrl).origin) return local;
-  const replacements = new Map(external.metrics.map((item) => [item.id, item]));
+  const safeExternal = external.metrics.filter((item) => item.source.id !== "crawl" && item.source.id !== "crawl-estimate");
+  const replacements = new Map(safeExternal.map((item) => [item.id, item]));
   const localIds = new Set(local.metrics.map((item) => item.id));
   return {
     ...local,
     observedAt: external.updatedAt > local.observedAt ? external.updatedAt : local.observedAt,
     metrics: [
-      ...local.metrics.map((item) => replacements.get(item.id) ?? item),
-      ...external.metrics.filter((item) => !localIds.has(item.id)),
+      ...local.metrics.map((item) => item.source.id === "crawl" ? item : replacements.get(item.id) ?? item),
+      ...safeExternal.filter((item) => !localIds.has(item.id)),
     ],
   };
 }
