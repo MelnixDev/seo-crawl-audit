@@ -120,6 +120,32 @@ test("MCP custom large scans require parameter-bound confirmation", async () => 
   assert.equal(pageRequests, 0);
 });
 
+test("MCP large regression checks require parameter-bound confirmation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-audit-mcp-check-large-"));
+  let pageRequests = 0;
+  const fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nAllow: /\n", { status: 200 });
+    pageRequests += 1;
+    return new Response("<!doctype html><title>Page</title><h1>Page</h1>", { status: 200, headers: { "content-type": "text/html" } });
+  };
+  await scanTool({ root, fetch }, { url: "https://example.com/", sitemap: "none", maxPages: 1, delay: 0, output: "baseline.json" });
+  pageRequests = 0;
+
+  const preflight = await checkTool({ root, fetch }, { baseline: "baseline.json", sitemap: "none", maxPages: 6_000, delay: 0 });
+  assert.equal(preflight.status, "confirmation-required");
+  assert.equal(preflight.requiresConfirmation, true);
+  assert.equal(preflight.requestedPages, 6_000);
+  assert.equal(preflight.estimateAssumptionMs, 250);
+  assert.match(preflight.message, /seo_audit_check/);
+  assert.equal(pageRequests, 0);
+
+  const changed = await checkTool({ root, fetch }, { baseline: "baseline.json", sitemap: "none", maxPages: 6_001, delay: 0, confirmLargeScan: true, confirmationId: preflight.confirmationId });
+  assert.equal(changed.status, "confirmation-required");
+  assert.notEqual(changed.confirmationId, preflight.confirmationId);
+  assert.equal(pageRequests, 0);
+});
+
 test("MCP full sitemap mode rejects link-only plans", async () => {
   const root = await mkdtemp(join(tmpdir(), "seo-audit-mcp-links-"));
   await assert.rejects(

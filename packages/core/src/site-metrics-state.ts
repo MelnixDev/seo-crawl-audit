@@ -3,6 +3,17 @@ import type { SiteMetric, SiteMetrics, SiteMetricsStateV1 } from "./types.js";
 const RDAP_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
 const GOOGLE_ESTIMATE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1_000;
 
+const EXTERNAL_METRIC_SOURCES: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  "search.google-site-estimate": ["google-site-search", "google-site-search-manual"],
+  "domain.registration-date": ["rdap"],
+  "domain.expiration-date": ["rdap"],
+  "domain.registrar": ["rdap"],
+});
+
+function supportedExternalMetric(item: SiteMetric): boolean {
+  return EXTERNAL_METRIC_SOURCES[item.id]?.includes(item.source.id) === true;
+}
+
 function record(value: unknown, field: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${field} must be an object`);
   return value as Record<string, unknown>;
@@ -84,7 +95,7 @@ export function markStaleSiteMetrics(state: SiteMetricsStateV1, now = new Date()
 /** Merges persisted external observations into freshly computed crawl metrics. */
 export function mergeSiteMetrics(local: SiteMetrics, external: SiteMetricsStateV1 | null): SiteMetrics {
   if (!external || new URL(local.siteUrl).origin !== new URL(external.siteUrl).origin) return local;
-  const safeExternal = external.metrics.filter((item) => item.source.id !== "crawl" && item.source.id !== "crawl-estimate");
+  const safeExternal = external.metrics.filter(supportedExternalMetric);
   const replacements = new Map(safeExternal.map((item) => [item.id, item]));
   const localIds = new Set(local.metrics.map((item) => item.id));
   return {
@@ -98,7 +109,7 @@ export function mergeSiteMetrics(local: SiteMetrics, external: SiteMetricsStateV
 }
 
 export function externalSiteMetrics(metrics: SiteMetrics): SiteMetricsStateV1 {
-  const external = metrics.metrics.filter((item) => item.source.id !== "crawl" && item.source.id !== "crawl-estimate");
+  const external = metrics.metrics.filter(supportedExternalMetric);
   return {
     schemaVersion: 1,
     siteUrl: new URL(metrics.siteUrl).href,

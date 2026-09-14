@@ -152,6 +152,27 @@ test("local UI confirms a 46k sitemap without repeating preflight", async (conte
   assert.equal(fixture.counters.sitemap, 1);
 });
 
+test("local UI rejects an unbound or changed large-scan acknowledgement", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-audit-local-ui-large-binding-"));
+  const fixture = sitemapFetch(5_001);
+  const server = await createLocalUiServer({ port: 0, directory, fetch: fixture.fetch });
+  context.after(() => server.close());
+  const post = (body) => fetch(new URL("/api/scan", server.url), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const input = { url: "https://example.com/", profile: "full", concurrency: 1, delay: 0 };
+
+  const unbound = await post({ ...input, confirmLargeScan: true });
+  assert.equal(unbound.status, 409);
+  assert.equal((await unbound.json()).requiresLargeScanConfirmation, true);
+  assert.equal(fixture.counters.pages, 0);
+
+  const changed = await post({ ...input, concurrency: 2, confirmLargeScan: true });
+  assert.equal(changed.status, 409);
+  assert.equal((await changed.json()).requiresLargeScanConfirmation, true);
+  assert.equal(fixture.counters.pages, 0);
+  assert.equal(fixture.counters.robots, 2);
+  assert.equal(fixture.counters.sitemap, 2);
+});
+
 test("local UI runs a scan and exposes the generated report", async (context) => {
   const directory = await mkdtemp(join(tmpdir(), "seo-audit-local-ui-"));
   const server = await createLocalUiServer({ port: 0, directory, fetch: siteFetch });
@@ -189,6 +210,16 @@ test("local UI runs a scan and exposes the generated report", async (context) =>
   assert.doesNotMatch(reportHtml, /seo-audit-embed-style/);
   const embeddedReport = await (await fetch(new URL("/report?embed=1", server.url))).text();
   assert.equal(embeddedReport, reportHtml);
+
+  const refreshed = await fetch(new URL("/api/metrics", server.url), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+  });
+  assert.equal(refreshed.status, 200);
+  const refreshedHtml = await (await fetch(new URL("/report", server.url))).text();
+  assert.match(refreshedHtml, /"value":19300/);
+  assert.match(refreshedHtml, /google-site-search-manual/);
   await access(join(directory, ".seo-audit.json"));
   await access(join(directory, "seo-audit-report.html"));
 });

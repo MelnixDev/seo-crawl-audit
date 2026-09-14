@@ -88,6 +88,29 @@ test("untrusted persisted metrics cannot replace crawler-owned values", () => {
   assert.equal(mergeSiteMetrics(local, external).metrics[0].value, 3);
 });
 
+test("persisted metrics accept only supported metric and source pairs", () => {
+  const local = {
+    schemaVersion: 1,
+    siteUrl: "https://example.com/",
+    observedAt: "2026-09-01T00:00:00.000Z",
+    metrics: [{ ...externalMetric("pages.checked", "crawl", "2026-09-01T00:00:00.000Z"), value: 3, confidence: "high", status: "available" }],
+  };
+  const external = {
+    schemaVersion: 1,
+    siteUrl: "https://example.com/",
+    updatedAt: "2026-09-02T00:00:00.000Z",
+    metrics: [
+      externalMetric("pages.fake", "invented-provider", "2026-09-02T00:00:00.000Z"),
+      externalMetric("domain.registrar", "invented-provider", "2026-09-02T00:00:00.000Z"),
+      externalMetric("domain.registrar", "rdap", "2026-09-02T00:00:00.000Z"),
+    ],
+  };
+  const merged = mergeSiteMetrics(local, external);
+  assert.equal(merged.metrics.some((metric) => metric.id === "pages.fake"), false);
+  assert.equal(merged.metrics.find((metric) => metric.id === "domain.registrar")?.source.id, "rdap");
+  assert.deepEqual(externalSiteMetrics({ ...local, metrics: [...local.metrics, ...external.metrics] }).metrics.map((metric) => `${metric.id}:${metric.source.id}`), ["domain.registrar:rdap"]);
+});
+
 test("external metrics state records the latest provider observation", () => {
   const state = externalSiteMetrics({
     siteUrl: "https://example.com/",

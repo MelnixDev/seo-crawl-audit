@@ -17,7 +17,9 @@ import {
   createFileCheckpointStore,
   externalSiteMetrics,
   loadReportSiteMetrics,
+  mergeSiteMetrics,
   readHistorySnapshots,
+  readSiteMetricsState,
   readSnapshot,
   writeHistorySnapshot,
   writeReport,
@@ -150,8 +152,10 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
       startUrl: snapshot.siteUrl,
       generatedAt: snapshot.generatedAt,
       pages: snapshot.pages,
+      pageDetails: snapshot.pages,
       issues,
       partial: snapshot.partial,
+      complete: !snapshot.partial && !snapshot.truncated,
       targetPages: snapshot.config.maxPages,
       engineVersion: snapshot.engineVersion,
       ruleSetVersion: snapshot.ruleSetVersion,
@@ -276,7 +280,11 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         }
         let decision;
         try {
-          decision = decideFullScan(plan, input);
+          // A boolean from the browser is only an acknowledgement when it matches
+          // the unexpired plan produced by the immediately preceding preflight.
+          // Replanning must always produce a fresh warning, even if a client sends
+          // confirmLargeScan on its first request or after changing parameters.
+          decision = decideFullScan(plan, { ...input, confirmLargeScan: reusablePlan !== null });
         } catch (error) {
           controller = null;
           state = { ...state, status: "idle", message: error instanceof Error ? error.message : String(error) };
@@ -327,7 +335,15 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
           }
           throw error;
         }
-        const collected = await collectLocalUiMetrics(snapshot, input.googleEstimate, fetch);
+        let collected = await collectLocalUiMetrics(snapshot, input.googleEstimate, fetch);
+        const manualEstimate = typeof input.googleEstimate === "number" ? input.googleEstimate : Number(input.googleEstimate);
+        if (!Number.isSafeInteger(manualEstimate) || manualEstimate <= 0) {
+          const previous = await readSiteMetricsState(metricsPath, snapshot.siteUrl);
+          const savedManualGoogle = previous?.metrics.filter((metric) => metric.id === "search.google-site-estimate" && metric.source.id === "google-site-search-manual") ?? [];
+          if (previous && savedManualGoogle.length > 0) {
+            collected = mergeSiteMetrics(collected, { ...previous, metrics: savedManualGoogle });
+          }
+        }
         await writeSiteMetricsState(metricsPath, externalSiteMetrics(collected));
         await renderCurrentReport(snapshot, collected);
         state = { ...state, url: snapshot.siteUrl, startedAt: new Date().toISOString(), reportReady: true, message: "Public metrics updated without crawling pages." };

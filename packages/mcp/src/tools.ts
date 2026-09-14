@@ -57,6 +57,16 @@ interface ScanToolInput extends CommonInput {
   resume?: boolean | undefined;
 }
 
+interface CheckToolInput extends CommonInput {
+  confirmLargeScan?: boolean | undefined;
+  confirmationId?: string | undefined;
+  baseline?: string | undefined;
+  output?: string | undefined;
+  report?: string | undefined;
+  checkpoint?: string | undefined;
+  resume?: boolean | undefined;
+}
+
 const LARGE_SCAN_THRESHOLD = 5_000;
 const MAX_TOOL_PAGES = 50_000;
 
@@ -81,6 +91,30 @@ function confirmationId(plan: Awaited<ReturnType<typeof planScan>>, limit: numbe
     maxResponseBytes: plan.config.maxResponseBytes,
   });
   return createHash("sha256").update(identity).digest("hex").slice(0, 24);
+}
+
+function largeScanPreflight(
+  plan: Awaited<ReturnType<typeof planScan>>,
+  limit: number,
+  input: Pick<ScanToolInput, "confirmLargeScan" | "confirmationId">,
+  toolName: "seo_audit_scan" | "seo_audit_check",
+): Record<string, unknown> | null {
+  if (limit > MAX_TOOL_PAGES) throw new Error(`scans are limited to ${MAX_TOOL_PAGES.toLocaleString("en-US")} pages`);
+  if (limit <= LARGE_SCAN_THRESHOLD) return null;
+  const expectedConfirmationId = confirmationId(plan, limit);
+  if (input.confirmLargeScan === true && input.confirmationId === expectedConfirmationId) return null;
+  return {
+    status: "confirmation-required",
+    requiresConfirmation: true,
+    candidateCount: plan.candidateCount,
+    requestedPages: limit,
+    confirmationId: expectedConfirmationId,
+    concurrency: plan.config.concurrency,
+    delay: plan.config.delay,
+    estimatedSeconds: estimatedSeconds(limit, plan.config.delay, plan.config.concurrency),
+    estimateAssumptionMs: 250,
+    message: `This operation may request up to ${limit.toLocaleString("en-US")} pages, plus redirects and retries. Call ${toolName} again with unchanged load parameters, confirmLargeScan set to true, and this confirmationId. Duration is approximate and assumes 250 ms responses.`,
+  };
 }
 
 async function localPath(context: ToolContext, requested: string | undefined, fallback: string): Promise<string> {
@@ -140,6 +174,7 @@ function reportData(snapshot: SnapshotV2, issues: Issue[], mode: "scan" | "check
     startUrl: snapshot.siteUrl,
     generatedAt: snapshot.generatedAt,
     pages: snapshot.pages,
+    pageDetails: snapshot.pages,
     issues,
     partial: snapshot.partial,
     complete: !snapshot.partial && !snapshot.truncated,
@@ -196,21 +231,8 @@ export async function scanTool(context: ToolContext, input: ScanToolInput): Prom
     }
     limit = plan.candidateCount;
   }
-  if (limit > MAX_TOOL_PAGES) throw new Error(`scans are limited to ${MAX_TOOL_PAGES.toLocaleString("en-US")} pages`);
-  const expectedConfirmationId = confirmationId(plan, limit);
-  if (limit > LARGE_SCAN_THRESHOLD && (input.confirmLargeScan !== true || input.confirmationId !== expectedConfirmationId)) {
-    return {
-      status: "confirmation-required",
-      requiresConfirmation: true,
-      candidateCount: plan.candidateCount,
-      requestedPages: limit,
-      confirmationId: expectedConfirmationId,
-      concurrency: config.concurrency,
-      delay: config.delay,
-      estimatedSeconds: estimatedSeconds(limit, config.delay, config.concurrency),
-      message: `This scan may request up to ${limit.toLocaleString("en-US")} pages, plus redirects and retries. Call seo_audit_scan again with unchanged load parameters, confirmLargeScan set to true, and this confirmationId.`,
-    };
-  }
+  const preflight = largeScanPreflight(plan, limit, input, "seo_audit_scan");
+  if (preflight) return preflight;
   const output = await localPath(context, input.output, ".seo-audit.json");
   const report = await localPath(context, input.report, "seo-audit-report.html");
   const checkpoint = await checkpointPath(context, input.checkpoint, input.headersEnv);
@@ -231,18 +253,21 @@ export async function scanTool(context: ToolContext, input: ScanToolInput): Prom
   return { ...summary(result.snapshot), startUrl: result.startUrl, artifacts: { snapshot: relativeArtifact(context.root, output), report: relativeArtifact(context.root, report), checkpoint: result.partial ? relativeArtifact(context.root, checkpoint) : null } };
 }
 
-export async function checkTool(context: ToolContext, input: CommonInput & { baseline?: string | undefined; output?: string | undefined; report?: string | undefined; checkpoint?: string | undefined; resume?: boolean | undefined }): Promise<Record<string, unknown>> {
+export async function checkTool(context: ToolContext, input: CheckToolInput): Promise<Record<string, unknown>> {
   const baselinePath = await localPath(context, input.baseline, ".seo-audit.json");
   const baseline = await readSnapshot(baselinePath);
   const config = await inputConfig(context, input, baseline.siteUrl);
   const fetch = requestFetch(input.headersEnv, config.url, context.fetch);
   const plan = await planScan(config, { signal: context.signal, fetch });
+  const limit = input.maxPages ?? config.maxPages;
+  const preflight = largeScanPreflight(plan, limit, input, "seo_audit_check");
+  if (preflight) return preflight;
   const output = await localPath(context, input.output, ".seo-audit.current.json");
   const report = await localPath(context, input.report, "seo-audit-check.html");
   const checkpoint = await checkpointPath(context, input.checkpoint, input.headersEnv);
   await ensureParents(output, report, checkpoint);
   const store = createFileCheckpointStore(checkpoint);
-  const result = await scan(plan, { signal: context.signal, limit: input.maxPages ?? config.maxPages, resume: input.resume !== false, checkpointStore: store, retainCheckpoint: true, fetch });
+  const result = await scan(plan, { signal: context.signal, limit, resume: input.resume !== false, checkpointStore: store, retainCheckpoint: true, fetch });
   await writeSnapshot(output, result.snapshot);
   const comparison = diff(baseline, result.snapshot);
   await writeReport(report, reportData(result.snapshot, comparison.issues, "check", {
