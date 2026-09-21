@@ -53,6 +53,12 @@ function templateFor(page: ParsedIssueUrl, dynamic: ReadonlySet<string>): string
   return `/${segments.join("/")}${page.url.pathname.endsWith("/") && segments.length > 0 ? "/" : ""}`;
 }
 
+/** Reuses template inference for checked pages, including pages with no issues. */
+export function groupPageTemplates(urls: readonly string[]): Array<{ origin: string; template: string; urls: string[] }> {
+  return groupIssuesByTemplate(urls.map((url) => ({ url, ruleId: "", severity: "info", owner: "seo" })))
+    .map(({ origin, template, urls: groupedUrls }) => ({ origin, template, urls: groupedUrls }));
+}
+
 /** Groups findings by an inferred URL template without changing issue identity. */
 export function groupIssuesByTemplate(issues: readonly GroupableIssue[]): IssueTemplateGroup[] {
   const pages = parseIssueUrls(issues);
