@@ -1,9 +1,13 @@
 # Handoff: SEO Crawl Audit 0.13.0
 
-The `0.12.0` release candidate is prepared locally. Page Explorer is complete and uses only
+Version `0.12.0` is published. Page Explorer is complete and uses only
 existing SnapshotV2 data without additional network requests.
 
 ## Required delivery
+
+The implementation below is available on `feat/0.13-site-architecture` and has
+passed local quality and Chromium checks. Release preparation and remote CI
+remain separate from feature completion.
 
 1. Add inlink counts and identify pages with weak internal-link support.
 2. Show the source pages for broken internal links and redirecting links.

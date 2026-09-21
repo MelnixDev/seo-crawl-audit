@@ -6,8 +6,8 @@ backward compatible while the product grows.
 
 ## Delivery status (September 2026)
 
-Version `0.12.0` is prepared for release; `0.11.0` is the latest released version.
-The release candidate includes scan preflight and
+Version `0.12.0` is released on GitHub and npm.
+It includes scan preflight and
 progress, checkpoint/resume diagnostics, Site Metrics, the loopback-only local
 web interface, opt-in Playwright rendering, MCP and agent documentation,
 English/Ukrainian reports, refreshed screenshots, public RDAP data, and clearly
@@ -34,9 +34,13 @@ intentionally deferred. They are not prerequisites for the local product.
 
 ## 0.13.0 — site architecture
 
+Implemented on the development branch; not yet released.
+
 - Surface inlinks, low-linked and orphan pages, broken-link sources, redirect
   chains, deep pages, and URL-template distributions.
 - Provide practical tables and exports before considering a heavy graph view.
+- Count only observed sources and distinguish unchecked targets from confirmed
+  errors. See [site architecture](site-architecture.md).
 
 ## 0.14.0 — regression workflow
 
