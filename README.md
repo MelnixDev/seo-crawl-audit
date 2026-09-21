@@ -12,6 +12,10 @@ or [view its source file](examples/quotes-toscrape-report.html).
 
 ## Report preview
 
+The Pages view includes observed inlinks, their source pages, broken and
+redirecting targets, depth filters, and inferred URL templates.
+[Read the site architecture guide](docs/site-architecture.md).
+
 The report is a self-contained HTML file: open it locally, share it as an
 artifact, or publish the same file on GitHub Pages. Charts and filters work
 without a server.
