@@ -10,6 +10,7 @@ export {
   readHistorySnapshots,
   writeHistorySnapshot,
   readSiteMetricsState,
+  loadReportSiteMetrics,
   writeSiteMetricsState,
 } from "./node-files.js";
 export {

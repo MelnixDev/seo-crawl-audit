@@ -5,7 +5,6 @@ import { resolve } from "node:path";
 import {
   audit,
   buildHistorySeries,
-  buildSiteMetrics,
   planScan,
   scan,
   type ScanEvent,
@@ -17,6 +16,7 @@ import {
 import {
   createFileCheckpointStore,
   externalSiteMetrics,
+  loadReportSiteMetrics,
   mergeSiteMetrics,
   readHistorySnapshots,
   readSiteMetricsState,
@@ -131,7 +131,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
   }
   let controller: AbortController | null = null;
   let metricsRunning = false;
-  let pendingFullPlan: { key: string; plan: ScanPlan; expiresAt: number } | null = null;
+  let pendingLargePlan: { key: string; plan: ScanPlan; expiresAt: number } | null = null;
   let state: UiState = { status: "idle", url: options.initialUrl ?? existingSiteUrl, completed: 0, total: 0, retries: 0, errors: 0, startedAt: null, currentUrl: null, message: "Ready to scan locally.", reportReady: false, summary: null };
   if (savedSnapshot && reportHtml) {
     const counts = audit(savedSnapshot).reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
@@ -152,8 +152,10 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
       startUrl: snapshot.siteUrl,
       generatedAt: snapshot.generatedAt,
       pages: snapshot.pages,
+      pageDetails: snapshot.pages,
       issues,
       partial: snapshot.partial,
+      complete: !snapshot.partial && !snapshot.truncated,
       targetPages: snapshot.config.maxPages,
       engineVersion: snapshot.engineVersion,
       ruleSetVersion: snapshot.ruleSetVersion,
@@ -165,6 +167,13 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
     reportHtml = await readFile(reportPath, "utf8");
     return issues;
   };
+
+  if (savedSnapshot && reportHtml) {
+    const siteMetrics = await loadReportSiteMetrics(savedSnapshot, metricsPath, {
+      onWarning: (message) => console.error(`Warning: ${message}`),
+    });
+    await renderCurrentReport(savedSnapshot, siteMetrics);
+  }
 
   const startScan = async (input: Record<string, unknown>, plan: ScanPlan, activeController: AbortController) => {
     let renderer: PageRenderer | undefined;
@@ -185,7 +194,9 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
       const result = await scan(plan, { fetch, signal: activeController.signal, renderer, checkpointStore: store, retainCheckpoint: true, onEvent });
       if (!result.snapshot.partial) await writeHistorySnapshot(historyPath, result.snapshot);
       const [issues] = await Promise.all([
-        renderCurrentReport(result.snapshot, mergeSiteMetrics(buildSiteMetrics(result.snapshot), await readSiteMetricsState(metricsPath, result.snapshot.siteUrl))),
+        renderCurrentReport(result.snapshot, await loadReportSiteMetrics(result.snapshot, metricsPath, {
+          onWarning: (message) => console.error(`Warning: ${message}`),
+        })),
         writeSnapshot(snapshotPath, result.snapshot),
       ]);
       const counts = issues.reduce((total, issue) => ({ ...total, [issue.severity]: total[issue.severity] + 1 }), { error: 0, warning: 0, info: 0 });
@@ -249,12 +260,12 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         controller = activeController;
         state = { status: "planning", url: baseConfig.url, completed: 0, total: baseConfig.maxPages, retries: 0, errors: 0, startedAt: new Date().toISOString(), currentUrl: null, message: "Discovering robots.txt and sitemap…", reportReady: false, summary: null };
         publish();
-        const planKey = JSON.stringify([baseConfig.url, baseConfig.concurrency, baseConfig.delay]);
+        const planKey = JSON.stringify([baseConfig, String(input.render ?? "http")]);
         let plan: ScanPlan;
-        const reusablePlan = input.profile === "full" && input.confirmLargeScan === true && pendingFullPlan?.key === planKey && pendingFullPlan.expiresAt > Date.now()
-          ? pendingFullPlan.plan
+        const reusablePlan = input.confirmLargeScan === true && pendingLargePlan?.key === planKey && pendingLargePlan.expiresAt > Date.now()
+          ? pendingLargePlan.plan
           : null;
-        pendingFullPlan = null;
+        pendingLargePlan = null;
         if (reusablePlan) {
           plan = reusablePlan;
         } else {
@@ -269,7 +280,11 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         }
         let decision;
         try {
-          decision = decideFullScan(plan, input);
+          // A boolean from the browser is only an acknowledgement when it matches
+          // the unexpired plan produced by the immediately preceding preflight.
+          // Replanning must always produce a fresh warning, even if a client sends
+          // confirmLargeScan on its first request or after changing parameters.
+          decision = decideFullScan(plan, { ...input, confirmLargeScan: reusablePlan !== null });
         } catch (error) {
           controller = null;
           state = { ...state, status: "idle", message: error instanceof Error ? error.message : String(error) };
@@ -279,7 +294,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         }
         const limit = decision.limit;
         if (decision.confirmation) {
-          pendingFullPlan = { key: planKey, plan, expiresAt: Date.now() + 5 * 60 * 1_000 };
+          pendingLargePlan = { key: planKey, plan, expiresAt: Date.now() + 5 * 60 * 1_000 };
           controller = null;
           state = { ...state, status: "idle", total: limit, message: `Ready to scan ${limit.toLocaleString("en-US")} sitemap URLs after confirmation.` };
           publish();
@@ -320,7 +335,15 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
           }
           throw error;
         }
-        const collected = await collectLocalUiMetrics(snapshot, input.googleEstimate, fetch);
+        let collected = await collectLocalUiMetrics(snapshot, input.googleEstimate, fetch);
+        const manualEstimate = typeof input.googleEstimate === "number" ? input.googleEstimate : Number(input.googleEstimate);
+        if (!Number.isSafeInteger(manualEstimate) || manualEstimate <= 0) {
+          const previous = await readSiteMetricsState(metricsPath, snapshot.siteUrl);
+          const savedManualGoogle = previous?.metrics.filter((metric) => metric.id === "search.google-site-estimate" && metric.source.id === "google-site-search-manual") ?? [];
+          if (previous && savedManualGoogle.length > 0) {
+            collected = mergeSiteMetrics(collected, { ...previous, metrics: savedManualGoogle });
+          }
+        }
         await writeSiteMetricsState(metricsPath, externalSiteMetrics(collected));
         await renderCurrentReport(snapshot, collected);
         state = { ...state, url: snapshot.siteUrl, startedAt: new Date().toISOString(), reportReady: true, message: "Public metrics updated without crawling pages." };

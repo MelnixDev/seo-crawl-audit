@@ -98,6 +98,51 @@ test("MCP full sitemap scans require confirmation above 5,000 pages", async () =
   assert.equal(result.status, "confirmation-required");
   assert.equal(result.requiresConfirmation, true);
   assert.equal(result.candidateCount, 5_002);
+  assert.match(result.confirmationId, /^[a-f0-9]{24}$/);
+  assert.equal(pageRequests, 0);
+});
+
+test("MCP custom large scans require parameter-bound confirmation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-audit-mcp-custom-large-"));
+  let pageRequests = 0;
+  const fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nAllow: /\n", { status: 200 });
+    pageRequests += 1;
+    return new Response("<!doctype html><title>Page</title><h1>Page</h1>", { status: 200, headers: { "content-type": "text/html" } });
+  };
+  const initial = await scanTool({ root, fetch }, { url: "https://example.com/", sitemap: "none", maxPages: 6_000, delay: 0 });
+  assert.equal(initial.status, "confirmation-required");
+  assert.equal(pageRequests, 0);
+  const changed = await scanTool({ root, fetch }, { url: "https://example.com/", sitemap: "none", maxPages: 6_001, delay: 0, confirmLargeScan: true, confirmationId: initial.confirmationId });
+  assert.equal(changed.status, "confirmation-required");
+  assert.notEqual(changed.confirmationId, initial.confirmationId);
+  assert.equal(pageRequests, 0);
+});
+
+test("MCP large regression checks require parameter-bound confirmation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-audit-mcp-check-large-"));
+  let pageRequests = 0;
+  const fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nAllow: /\n", { status: 200 });
+    pageRequests += 1;
+    return new Response("<!doctype html><title>Page</title><h1>Page</h1>", { status: 200, headers: { "content-type": "text/html" } });
+  };
+  await scanTool({ root, fetch }, { url: "https://example.com/", sitemap: "none", maxPages: 1, delay: 0, output: "baseline.json" });
+  pageRequests = 0;
+
+  const preflight = await checkTool({ root, fetch }, { baseline: "baseline.json", sitemap: "none", maxPages: 6_000, delay: 0 });
+  assert.equal(preflight.status, "confirmation-required");
+  assert.equal(preflight.requiresConfirmation, true);
+  assert.equal(preflight.requestedPages, 6_000);
+  assert.equal(preflight.estimateAssumptionMs, 250);
+  assert.match(preflight.message, /seo_audit_check/);
+  assert.equal(pageRequests, 0);
+
+  const changed = await checkTool({ root, fetch }, { baseline: "baseline.json", sitemap: "none", maxPages: 6_001, delay: 0, confirmLargeScan: true, confirmationId: preflight.confirmationId });
+  assert.equal(changed.status, "confirmation-required");
+  assert.notEqual(changed.confirmationId, preflight.confirmationId);
   assert.equal(pageRequests, 0);
 });
 
@@ -196,9 +241,9 @@ test("bundled stdio server negotiates MCP and advertises the complete tool set",
     child.once("close", resolve);
   });
   assert.equal(exitCode, 0, stderr);
-  assert.match(stderr, /^\[seo-crawl-audit:mcp\] MCP server 0\.11\.0 is running on stdio\. Waiting for client requests; press Ctrl\+C to stop\.\n$/);
+  assert.match(stderr, /^\[seo-crawl-audit:mcp\] MCP server 0\.12\.0 is running on stdio\. Waiting for client requests; press Ctrl\+C to stop\.\n$/);
   const responses = stdout.trim().split("\n").map(JSON.parse);
-  assert.equal(responses[0].result.serverInfo.version, "0.11.0");
+  assert.equal(responses[0].result.serverInfo.version, "0.12.0");
   assert.deepEqual(responses[1].result.tools.map((tool) => tool.name).sort(), [
     "seo_audit_check",
     "seo_audit_compare",
@@ -226,5 +271,5 @@ test("repository development entrypoint starts the MCP server", async () => {
   });
   assert.equal(exitCode, 0, stderr);
   assert.equal(stdout, "");
-  assert.match(stderr, /MCP server 0\.11\.0 is running on stdio/);
+  assert.match(stderr, /MCP server 0\.12\.0 is running on stdio/);
 });

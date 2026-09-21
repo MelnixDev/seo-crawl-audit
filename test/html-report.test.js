@@ -34,6 +34,10 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /aria-label="SEO Crawl Audit logo"/);
   assert.match(html, /id="analytics"/);
   assert.match(html, /data-view="metrics"/);
+  assert.match(html, /data-view="pages"/);
+  assert.match(html, /id="pages-view"/);
+  assert.match(html, /id="page-search"/);
+  assert.match(html, /This report contains URLs only/);
   assert.match(html, /id="metrics-view"/);
   assert.match(html, /rel="icon" href="data:image\/svg\+xml/);
   assert.match(html, /function renderMetrics/);
@@ -69,6 +73,103 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1];
   assert.ok(script);
   assert.doesNotThrow(() => new Function(script));
+});
+
+test("renders a bilingual detailed Page Explorer without embedding unused page data", () => {
+  const page = {
+    url: "https://example.com/product/1",
+    finalUrl: "https://example.com/product/1",
+    status: 200,
+    contentType: "text/html; charset=utf-8",
+    blockedByRobots: false,
+    error: null,
+    title: "=Formula-like title",
+    description: "Product description",
+    canonical: "https://example.com/product/1",
+    canonicalRaw: "/product/1",
+    robots: "index,follow",
+    xRobotsTag: null,
+    lang: "uk",
+    h1Count: 1,
+    openGraph: { title: null, description: null, image: null },
+    twitter: { card: null, title: null, description: null, image: null },
+    hreflang: [],
+    jsonLd: [{ valid: true, value: { secretUnusedPayload: "must-not-be-embedded" } }],
+    images: [],
+    links: ["https://example.com/about", "https://outside.example/"],
+    internalLinks: ["https://example.com/about"],
+    externalLinks: ["https://outside.example/"],
+    wordCount: 120,
+    contentHash: "unused-content-hash",
+    depth: 2,
+    redirectChain: [],
+    responseBytes: 4_096,
+  };
+  const html = renderHtmlReport({
+    pages: [{ url: page.url }],
+    pageDetails: [page],
+    issues: [{ rule: "missing-description", ruleId: "missing-description", scope: "page", severity: "warning", url: page.url, message: "Fixture", lifecycle: "current" }],
+  });
+  assert.match(html, /Сторінки/);
+  assert.match(html, /Заборон не виявлено/);
+  assert.match(html, /function renderPages/);
+  assert.match(html, /function openPage/);
+  assert.match(html, /function openIssuesForPage/);
+  assert.match(html, /issue\.url!==exactIssueUrl/);
+  assert.match(html, /localized\.remediation/);
+  assert.match(html, /setTimeout\(\(\)=>\{pagesCurrentPage=1;renderPages\(\)\},200\)/);
+  assert.match(html, /seo-crawl-audit-pages-/);
+  assert.doesNotMatch(html, /secretUnusedPayload|unused-content-hash/);
+  const encoded = html.match(/const report=([\s\S]*?);\n  const byId=/)?.[1];
+  assert.ok(encoded);
+  const report = JSON.parse(encoded);
+  assert.equal(report.pageExplorer.pages.length, 1);
+  assert.equal(report.pageExplorer.pages[0].ix, "allowed");
+  assert.deepEqual(report.pageExplorer.pages[0].counts, { error: 0, warning: 1, info: 0 });
+});
+
+test("Page Explorer keeps unknown, redirect, XHTML, and none indexability distinct", () => {
+  const base = {
+    url: "https://example.com/base",
+    finalUrl: "https://example.com/base",
+    status: 200,
+    contentType: "text/html",
+    blockedByRobots: false,
+    error: null,
+    title: null,
+    description: null,
+    canonical: null,
+    canonicalRaw: null,
+    robots: null,
+    xRobotsTag: null,
+    lang: null,
+    h1Count: 0,
+    openGraph: { title: null, description: null, image: null },
+    twitter: { card: null, title: null, description: null, image: null },
+    hreflang: [],
+    jsonLd: [],
+    images: [],
+    links: [],
+    internalLinks: [],
+    externalLinks: [],
+    wordCount: 0,
+    contentHash: null,
+    depth: 0,
+    redirectChain: [],
+    responseBytes: 0,
+  };
+  const pageDetails = [
+    { ...base, url: "https://example.com/unknown-status", finalUrl: null, status: null },
+    { ...base, url: "https://example.com/unknown-type", finalUrl: "https://example.com/unknown-type", contentType: null },
+    { ...base, url: "https://example.com/redirect", finalUrl: "https://example.com/final", redirectChain: [{ url: "https://example.com/redirect", status: 301, location: "https://example.com/final" }] },
+    { ...base, url: "https://example.com/xhtml", finalUrl: "https://example.com/xhtml", contentType: "application/xhtml+xml" },
+    { ...base, url: "https://example.com/none", finalUrl: "https://example.com/none", robots: "none" },
+  ];
+  const html = renderHtmlReport({ pages: pageDetails.map(({ url }) => ({ url })), pageDetails, issues: [] });
+  const encoded = html.match(/const report=([\s\S]*?);\n  const byId=/)?.[1];
+  assert.ok(encoded);
+  const report = JSON.parse(encoded);
+  assert.deepEqual(report.pageExplorer.pages.map((page) => page.ix), ["unknown", "unknown", "redirect", "allowed", "noindex"]);
 });
 
 test("large reports warn users and continue to render only paginated rows", () => {
@@ -216,6 +317,21 @@ test("labels a coverage-aware partial diff as an incomplete comparison", () => {
 
   assert.match(html, /Incomplete comparison/);
   assert.match(html, /unchecked pages are not marked missing or resolved/);
+  assert.match(html, /id="pages-partial"/);
+});
+
+test("labels a page-limited scan as incomplete without calling it interrupted", () => {
+  const html = renderHtmlReport({
+    mode: "scan",
+    startUrl: "https://example.com/",
+    pages: [{ url: "https://example.com/" }],
+    issues: [],
+    partial: false,
+    complete: false,
+  });
+  assert.match(html, /id="pages-partial"/);
+  assert.match(html, /Only pages completed by this incomplete crawl are listed/);
+  assert.doesNotMatch(html, /<title>Partial SEO scan report/);
 });
 
 test("renders local history as a self-contained bilingual trend chart", () => {

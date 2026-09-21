@@ -518,6 +518,10 @@ It includes:
 - summary cards and partial-scan state;
 - current and lifecycle tabs;
 - severity, rule, inferred template, owner, and URL/text filters;
+- a Pages / Сторінки explorer with status, observed indexability, metadata,
+  depth, transfer size, links, page-level issue counts, and on-demand details;
+- page search, status/indexability/issue filters, deterministic sorting,
+  pagination, and filtered page CSV export;
 - evidence, before/after values, remediation, and fingerprint;
 - engine and rule-set versions;
 - client-side CSV export;
@@ -528,6 +532,11 @@ It includes:
 Reports render only the current paginated issue rows, debounce text search, and
 build CSV only when requested. Reports above 25,000 issues show a performance
 notice while remaining self-contained.
+
+Page Explorer uses only the current snapshot and makes no network requests.
+Its indexability labels describe crawler-observed restrictions; they do not
+claim that a search engine has indexed a URL. Reports made from legacy minimal
+page data keep working and show unavailable details as `—`.
 
 Template grouping turns repeated findings such as `/products/red-shoe` and
 `/products/blue-shirt` into `/products/:slug`. Numeric IDs, UUIDs, dates, and

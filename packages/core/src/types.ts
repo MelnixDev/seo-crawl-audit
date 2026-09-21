@@ -42,6 +42,8 @@ export interface ReportData {
   startUrl?: string;
   generatedAt?: string;
   pages?: Array<{ url: string }>;
+  /** Optional full page details used by the local Page Explorer. */
+  pageDetails?: PageSnapshot[];
   issues?: Partial<Issue>[];
   newIssues?: Partial<Issue>[];
   ongoingIssues?: Partial<Issue>[];

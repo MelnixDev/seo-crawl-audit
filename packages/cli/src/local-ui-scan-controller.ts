@@ -12,6 +12,12 @@ export interface FullScanDecision {
   };
 }
 
+export function estimateScanSeconds(pages: number, delay: number, concurrency: number, assumedResponseMs = 250): number {
+  const gateBoundMs = pages * Math.max(0, delay);
+  const workerBoundMs = pages * (Math.max(0, delay) + assumedResponseMs) / Math.max(1, concurrency);
+  return Math.ceil(Math.max(gateBoundMs, workerBoundMs) / 1_000);
+}
+
 function profilePageLimit(input: Record<string, unknown>): number {
   const profile = String(input.profile ?? "custom");
   if (profile === "quick") return 100;
@@ -35,22 +41,22 @@ export function resolveLocalScanConfig(input: Record<string, unknown>, url: stri
 }
 
 export function decideFullScan(plan: ScanPlan, input: Record<string, unknown>): FullScanDecision {
-  if (input.profile !== "full") return { limit: plan.config.maxPages };
-  if (plan.mode !== "sitemap" || plan.candidateCount === null) {
+  const full = input.profile === "full";
+  if (full && (plan.mode !== "sitemap" || plan.candidateCount === null)) {
     throw new Error("Full sitemap mode needs a discovered sitemap. Choose Custom for link discovery.");
   }
-  if (plan.sitemap?.truncated || plan.candidateCount > MAX_LOCAL_UI_PAGES) {
+  if (full && (plan.sitemap?.truncated || plan.candidateCount! > MAX_LOCAL_UI_PAGES)) {
     throw new Error(`The sitemap exceeds the ${MAX_LOCAL_UI_PAGES.toLocaleString("en-US")} page safety limit.`);
   }
-  const limit = plan.candidateCount;
+  const limit = full ? plan.candidateCount! : plan.config.maxPages;
   if (limit <= LARGE_SCAN_THRESHOLD || input.confirmLargeScan === true) return { limit };
-  const estimatedSeconds = Math.ceil(limit * (plan.config.delay + 250) / Math.max(1, plan.config.concurrency) / 1_000);
+  const estimatedSeconds = estimateScanSeconds(limit, plan.config.delay, plan.config.concurrency);
   return {
     limit,
     confirmation: {
       candidateCount: limit,
       estimatedSeconds,
-      message: `Scan up to ${limit.toLocaleString("en-US")} pages with concurrency ${plan.config.concurrency} and ${plan.config.delay} ms delay? Estimated minimum duration: ${estimatedSeconds.toLocaleString("en-US")} seconds.`,
+      message: `Scan up to ${limit.toLocaleString("en-US")} pages with concurrency ${plan.config.concurrency} and ${plan.config.delay} ms delay? Approximate duration: ${estimatedSeconds.toLocaleString("en-US")} seconds, assuming 250 ms responses; redirects and retries may add requests.`,
     },
   };
 }

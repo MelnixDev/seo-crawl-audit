@@ -4,8 +4,9 @@ import { join, resolve } from "node:path";
 import { migrateSnapshot } from "./baseline.js";
 import { DEFAULT_CONFIG_FILE, validateConfig } from "./config.js";
 import { renderHtmlReport } from "./html-report.js";
-import { markStaleSiteMetrics, validateSiteMetricsState } from "./site-metrics-state.js";
-import type { HistorySnapshotRecord, ReportData, ReportOptions, ScanConfigV1, SiteMetricsStateV1, SnapshotV2 } from "./types.js";
+import { buildSiteMetrics } from "./site-metrics.js";
+import { markStaleSiteMetrics, mergeSiteMetrics, validateSiteMetricsState } from "./site-metrics-state.js";
+import type { HistorySnapshotRecord, ReportData, ReportOptions, ScanConfigV1, SiteMetrics, SiteMetricsStateV1, SnapshotV2 } from "./types.js";
 
 export async function findConfigFile(cwd = process.cwd()): Promise<string | null> {
   const path = resolve(cwd, DEFAULT_CONFIG_FILE);
@@ -70,6 +71,26 @@ export async function readSiteMetricsState(path: string, expectedSiteUrl?: strin
   const state = markStaleSiteMetrics(validateSiteMetricsState(parsed), now);
   if (expectedSiteUrl && new URL(state.siteUrl).origin !== new URL(expectedSiteUrl).origin) return null;
   return state;
+}
+
+export interface LoadReportSiteMetricsOptions {
+  now?: Date;
+  onWarning?: (message: string) => void;
+}
+
+/** Builds authoritative crawl metrics and safely restores matching external observations. */
+export async function loadReportSiteMetrics(
+  snapshot: SnapshotV2,
+  statePath: string,
+  options: LoadReportSiteMetricsOptions = {},
+): Promise<SiteMetrics> {
+  const local = buildSiteMetrics(snapshot);
+  try {
+    return mergeSiteMetrics(local, await readSiteMetricsState(statePath, snapshot.siteUrl, options.now));
+  } catch (error) {
+    options.onWarning?.(`Could not load site metrics from ${statePath}: ${error instanceof Error ? error.message : String(error)}`);
+    return local;
+  }
 }
 
 export async function writeReport(

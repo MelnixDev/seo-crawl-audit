@@ -52,6 +52,7 @@ const html = renderReport({
   startUrl: url,
   generatedAt: current.generatedAt,
   pages: current.pages,
+  pageDetails: current.pages,
   issues: audit(current),
   ...lifecycle,
   engineVersion: current.engineVersion,
@@ -60,4 +61,4 @@ const html = renderReport({
   siteMetrics: buildSiteMetrics(current),
   ...(history ? { history } : {}),
 });
-await writeFile(new URL("../examples/quotes-toscrape-report.html", import.meta.url), html, "utf8");
+await writeFile(new URL("../examples/quotes-toscrape-report.html", import.meta.url), html.replace(/^[\t ]+$/gm, ""), "utf8");

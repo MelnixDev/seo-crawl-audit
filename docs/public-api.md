@@ -112,6 +112,11 @@ dependency-free interactive statistics for severity, frequent rules, owners,
 regression lifecycle, and inferred page templates. Chart controls are
 keyboard-accessible and reuse the same filters as the issue table.
 
+`ReportData.pages` remains compatible with `{ url: string }[]`. Pass the
+optional `pageDetails: PageSnapshot[]` to enable the detailed local Page
+Explorer. The renderer embeds a compact projection rather than the full
+snapshot, and reports with URL-only page data remain supported.
+
 ## `groupIssuesByTemplate(issues)`
 
 Returns deterministic presentation groups for repeated route shapes. Numeric
