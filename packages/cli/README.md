@@ -8,7 +8,7 @@ needs no account or API key. Page HTML is processed in memory; normalized
 results stay in local JSON, checkpoint, CSV, and self-contained HTML files.
 
 [Open the interactive example report](https://melnixdev.github.io/seo-crawl-audit/)
-or [view its source file](examples/quotes-toscrape-report.html).
+or [view its source file](https://github.com/MelnixDev/seo-crawl-audit/blob/main/examples/quotes-toscrape-report.html).
 
 ## Report preview
 
@@ -166,13 +166,15 @@ separate from authoritative Search Console data.
 [Read the Site Metrics guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/site-metrics.md).
 [Read the large-scan and resume guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/large-scans.md).
 
-For project-scoped Codex, Claude Code, or OpenCode integration, run:
+Agents can use the local STDIO MCP server and a portable project skill:
 
 ```bash
 npx seo-crawl-audit agent-init --platform all
 ```
 
-[Read the agent integration guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/agent-integration.md).
+This prepares project-scoped integrations for Codex, Claude Code, and OpenCode
+without replacing existing configuration files. [Read the agent integration
+guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/agent-integration.md).
 
 Protected preview or staging site credentials can be supplied through a named
 JSON environment variable. [Read the authenticated scans guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/authenticated-scans.md).
@@ -290,6 +292,9 @@ When a sitemap is found in an interactive terminal, the menu offers the first
 100 pages, every sitemap URL, groups of 100 with confirmation, or a custom
 number. `--pages` and `--all` skip the menu. If no sitemap is found, press Enter
 to continue through same-origin internal links, or enter the full sitemap URL.
+With `--json`, progress is written to stderr so stdout remains valid JSON for
+scripts and CI. The CLI shows the planning phase, robots/sitemap status, crawl
+phase, retries, and a live page progress bar while it runs.
 
 ### `seo-audit check [url]`
 
@@ -407,7 +412,7 @@ seo-audit history \
 ## Configuration
 
 The repository includes [`seo-audit.config.json`](seo-audit.config.json) and a
-[JSON Schema](packages/core/config.schema.json). CLI flags take precedence over
+[JSON Schema](https://github.com/MelnixDev/seo-crawl-audit/blob/main/packages/core/config.schema.json). CLI flags take precedence over
 the config file, which takes precedence over the saved baseline, followed by
 safe defaults.
 
@@ -513,6 +518,10 @@ It includes:
 - summary cards and partial-scan state;
 - current and lifecycle tabs;
 - severity, rule, inferred template, owner, and URL/text filters;
+- a Pages / Сторінки explorer with status, observed indexability, metadata,
+  depth, transfer size, links, page-level issue counts, and on-demand details;
+- page search, status/indexability/issue filters, deterministic sorting,
+  pagination, and filtered page CSV export;
 - evidence, before/after values, remediation, and fingerprint;
 - engine and rule-set versions;
 - client-side CSV export;
@@ -523,6 +532,11 @@ It includes:
 Reports render only the current paginated issue rows, debounce text search, and
 build CSV only when requested. Reports above 25,000 issues show a performance
 notice while remaining self-contained.
+
+Page Explorer uses only the current snapshot and makes no network requests.
+Its indexability labels describe crawler-observed restrictions; they do not
+claim that a search engine has indexed a URL. Reports made from legacy minimal
+page data keep working and show unavailable details as `—`.
 
 Template grouping turns repeated findings such as `/products/red-shoe` and
 `/products/blue-shirt` into `/products/:slug`. Numeric IDs, UUIDs, dates, and
@@ -598,8 +612,8 @@ const result = await scan(plan, {
 const issues = audit(result.snapshot);
 ```
 
-[Read the typed public API guide](docs/public-api.md) and the
-[architecture notes](docs/architecture.md).
+[Read the typed public API guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/public-api.md) and the
+[architecture notes](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/architecture.md).
 
 ## Responsible crawling and safe defaults
 

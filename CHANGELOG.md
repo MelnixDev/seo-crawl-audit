@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.12.0 — 2026-09-21
+
+- added a Pages / Сторінки explorer for every crawled URL, including pages
+  without issues, with deterministic sorting, combined filters, and pagination;
+- added an accessible page-details panel for redirects, status, observed crawl
+  indexability, metadata, links, transfer size, depth, and page-level issues;
+- connected Pages and Issues navigation and added safe CSV export for all
+  filtered pages in English and Ukrainian;
+- kept report payloads compact by embedding only the page fields used by the
+  interface and rendering only the visible page of rows;
+- tightened large-scan confirmation so UI and MCP approvals are bound to the
+  exact URL and scan parameters, and corrected request-gate duration estimates;
+- restored external Site Metrics consistently while rejecting unsupported or
+  source-spoofed cached values;
+- verified 50,000 pages and 50,000 issues in Chromium while preserving
+  SnapshotV2, fingerprints, CLI behavior, exit codes, and local-only operation.
+
 ## 0.11.0 — 2026-09-09
 
 - added Quick, Standard, Full sitemap, and Custom local scan profiles with a
