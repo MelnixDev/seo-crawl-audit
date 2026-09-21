@@ -16,6 +16,14 @@ window.addEventListener("load", () => {
 }
 
 const pages = {
+  "pages.html": `
+    document.querySelector('[data-view="pages"]')?.click();
+    window.scrollTo({ top: 0, behavior: "instant" });
+  `,
+  "page-details.html": `
+    document.querySelector('[data-view="pages"]')?.click();
+    document.querySelector('#pages-body .page-url-button')?.click();
+  `,
   "overview.html": `
     document.querySelector('[data-view="overview"]')?.click();
     window.scrollTo({ top: 0, behavior: "instant" });

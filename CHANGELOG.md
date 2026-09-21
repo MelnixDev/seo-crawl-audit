@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.13.0 — Unreleased
+
+- added observed inlink counts and paginated source-page lists in Pages;
+- added filters for zero/one observed source, broken or redirecting outgoing
+  targets, and crawl depth four or greater;
+- linked checked URLs in detail lists to their page details with focus recovery;
+- added URL-template filtering across all checked pages and expanded filtered
+  CSV exports with template and observed link counts;
+- kept partial-coverage semantics explicit: unchecked and robots-blocked targets
+  are not broken links, and absent observed inlinks do not prove isolation;
+- verified English/Ukrainian behavior and 50,000-page report interactions.
+
 ## 0.12.0 — 2026-09-21
 
 - added a Pages / Сторінки explorer for every crawled URL, including pages
