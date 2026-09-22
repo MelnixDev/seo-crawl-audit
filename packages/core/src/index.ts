@@ -9,6 +9,8 @@ export { migrateSnapshot } from "./baseline.js";
 export { getRuleDefinitions } from "./rules/registry.js";
 export { groupIssuesByTemplate } from "./issue-groups.js";
 export { buildHistorySeries } from "./history.js";
+export { buildLocalComparison } from "./local-comparison.js";
+export type { ComparisonSummaryV1, ComparisonGroup, ComparisonWarning } from "./local-comparison.js";
 export { buildSiteMetrics } from "./site-metrics.js";
 export { collectSiteMetrics, createGoogleSiteEstimateProvider, createRdapDomainProvider } from "./site-metric-providers.js";
 export {

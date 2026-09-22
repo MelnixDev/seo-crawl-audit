@@ -2,6 +2,7 @@ import { dirname, join, resolve } from "node:path";
 import {
   audit,
   buildHistorySeries,
+  buildLocalComparison,
   buildSiteMetrics,
   diff,
   migrateSnapshot,
@@ -535,19 +536,18 @@ export async function historyCommand(siteUrl: string | undefined, values: CliVal
     if (previous.siteUrl !== current.siteUrl) throw new Error("history snapshots must belong to the same site URL");
     const records = await readHistorySnapshots(directory, current.siteUrl);
     const history = buildHistorySeries([...records.map((record) => record.snapshot), previous, current]);
-    const comparison = diff(previous, current, {
-      enabledRules: current.config.enabledRules,
-      severityOverrides: current.config.severityOverrides,
-      suppressions: current.config.suppressions,
-    });
+    const { diff: comparison, summary: comparisonSummary } = buildLocalComparison(previous, current, { evaluatedAt: new Date().toISOString() });
     const report = await saveReport(values, await reportDataWithMetrics(current, "check", comparison.newIssues, resolve(values.to), {
       ...comparison,
       ...(history ? { history } : {}),
     }), true);
     const summary = summarizeIssues(comparison.newIssues);
-    if (values.json) console.log(JSON.stringify({ command: "history", from: resolve(values.from), to: resolve(values.to), summary, lifecycle: comparison, report }, null, 2));
+    if (values.json) console.log(JSON.stringify({ command: "history", from: resolve(values.from), to: resolve(values.to), summary, lifecycle: comparison, comparisonSummary, report }, null, 2));
     else {
       console.log(`Compared local snapshots from ${previous.generatedAt} to ${current.generatedAt}.`);
+      console.log(`Coverage: ${comparisonSummary.coverage.common} common pages; ${comparisonSummary.coverage.onlyBefore} only before; ${comparisonSummary.coverage.onlyAfter} only after.`);
+      if (comparisonSummary.warnings.length > 0) console.log(`Comparison warnings: ${comparisonSummary.warnings.join(", ")}`);
+      if (comparisonSummary.unverified.length > 0) console.log(`${comparisonSummary.unverified.length} apparent resolution(s) could not be verified.`);
       printIssues(comparison.newIssues);
       if (report) console.log(`HTML report saved to ${report}`);
     }
