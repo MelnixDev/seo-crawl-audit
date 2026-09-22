@@ -4,6 +4,7 @@ import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { browserLaunchCommand, createLocalUiServer, serveCommand } from "../packages/cli/dist/server.js";
+import { createLocalUiServer as createBundledLocalUiServer } from "../packages/cli/bundle/server.js";
 import { decideFullScan, estimateScanSeconds, resolveLocalScanConfig } from "../packages/cli/dist/local-ui-scan-controller.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
 import { writeHistorySnapshot, writeSnapshot } from "../packages/core/dist/node.js";
@@ -71,14 +72,14 @@ test("local UI lists history with opaque IDs and bounded pagination", async (con
   assert.equal("digest" in catalog.runs[0], false);
 });
 
-test("local UI compares two saved runs in a worker and restores the artifact", async (context) => {
+for (const [label, createServer] of [["source build", createLocalUiServer], ["packed bundle", createBundledLocalUiServer]]) test(`local UI compares two saved runs in a worker and restores the artifact (${label})`, async (context) => {
   const directory = await mkdtemp(join(tmpdir(), "seo-local-comparison-"));
   const historyDirectory = join(directory, ".seo-audit/history");
   const before = migrateSnapshot({ schemaVersion: 1, generatedAt: "2026-01-01T00:00:00.000Z", startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200, title: "Before" }] });
   const after = migrateSnapshot({ schemaVersion: 1, generatedAt: "2026-01-02T00:00:00.000Z", startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200, title: "After" }] });
   await writeHistorySnapshot(historyDirectory, before);
   await writeHistorySnapshot(historyDirectory, after);
-  const server = await createLocalUiServer({ directory, port: 0 });
+  const server = await createServer({ directory, port: 0 });
   context.after(() => server.close());
   const runs = (await fetch(new URL("/api/history", server.url)).then((response) => response.json())).runs;
   assert.equal(runs.length, 2);
@@ -98,7 +99,7 @@ test("local UI compares two saved runs in a worker and restores the artifact", a
   assert.equal(report.status, 200);
   assert.match(await report.text(), /SEO regression report/);
   assert.equal((await fetch(new URL("/report", server.url))).status, 404);
-  const restarted = await createLocalUiServer({ directory, port: 0 });
+  const restarted = await createServer({ directory, port: 0 });
   context.after(() => restarted.close());
   assert.equal((await fetch(new URL("/api/history/comparison", restarted.url)).then((response) => response.json())).status, "ready");
   assert.equal((await fetch(new URL("/comparison", restarted.url))).status, 200);
@@ -133,6 +134,9 @@ test("local UI binds only to loopback and serves its application shell", async (
   assert.match(page, /reportFrame\.contentDocument/);
   assert.match(page, /id="googleEstimate"/);
   assert.match(page, /id="profile"/);
+  assert.match(page, /id="historyBefore"/);
+  assert.match(page, /id="historyAfter"/);
+  assert.match(page, /Історія/);
   assert.match(page, /Full sitemap/);
   assert.match(page, /max="50000"/);
   assert.match(page, /id="updateMetrics"/);

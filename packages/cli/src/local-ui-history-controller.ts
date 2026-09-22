@@ -39,6 +39,11 @@ export class LocalHistoryController {
     return readFile(join(this.comparisonsDirectory, this.manifest.jobId, "report.html"), "utf8");
   }
 
+  async result(): Promise<unknown | null> {
+    if (!this.manifest) return null;
+    return JSON.parse(await readFile(join(this.comparisonsDirectory, this.manifest.jobId, "summary.json"), "utf8")) as unknown;
+  }
+
   async start(fromId: string, toId: string): Promise<{ jobId: string }> {
     if (this.active) throw new Error("a comparison is already running");
     if (fromId === toId) throw new Error("select two different runs");

@@ -228,6 +228,12 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
       }
       if (request.method === "GET" && path === "/api/state") { json(response, 200, state); return; }
       if (request.method === "GET" && path === "/api/history/comparison") { json(response, 200, historyController.status()); return; }
+      if (request.method === "GET" && path === "/api/history/comparison/result") {
+        const result = await historyController.result();
+        if (!result) { json(response, 404, { error: "comparison is not ready" }); return; }
+        json(response, 200, result);
+        return;
+      }
       if (request.method === "GET" && path === "/comparison") {
         const html = await historyController.report();
         if (!html) { json(response, 404, { error: "comparison report is not ready" }); return; }
