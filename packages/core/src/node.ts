@@ -20,6 +20,8 @@ export {
 } from "./file-checkpoint-store.js";
 export type { FileCheckpointInspection } from "./file-checkpoint-store.js";
 export { checkpointPathForOutput } from "./checkpoint.js";
+export { readHistoryCatalog, readCatalogSnapshot } from "./node-history-catalog.js";
+export type { HistoryCatalog, HistoryCatalogEntry } from "./node-history-catalog.js";
 export {
   externalSiteMetrics,
   markStaleSiteMetrics,

@@ -107,7 +107,7 @@ export const writeHtmlReport = writeReport;
 
 function historyFileName(snapshot: SnapshotV2): string {
   const timestamp = snapshot.generatedAt.replaceAll(":", "-").replaceAll(".", "-");
-  return `${timestamp}-${snapshot.configurationHash.slice(0, 8)}.snapshot.json`;
+  return `${timestamp}-${snapshot.configurationHash.slice(0, 8)}-${randomUUID()}.snapshot.json`;
 }
 
 /** Saves a full local snapshot using an atomic write and returns its path. */
