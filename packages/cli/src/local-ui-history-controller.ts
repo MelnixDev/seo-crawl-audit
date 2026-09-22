@@ -14,6 +14,7 @@ function fileError(error: unknown, code: string): boolean {
 
 export class LocalHistoryController {
   private active: { worker: Worker; jobId: string; directory: string } | null = null;
+  private committing = false;
   private state: JobState = { status: "idle", jobId: null, phase: null, message: null, reportReady: false };
   private manifest: ComparisonManifest | null = null;
 
@@ -25,14 +26,17 @@ export class LocalHistoryController {
       if (!value || typeof value !== "object" || !("schemaVersion" in value) || value.schemaVersion !== 1
         || !("jobId" in value) || typeof value.jobId !== "string" || !/^[a-f0-9-]{36}$/.test(value.jobId)) return;
       const manifest = value as ComparisonManifest;
-      await readFile(join(this.comparisonsDirectory, manifest.jobId, "report.html"));
+      await Promise.all([
+        readFile(join(this.comparisonsDirectory, manifest.jobId, "report.html")),
+        readFile(join(this.comparisonsDirectory, manifest.jobId, "summary.json")),
+      ]);
       this.manifest = manifest;
       this.state = { status: "ready", jobId: manifest.jobId, phase: null, message: null, reportReady: true };
     } catch (error) { if (!fileError(error, "ENOENT")) this.state = { ...this.state, message: "Saved comparison could not be restored." }; }
   }
 
   status(): JobState { return { ...this.state }; }
-  busy(): boolean { return this.active !== null; }
+  busy(): boolean { return this.active !== null || this.committing; }
 
   async report(): Promise<string | null> {
     if (!this.manifest) return null;
@@ -45,7 +49,7 @@ export class LocalHistoryController {
   }
 
   async start(fromId: string, toId: string): Promise<{ jobId: string }> {
-    if (this.active) throw new Error("a comparison is already running");
+    if (this.busy()) throw new Error("a comparison is already running");
     if (fromId === toId) throw new Error("select two different runs");
     const catalog = await readHistoryCatalog(this.historyDirectory);
     const from = catalog.entries.find((entry) => entry.runId === fromId);
@@ -74,6 +78,7 @@ export class LocalHistoryController {
     if (this.active?.jobId !== jobId) return;
     const directory = this.active.directory;
     this.active = null;
+    this.committing = true;
     try {
       if (code !== 0 || this.state.message) throw new Error(this.state.message ?? `Comparison worker exited with code ${code}`);
       await Promise.all([readFile(join(directory, "report.html")), readFile(join(directory, "summary.json"))]);
@@ -87,6 +92,8 @@ export class LocalHistoryController {
     } catch (error) {
       this.state = { status: "error", jobId, phase: null, message: error instanceof Error ? error.message : String(error), reportReady: this.manifest !== null };
       await rm(directory, { recursive: true, force: true });
+    } finally {
+      this.committing = false;
     }
   }
 
