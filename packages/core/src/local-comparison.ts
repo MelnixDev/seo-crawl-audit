@@ -44,17 +44,25 @@ function findingCounts(issues: readonly Issue[]): Record<Severity, number> {
 
 function lifecycleCounts(): Counts { return { new: 0, ongoing: 0, resolved: 0, unchanged: 0 }; }
 
-const STATUS_RULES = new Set(["page-unreachable", "http-error", "robots-blocked", "redirect-loop", "long-redirect-chain"]);
+const STATUS_RULES = new Set(["page-unreachable", "http-error", "robots-blocked", "redirect-loop", "long-redirect-chain", "status-regression", "page-missing", "redirect-changed"]);
+const HTML_RULES = new Set([
+  "noindex", "x-robots-noindex", "missing-canonical", "invalid-canonical", "cross-domain-canonical", "canonical-target-error",
+  "noindex-in-sitemap", "redirect-in-sitemap", "missing-title", "duplicate-title", "title-length", "missing-description",
+  "duplicate-description", "description-length", "missing-h1", "broken-internal-link", "orphan-sitemap-page",
+  "crawlable-not-in-sitemap", "invalid-hreflang", "malformed-json-ld", "http-on-https-site", "invalid-language",
+  "duplicate-content", "multiple-h1", "missing-open-graph", "missing-twitter-metadata", "image-missing-alt", "low-word-count",
+  "new-noindex", "title-removed", "title-changed", "description-removed", "canonical-removed", "canonical-changed", "h1-removed",
+]);
 
-function hasResolutionEvidence(issue: Issue, current: SnapshotV2, pages: ReadonlyMap<string, SnapshotV2["pages"][number]>): string | null {
-  if (issue.scope === "site") return current.partial || current.truncated ? "incomplete-site" : null;
+function hasResolutionEvidence(issue: Issue, previous: SnapshotV2, current: SnapshotV2, pages: ReadonlyMap<string, SnapshotV2["pages"][number]>): string | null {
+  if (issue.scope === "site") return previous.partial || previous.truncated || current.partial || current.truncated ? "incomplete-site" : null;
   const page = pages.get(issue.url);
   if (!page) return "not-checked";
   if (page.blockedByRobots) return "robots-blocked";
   if (page.error || page.status === null || page.status >= 400) return "request-failed";
   if (STATUS_RULES.has(issue.ruleId)) return null;
   if (page.status >= 300 || !page.contentType || !/(?:text\/html|application\/xhtml\+xml)/i.test(page.contentType)) return "html-unavailable";
-  return null;
+  return HTML_RULES.has(issue.ruleId) ? null : "unknown-evidence";
 }
 
 function groups(entries: Array<{ lifecycle: Lifecycle; issue: Issue }>, key: (issue: Issue) => string): ComparisonGroup[] {
@@ -90,7 +98,7 @@ export function buildLocalComparison(previous: SnapshotV2, current: SnapshotV2, 
   const unverified: ComparisonSummaryV1["unverified"] = [];
   const currentPages = new Map(current.pages.map((page) => [page.url, page]));
   const resolvedIssues = raw.resolvedIssues.filter((issue) => {
-    const reason = hasResolutionEvidence(issue, current, currentPages);
+    const reason = hasResolutionEvidence(issue, previous, current, currentPages);
     if (reason) unverified.push({ fingerprint: issue.fingerprint, ruleId: issue.ruleId, url: issue.url, reason });
     return !reason;
   });
