@@ -30,6 +30,7 @@ import {
 import { createPlaywrightRenderer } from "@seo-crawl-audit/renderer-playwright";
 import { collectLocalUiMetrics } from "./local-ui-metrics-controller.js";
 import { LOCAL_UI_PAGE } from "./local-ui-page.js";
+import { LocalHistoryController } from "./local-ui-history-controller.js";
 import { decideFullScan, resolveLocalScanConfig } from "./local-ui-scan-controller.js";
 
 interface UiState {
@@ -119,6 +120,8 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
   const checkpointPath = resolve(directory, ".seo-audit.checkpoint.ndjson");
   const metricsPath = resolve(directory, ".seo-audit.metrics.json");
   const historyPath = resolve(directory, ".seo-audit/history");
+  const historyController = new LocalHistoryController(historyPath, resolve(directory, ".seo-audit/comparisons"));
+  await historyController.initialize();
   const fetch = options.fetch ?? globalThis.fetch;
   let reportHtml: string | null = null;
   let existingSiteUrl: string | null = null;
@@ -224,6 +227,14 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         return;
       }
       if (request.method === "GET" && path === "/api/state") { json(response, 200, state); return; }
+      if (request.method === "GET" && path === "/api/history/comparison") { json(response, 200, historyController.status()); return; }
+      if (request.method === "GET" && path === "/comparison") {
+        const html = await historyController.report();
+        if (!html) { json(response, 404, { error: "comparison report is not ready" }); return; }
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'none'", "x-content-type-options": "nosniff" });
+        response.end(html);
+        return;
+      }
       if (request.method === "GET" && path === "/api/history") {
         const catalog = await readHistoryCatalog(historyPath);
         const siteUrl = requestUrl.searchParams.get("siteUrl");
@@ -248,6 +259,25 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         if (!reportHtml) { json(response, 404, { error: "report is not ready" }); return; }
         response.writeHead(200, { "content-type": "text/html; charset=utf-8", "x-content-type-options": "nosniff" }); response.end(reportHtml); return;
       }
+      if (request.method === "POST" && (path === "/api/history/compare" || path === "/api/history/comparison/cancel")) {
+        const origin = request.headers.origin;
+        const address = server.address();
+        if (origin && address && typeof address !== "string") {
+          const source = new URL(origin);
+          if ((source.hostname !== "127.0.0.1" && source.hostname !== "[::1]" && source.hostname !== "::1") || source.port !== String(address.port)) {
+            json(response, 403, { error: "cross-origin requests are not allowed" }); return;
+          }
+        }
+        if (path.endsWith("/cancel")) { json(response, 202, { cancelled: await historyController.cancel() }); return; }
+        if (controller || metricsRunning || historyController.busy()) { json(response, 409, { error: "another local operation is running" }); return; }
+        const input = await body(request);
+        if (typeof input.fromId !== "string" || typeof input.toId !== "string" || !/^[a-f0-9]{64}$/.test(input.fromId) || !/^[a-f0-9]{64}$/.test(input.toId)) {
+          json(response, 400, { error: "select two valid local run IDs" }); return;
+        }
+        try { json(response, 202, await historyController.start(input.fromId, input.toId)); }
+        catch (error) { json(response, 409, { error: error instanceof Error ? error.message : String(error) }); }
+        return;
+      }
       if (request.method === "POST" && path === "/api/scan") {
         const origin = request.headers.origin;
         const address = server.address();
@@ -258,7 +288,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
           }
         }
         const input = await body(request);
-        if (controller || metricsRunning) { json(response, 409, { error: "a scan or metrics update is already running" }); return; }
+        if (controller || metricsRunning || historyController.busy()) { json(response, 409, { error: "a scan, metrics update or comparison is already running" }); return; }
         const requestedUrl = new URL(String(input.url ?? ""));
         if (existingSiteUrl && new URL(existingSiteUrl).origin !== requestedUrl.origin && input.replaceExisting !== true) {
           json(response, 409, {
@@ -337,7 +367,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
           }
         }
         const input = await body(request);
-        if (controller || metricsRunning) { json(response, 409, { error: "a scan or metrics update is already running" }); return; }
+        if (controller || metricsRunning || historyController.busy()) { json(response, 409, { error: "a scan, metrics update or comparison is already running" }); return; }
         metricsRunning = true;
         try {
         let snapshot: SnapshotV2;

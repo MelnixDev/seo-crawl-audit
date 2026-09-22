@@ -71,6 +71,39 @@ test("local UI lists history with opaque IDs and bounded pagination", async (con
   assert.equal("digest" in catalog.runs[0], false);
 });
 
+test("local UI compares two saved runs in a worker and restores the artifact", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-local-comparison-"));
+  const historyDirectory = join(directory, ".seo-audit/history");
+  const before = migrateSnapshot({ schemaVersion: 1, generatedAt: "2026-01-01T00:00:00.000Z", startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200, title: "Before" }] });
+  const after = migrateSnapshot({ schemaVersion: 1, generatedAt: "2026-01-02T00:00:00.000Z", startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200, title: "After" }] });
+  await writeHistorySnapshot(historyDirectory, before);
+  await writeHistorySnapshot(historyDirectory, after);
+  const server = await createLocalUiServer({ directory, port: 0 });
+  context.after(() => server.close());
+  const runs = (await fetch(new URL("/api/history", server.url)).then((response) => response.json())).runs;
+  assert.equal(runs.length, 2);
+  const start = await fetch(new URL("/api/history/compare", server.url), {
+    method: "POST", headers: { "content-type": "application/json", origin: server.url.slice(0, -1) },
+    body: JSON.stringify({ fromId: runs[1].runId, toId: runs[0].runId }),
+  });
+  assert.equal(start.status, 202);
+  let status;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    status = await fetch(new URL("/api/history/comparison", server.url)).then((response) => response.json());
+    if (status.status !== "running") break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.equal(status.status, "ready", status.message);
+  const report = await fetch(new URL("/comparison", server.url));
+  assert.equal(report.status, 200);
+  assert.match(await report.text(), /SEO regression report/);
+  assert.equal((await fetch(new URL("/report", server.url))).status, 404);
+  const restarted = await createLocalUiServer({ directory, port: 0 });
+  context.after(() => restarted.close());
+  assert.equal((await fetch(new URL("/api/history/comparison", restarted.url)).then((response) => response.json())).status, "ready");
+  assert.equal((await fetch(new URL("/comparison", restarted.url))).status, 200);
+});
+
 test("custom large scans require confirmation and estimates respect the origin gate", () => {
   const config = resolveLocalScanConfig({ profile: "custom", maxPages: 6_000, concurrency: 10, delay: 1_000 }, "https://example.com/");
   const plan = { planVersion: 1, config, startUrl: config.url, origin: "https://example.com", robots: { url: "https://example.com/robots.txt", status: 200, sha256: null, error: null }, sitemap: null, candidateUrls: [config.url], candidateCount: null, mode: "links", identity: "fixture" };
