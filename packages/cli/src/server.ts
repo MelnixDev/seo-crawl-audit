@@ -19,6 +19,7 @@ import {
   loadReportSiteMetrics,
   mergeSiteMetrics,
   readHistorySnapshots,
+  readHistoryCatalog,
   readSiteMetricsState,
   readSnapshot,
   writeHistorySnapshot,
@@ -223,6 +224,19 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         return;
       }
       if (request.method === "GET" && path === "/api/state") { json(response, 200, state); return; }
+      if (request.method === "GET" && path === "/api/history") {
+        const catalog = await readHistoryCatalog(historyPath);
+        const siteUrl = requestUrl.searchParams.get("siteUrl");
+        const entries = siteUrl ? catalog.entries.filter((entry) => entry.siteUrl === siteUrl) : catalog.entries;
+        const offset = Math.max(0, Number.parseInt(requestUrl.searchParams.get("offset") ?? "0", 10) || 0);
+        const limit = Math.min(100, Math.max(1, Number.parseInt(requestUrl.searchParams.get("limit") ?? "20", 10) || 20));
+        json(response, 200, { schemaVersion: 1, revision: catalog.revision, total: entries.length, offset, limit,
+          runs: entries.slice(offset, offset + limit).map((entry) => ({ runId: entry.runId, generatedAt: entry.generatedAt,
+            siteUrl: entry.siteUrl, engineVersion: entry.engineVersion, ruleSetVersion: entry.ruleSetVersion,
+            configurationHash: entry.configurationHash, pages: entry.pages, partial: entry.partial, truncated: entry.truncated })),
+          warnings: catalog.warnings.length });
+        return;
+      }
       if (request.method === "GET" && path === "/api/events") {
         response.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store", connection: "keep-alive", "x-content-type-options": "nosniff" });
         eventStreams.add(response);

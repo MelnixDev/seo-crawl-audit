@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { browserLaunchCommand, createLocalUiServer, serveCommand } from "../packages/cli/dist/server.js";
 import { decideFullScan, estimateScanSeconds, resolveLocalScanConfig } from "../packages/cli/dist/local-ui-scan-controller.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
-import { writeSnapshot } from "../packages/core/dist/node.js";
+import { writeHistorySnapshot, writeSnapshot } from "../packages/core/dist/node.js";
 
 function siteFetch(input) {
   const url = new URL(String(input));
@@ -52,6 +52,23 @@ test("local UI scan profiles resolve quick standard full and custom limits", () 
   assert.equal(resolveLocalScanConfig({ profile: "full" }, url).maxPages, 50_000);
   assert.equal(resolveLocalScanConfig({ profile: "custom", maxPages: 321 }, url).maxPages, 321);
   assert.throws(() => resolveLocalScanConfig({ profile: "custom", maxPages: 50_001 }, url), /between 1 and 50000/);
+});
+
+test("local UI lists history with opaque IDs and bounded pagination", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-local-history-"));
+  const snapshot = migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200 }] });
+  await writeHistorySnapshot(join(directory, ".seo-audit/history"), snapshot);
+  await writeHistorySnapshot(join(directory, ".seo-audit/history"), snapshot);
+  const server = await createLocalUiServer({ directory, port: 0 });
+  context.after(() => server.close());
+  const response = await fetch(new URL("/api/history?limit=1&offset=1", server.url));
+  assert.equal(response.status, 200);
+  const catalog = await response.json();
+  assert.equal(catalog.total, 2);
+  assert.equal(catalog.runs.length, 1);
+  assert.match(catalog.runs[0].runId, /^[a-f0-9]{64}$/);
+  assert.equal("name" in catalog.runs[0], false);
+  assert.equal("digest" in catalog.runs[0], false);
 });
 
 test("custom large scans require confirmation and estimates respect the origin gate", () => {
