@@ -38,6 +38,27 @@ export class LocalHistoryController {
   status(): JobState { return { ...this.state }; }
   busy(): boolean { return this.active !== null || this.committing; }
 
+  async list(siteUrl: string | null, limit: number, cursor: string | null, offset = 0): Promise<{ status: number; body: unknown }> {
+    const catalog = await readHistoryCatalog(this.historyDirectory);
+    const selectedSite = siteUrl ?? catalog.entries[0]?.siteUrl ?? null;
+    const entries = selectedSite ? catalog.entries.filter((entry) => entry.siteUrl === selectedSite) : catalog.entries;
+    let position = offset;
+    if (cursor) {
+      let decoded: { revision?: unknown; offset?: unknown; siteUrl?: unknown };
+      try { decoded = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as typeof decoded; }
+      catch { return { status: 400, body: { error: "invalid history cursor" } }; }
+      if (!decoded || !Number.isSafeInteger(decoded.offset) || Number(decoded.offset) < 0 || decoded.siteUrl !== selectedSite) return { status: 400, body: { error: "invalid history cursor" } };
+      if (decoded.revision !== catalog.revision) return { status: 409, body: { error: "history changed; reload the run list", reloadNeeded: true } };
+      position = Number(decoded.offset);
+    }
+    const runs = entries.slice(position, position + limit).map((entry) => ({ runId: entry.runId, generatedAt: entry.generatedAt,
+      siteUrl: entry.siteUrl, engineVersion: entry.engineVersion, ruleSetVersion: entry.ruleSetVersion,
+      configurationHash: entry.configurationHash, pages: entry.pages, partial: entry.partial, truncated: entry.truncated }));
+    const nextOffset = position + runs.length;
+    const nextCursor = nextOffset < entries.length ? Buffer.from(JSON.stringify({ revision: catalog.revision, siteUrl: selectedSite, offset: nextOffset })).toString("base64url") : null;
+    return { status: 200, body: { schemaVersion: 1, revision: catalog.revision, total: entries.length, offset: position, limit, runs, nextCursor, warnings: catalog.warnings.length, rebuilding: false } };
+  }
+
   async report(): Promise<string | null> {
     if (!this.manifest) return null;
     return readFile(join(this.comparisonsDirectory, this.manifest.jobId, "report.html"), "utf8");

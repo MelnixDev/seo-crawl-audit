@@ -70,6 +70,15 @@ test("local UI lists history with opaque IDs and bounded pagination", async (con
   assert.match(catalog.runs[0].runId, /^[a-f0-9]{64}$/);
   assert.equal("name" in catalog.runs[0], false);
   assert.equal("digest" in catalog.runs[0], false);
+  const firstPage = await fetch(new URL("/api/history?limit=1", server.url)).then((value) => value.json());
+  assert.ok(firstPage.nextCursor);
+  const secondPage = await fetch(new URL(`/api/history?limit=1&cursor=${encodeURIComponent(firstPage.nextCursor)}`, server.url));
+  assert.equal(secondPage.status, 200);
+  assert.notEqual((await secondPage.json()).runs[0].runId, firstPage.runs[0].runId);
+  await writeHistorySnapshot(join(directory, ".seo-audit/history"), snapshot);
+  const stale = await fetch(new URL(`/api/history?limit=1&cursor=${encodeURIComponent(firstPage.nextCursor)}`, server.url));
+  assert.equal(stale.status, 409);
+  assert.equal((await stale.json()).reloadNeeded, true);
 });
 
 for (const [label, createServer] of [["source build", createLocalUiServer], ["packed bundle", createBundledLocalUiServer]]) test(`local UI compares two saved runs in a worker and restores the artifact (${label})`, async (context) => {
