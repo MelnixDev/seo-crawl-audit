@@ -3,7 +3,7 @@ import { diff } from "./compare.js";
 import { groupPageTemplates } from "./issue-groups.js";
 import type { DiffResult, Issue, Severity, SnapshotV2 } from "./types.js";
 
-export type ComparisonWarning = "incomplete-before" | "incomplete-after" | "configuration-changed" | "rule-set-changed" | "evaluation-policy-changed";
+export type ComparisonWarning = "incomplete-before" | "incomplete-after" | "configuration-changed" | "rule-set-changed" | "evaluation-policy-changed" | "url-policy-changed" | "same-timestamp";
 type Lifecycle = "new" | "ongoing" | "resolved" | "unchanged";
 type Counts = Record<Lifecycle, number>;
 
@@ -19,10 +19,13 @@ export interface ComparisonSummaryV1 {
   from: { generatedAt: string; siteUrl: string; pages: number; partial: boolean; truncated: boolean; configurationHash: string; engineVersion: string; ruleSetVersion: string };
   to: ComparisonSummaryV1["from"];
   coverage: { common: number; onlyBefore: number; onlyAfter: number; complete: boolean };
+  evaluationPolicy: { source: "after"; enabledRules: string[] | null; severityOverrides: Record<string, Severity>; suppressions: SnapshotV2["config"]["suppressions"]; regressionBudgets: Record<string, number> };
   warnings: ComparisonWarning[];
   beforeFindings: Record<Severity, number>;
   afterFindings: Record<Severity, number>;
   lifecycle: Counts;
+  lifecycleBySeverity: Record<Severity, Counts>;
+  budgetExceeded: DiffResult["budgetExceeded"];
   byRule: ComparisonGroup[];
   byTemplate: ComparisonGroup[];
   unverified: Array<{ fingerprint: string; ruleId: string; url: string; reason: string }>;
@@ -110,7 +113,9 @@ export function buildLocalComparison(previous: SnapshotV2, current: SnapshotV2, 
   if (previous.partial || previous.truncated) warnings.push("incomplete-before");
   if (current.partial || current.truncated) warnings.push("incomplete-after");
   if (previous.configurationHash !== current.configurationHash) warnings.push("configuration-changed");
+  if (previous.config.includeQuery !== current.config.includeQuery) warnings.push("url-policy-changed");
   if (previous.ruleSetVersion !== current.ruleSetVersion) warnings.push("rule-set-changed");
+  if (previous.generatedAt === current.generatedAt) warnings.push("same-timestamp");
   if (JSON.stringify(previous.config.enabledRules) !== JSON.stringify(effective.enabledRules)
     || JSON.stringify(previous.config.severityOverrides) !== JSON.stringify(effective.severityOverrides)
     || JSON.stringify(previous.config.suppressions) !== JSON.stringify(effective.suppressions)) warnings.push("evaluation-policy-changed");
@@ -121,15 +126,19 @@ export function buildLocalComparison(previous: SnapshotV2, current: SnapshotV2, 
     ...comparison.unchangedIssues.map((issue) => ({ lifecycle: "unchanged" as const, issue })),
   ];
   const lifecycle = lifecycleCounts();
-  for (const entry of entries) lifecycle[entry.lifecycle] += 1;
+  const lifecycleBySeverity: Record<Severity, Counts> = { error: lifecycleCounts(), warning: lifecycleCounts(), info: lifecycleCounts() };
+  for (const entry of entries) { lifecycle[entry.lifecycle] += 1; lifecycleBySeverity[entry.issue.severity][entry.lifecycle] += 1; }
   const templates = groupPageTemplates([...new Set([...beforeUrls, ...afterUrls])]);
   const templateByUrl = new Map(templates.flatMap((group) => group.urls.map((url) => [url, group.origin + group.template] as const)));
   return { diff: comparison, summary: {
     schemaVersion: 1, evaluatedAt: options.evaluatedAt, from: descriptor(previous), to: descriptor(current),
     coverage: { common, onlyBefore: beforeUrls.size - common, onlyAfter: afterUrls.size - common,
       complete: !(previous.partial || previous.truncated || current.partial || current.truncated) },
+    evaluationPolicy: { source: "after", enabledRules: effective.enabledRules ? [...effective.enabledRules] : null,
+      severityOverrides: { ...effective.severityOverrides }, suppressions: effective.suppressions.map((entry) => ({ ...entry })),
+      regressionBudgets: { ...effective.regressionBudgets } },
     warnings, beforeFindings: findingCounts(beforeFindings), afterFindings: findingCounts(afterFindings),
-    lifecycle, byRule: groups(entries, (issue) => issue.ruleId),
+    lifecycle, lifecycleBySeverity, budgetExceeded: comparison.budgetExceeded, byRule: groups(entries, (issue) => issue.ruleId),
     byTemplate: groups(entries, (issue) => issue.scope === "site" ? "@site" : templateByUrl.get(issue.url) ?? "@unknown"),
     unverified: unverified.sort((left, right) => left.url.localeCompare(right.url) || left.ruleId.localeCompare(right.ruleId)),
   } };

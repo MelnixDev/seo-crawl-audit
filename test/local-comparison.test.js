@@ -30,6 +30,9 @@ test("comparison uses current policy for both snapshots and keeps stored inputs 
   assert.equal(result.summary.coverage.common, 1);
   assert.equal(result.summary.lifecycle.resolved > 0, true);
   assert.equal(result.summary.warnings.includes("evaluation-policy-changed"), true);
+  assert.equal(result.summary.evaluationPolicy.source, "after");
+  assert.equal(result.summary.lifecycleBySeverity.error.resolved >= 0, true);
+  assert.equal(Array.isArray(result.summary.budgetExceeded), true);
 });
 
 test("partial current coverage never resolves unchecked findings", () => {
