@@ -37,6 +37,7 @@ test("locks the documented core function surface", () => {
     "RULE_SET_VERSION",
     "audit",
     "buildHistorySeries",
+    "buildLocalComparison",
     "buildSiteMetrics",
     "collectSiteMetrics",
     "createGoogleSiteEstimateProvider",
