@@ -30,6 +30,7 @@ async function run(input: ComparisonWorkerInput): Promise<void> {
     partial: current.partial, complete: summary.coverage.complete,
     engineVersion: current.engineVersion, ruleSetVersion: current.ruleSetVersion,
     branding: current.config.report,
+    comparison: { kind: "local", summary },
   };
   const html = renderReport(reportData);
   parentPort?.postMessage({ phase: "write" });

@@ -1,3 +1,5 @@
+import type { ComparisonSummaryV1 } from "./local-comparison.js";
+
 export type Severity = "error" | "warning" | "info";
 export type IssueScope = "page" | "site";
 export type IssueOwner = "seo" | "content" | "developer";
@@ -59,6 +61,9 @@ export interface ReportData {
     kind: "preview";
     productionUrl: string;
     previewUrl: string;
+  } | {
+    kind: "local";
+    summary: ComparisonSummaryV1;
   };
   history?: HistorySeries;
   siteMetrics?: SiteMetrics;
