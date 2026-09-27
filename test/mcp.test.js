@@ -69,6 +69,8 @@ test("MCP tools plan, scan, inspect, compare, and render local artifacts", async
   const compared = await compareTool(context, { production: "baseline.json", preview: "current.json", report: "compare.html" });
   assert.equal(compared.complete, true);
   assert.ok(compared.new > 0);
+  assert.equal(compared.comparisonSummary.schemaVersion, 1);
+  assert.equal(compared.comparisonSummary.from.siteUrl, "https://example.com/");
 
   const lifecycle = await issuesTool(context, { snapshot: "current.json", baseline: "baseline.json", lifecycle: "new", limit: 100 });
   assert.equal(lifecycle.total, new Set(lifecycle.issues.map((issue) => issue.fingerprint)).size);
