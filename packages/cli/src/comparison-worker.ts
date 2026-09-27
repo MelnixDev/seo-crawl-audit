@@ -25,7 +25,8 @@ async function run(input: ComparisonWorkerInput): Promise<void> {
   parentPort?.postMessage({ phase: "render" });
   const reportData: ReportData = {
     mode: "check", startUrl: current.siteUrl, generatedAt: input.evaluatedAt,
-    pages: current.pages, pageDetails: current.pages,
+    pages: current.pages,
+    ...(current.pages.length <= 5_000 ? { pageDetails: current.pages } : {}),
     issues: diff.newIssues, newIssues: diff.newIssues, ongoingIssues: diff.ongoingIssues,
     resolvedIssues: diff.resolvedIssues, unchangedIssues: diff.unchangedIssues,
     partial: current.partial, complete: summary.coverage.complete,
