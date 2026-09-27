@@ -12,6 +12,10 @@ function fileError(error: unknown, code: string): boolean {
   return Boolean(error && typeof error === "object" && "code" in error && error.code === code);
 }
 
+export class HistoryRequestError extends Error {
+  constructor(message: string, readonly status: 400 | 404 | 409) { super(message); }
+}
+
 export class LocalHistoryController {
   private active: { worker: Worker; jobId: string; directory: string } | null = null;
   private committing = false;
@@ -77,14 +81,14 @@ export class LocalHistoryController {
   }
 
   async start(fromId: string, toId: string): Promise<{ jobId: string }> {
-    if (this.busy()) throw new Error("a comparison is already running");
-    if (fromId === toId) throw new Error("select two different runs");
+    if (this.busy()) throw new HistoryRequestError("a comparison is already running", 409);
+    if (fromId === toId) throw new HistoryRequestError("select two different runs", 400);
     const catalog = await readHistoryCatalog(this.historyDirectory);
     const from = catalog.entries.find((entry) => entry.runId === fromId);
     const to = catalog.entries.find((entry) => entry.runId === toId);
-    if (!from || !to) throw new Error("history run not found; reload the run list");
-    if (from.siteUrl !== to.siteUrl) throw new Error("history runs must belong to the same site URL");
-    if (from.generatedAt > to.generatedAt) throw new Error("Before run is newer than After run; swap the runs");
+    if (!from || !to) throw new HistoryRequestError("history run not found; reload the run list", 404);
+    if (from.siteUrl !== to.siteUrl) throw new HistoryRequestError("history runs must belong to the same site URL", 409);
+    if (from.generatedAt > to.generatedAt) throw new HistoryRequestError("Before run is newer than After run; swap the runs", 409);
     const jobId = randomUUID();
     const directory = join(this.comparisonsDirectory, jobId);
     const worker = new Worker(new URL("./comparison-worker.js", import.meta.url), {

@@ -92,6 +92,13 @@ for (const [label, createServer] of [["source build", createLocalUiServer], ["pa
   context.after(() => server.close());
   const runs = (await fetch(new URL("/api/history", server.url)).then((response) => response.json())).runs;
   assert.equal(runs.length, 2);
+  const postComparison = (payload, origin = server.url.slice(0, -1)) => fetch(new URL("/api/history/compare", server.url), {
+    method: "POST", headers: { "content-type": "application/json", origin }, body: JSON.stringify(payload),
+  });
+  assert.equal((await postComparison({ fromId: runs[0].runId, toId: runs[0].runId })).status, 400);
+  assert.equal((await postComparison({ fromId: "a".repeat(64), toId: runs[0].runId })).status, 404);
+  assert.equal((await postComparison({ fromId: runs[0].runId, toId: runs[1].runId })).status, 409);
+  assert.equal((await postComparison({ fromId: runs[1].runId, toId: runs[0].runId }, "https://other.example")).status, 403);
   const start = await fetch(new URL("/api/history/compare", server.url), {
     method: "POST", headers: { "content-type": "application/json", origin: server.url.slice(0, -1) },
     body: JSON.stringify({ fromId: runs[1].runId, toId: runs[0].runId }),
@@ -104,6 +111,9 @@ for (const [label, createServer] of [["source build", createLocalUiServer], ["pa
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   assert.equal(status.status, "ready", status.message);
+  const result = await fetch(new URL("/api/history/comparison/result", server.url)).then((response) => response.json());
+  assert.ok(result.summary);
+  assert.equal("diff" in result, false);
   const report = await fetch(new URL("/comparison", server.url));
   assert.equal(report.status, 200);
   assert.match(await report.text(), /SEO regression report/);

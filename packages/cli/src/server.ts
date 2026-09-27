@@ -29,7 +29,7 @@ import {
 import { createPlaywrightRenderer } from "@seo-crawl-audit/renderer-playwright";
 import { collectLocalUiMetrics } from "./local-ui-metrics-controller.js";
 import { LOCAL_UI_PAGE } from "./local-ui-page.js";
-import { LocalHistoryController } from "./local-ui-history-controller.js";
+import { HistoryRequestError, LocalHistoryController } from "./local-ui-history-controller.js";
 import { decideFullScan, resolveLocalScanConfig } from "./local-ui-scan-controller.js";
 
 interface UiState {
@@ -285,7 +285,7 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
           json(response, 400, { error: "select two valid local run IDs" }); return;
         }
         try { json(response, 202, await historyController.start(input.fromId, input.toId)); }
-        catch (error) { json(response, 409, { error: error instanceof Error ? error.message : String(error) }); }
+        catch (error) { json(response, error instanceof HistoryRequestError ? error.status : 500, { error: error instanceof Error ? error.message : String(error) }); }
         return;
       }
       if (request.method === "POST" && path === "/api/scan") {
