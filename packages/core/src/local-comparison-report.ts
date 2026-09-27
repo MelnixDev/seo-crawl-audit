@@ -5,7 +5,7 @@ const label = (en: string, uk: string): string => `<span class="locale-en">${esc
 
 function groupRows(groups: readonly ComparisonGroup[], kind: "rule" | "template"): string {
   const sorted = [...groups].sort((left, right) => (right.counts.new + right.counts.resolved + right.counts.ongoing) - (left.counts.new + left.counts.resolved + left.counts.ongoing) || left.id.localeCompare(right.id));
-  return sorted.slice(0, 20).map((group) => `<tr><td>${kind === "rule" ? `<button type="button" data-comparison-rule="${escape(group.id)}">${escape(group.id)}</button>` : escape(group.id)}</td><td>${group.counts.new}</td><td>${group.counts.ongoing}</td><td>${group.counts.resolved}</td><td>${group.affectedPages}</td></tr>`).join("")
+  return sorted.slice(0, 20).map((group) => `<tr><td><button type="button" data-comparison-${kind}="${escape(group.id)}">${escape(group.id)}</button></td><td>${group.counts.new}</td><td>${group.counts.ongoing}</td><td>${group.counts.resolved}</td><td>${group.affectedPages}</td></tr>`).join("")
     + (sorted.length > 20 ? `<tr><td colspan="5">${label(`${sorted.length - 20} more groups in the JSON summary`, `Ще ${sorted.length - 20} груп у JSON-зведенні`)}</td></tr>` : "");
 }
 

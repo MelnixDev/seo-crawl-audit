@@ -7,12 +7,15 @@ test("local comparison header shows coverage and escapes group labels", () => {
   const after = migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200 }] });
   const { diff, summary } = buildLocalComparison(before, after, { evaluatedAt: "2026-09-23T00:00:00.000Z" });
   summary.byRule.push({ id: '"><script>alert(1)</script>', counts: { new: 1, ongoing: 0, resolved: 0, unchanged: 0 }, affectedPages: 1 });
-  const html = renderHtmlReport({ mode: "check", startUrl: after.siteUrl, pages: after.pages, newIssues: diff.newIssues, comparison: { kind: "local", summary } });
+  summary.byTemplate.push({ id: "https://example.com/", counts: { new: 1, ongoing: 0, resolved: 0, unchanged: 0 }, affectedPages: 1 });
+  const html = renderHtmlReport({ mode: "check", startUrl: after.siteUrl, pages: after.pages, previousPages: before.pages, newIssues: diff.newIssues, comparison: { kind: "local", summary } });
   assert.match(html, /id="local-comparison"/);
   assert.match(html, /Порівняння локальних запусків/);
   assert.match(html, /data-comparison-rule="&quot;&gt;&lt;script&gt;alert\(1\)&lt;\/script&gt;"/);
   assert.doesNotMatch(html, /data-comparison-rule=""><script>/);
   assert.match(html, /Coverage/);
+  assert.match(html, /data-comparison-template="https:\/\/example\.com\/"/);
+  assert.doesNotMatch(html, /"previousPages"/);
 });
 
 test("renders a self-contained filterable report and escapes embedded data", () => {

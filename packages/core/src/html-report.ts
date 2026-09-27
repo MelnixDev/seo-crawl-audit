@@ -140,9 +140,24 @@ export function renderHtmlReport(input: ReportData, options: ReportOptions = {})
     ...(input.unchangedIssues ?? []).map((item) => normalizeIssue(item, "unchanged")),
   ];
   const issues = lifecycle.length > 0 ? lifecycle : current;
-  const templateGroups = groupIssuesByTemplate(issues);
-  const templateByUrl = new Map(templateGroups.flatMap((group) => group.urls.map((url) => [url, group.template] as const)));
+  const isLocalComparison = input.comparison?.kind === "local";
+  const unionTemplates = isLocalComparison
+    ? groupPageTemplates([...(input.previousPages ?? []).map((page) => page.url), ...pages.map((page) => page.url)])
+    : null;
+  const issueTemplates = groupIssuesByTemplate(issues);
+  const templateByUrl = new Map((unionTemplates ?? issueTemplates).flatMap((group) => group.urls.map((url) => [url, isLocalComparison ? group.origin + group.template : group.template] as const)));
   for (const issue of issues) issue.template = templateByUrl.get(issue.url) ?? "";
+  const localTemplateCounts = new Map<string, { count: number; urls: Set<string> }>();
+  if (isLocalComparison) for (const issue of issues) {
+    if (!issue.template) continue;
+    const group = localTemplateCounts.get(issue.template) ?? { count: 0, urls: new Set<string>() };
+    group.count += 1;
+    group.urls.add(issue.url);
+    localTemplateCounts.set(issue.template, group);
+  }
+  const templateGroups = isLocalComparison
+    ? [...localTemplateCounts].map(([label, value]) => ({ template: label, issueCount: value.count, affectedPages: value.urls.size }))
+    : issueTemplates;
   const counts = issues.reduce((summary, item) => { summary[item.severity] += 1; return summary; }, { error: 0, warning: 0, info: 0 });
   const affectedPages = new Set(issues.map((item) => item.url)).size;
   const ruleCounts = countIssues(issues, "rule");
@@ -356,6 +371,7 @@ ${input.history && input.history.points.length > 0 ? `  <section id="history-pan
   byId("export-pages-csv").addEventListener("click",()=>{const text=pageCopy();const quote=(value)=>'"'+csvSafe(value).replaceAll('"','""')+'"';const headers=["URL",text.status,text.indexability,text.title,"URL template",text.depth,architectureCopy().incoming,architectureCopy().broken,architectureCopy().redirects,text.errors,text.warnings,text.info];const rows=pagesFiltered.map((page)=>[pageUrl(page.u),page.s??text.noResponse,text.states[page.ix],page.t??"",report.pageExplorer.templates[page.template]?.label??"",page.depth??"",page.incoming?.length??"",page.broken?.length??"",page.redirects?.length??"",page.counts.error,page.counts.warning,page.counts.info]);const csv=[headers,...rows].map((row)=>row.map(quote).join(",")).join("\\n");const link=document.createElement("a");link.href=URL.createObjectURL(new Blob(["\\uFEFF",csv],{type:"text/csv;charset=utf-8"}));link.download="seo-crawl-audit-pages-"+locale+".csv";link.click();URL.revokeObjectURL(link.href)});
   byId("export-csv").addEventListener("click",()=>{const text=copy();const quote=(value)=>'"'+csvSafe(typeof value==="object"?JSON.stringify(value):value).replaceAll('"','""')+'"';const headers=[text.table.severity,text.table.lifecycle,text.table.ruleOwner,text.table.page,report.mode==="check"?text.table.change:text.table.finding,text.table.before,text.table.evidence,text.table.remediation,text.table.fingerprint];const rows=lastFiltered.map((item)=>{const localized=issueText(item);return [text.severities[item.severity],text.lifecycle[item.lifecycle]||item.lifecycle,localized.rule+" · "+text.owners[item.owner],item.url,localized.message,valueText(item.before),valueText(item.after!==undefined?item.after:item.evidence),localized.remediation,item.fingerprint]});const csv=[headers,...rows].map((row)=>row.map(quote).join(",")).join("\\n");const link=document.createElement("a");link.href=URL.createObjectURL(new Blob(["\\uFEFF",csv],{type:"text/csv;charset=utf-8"}));link.download="seo-crawl-audit-"+locale+".csv";link.click();URL.revokeObjectURL(link.href)});
   for(const button of document.querySelectorAll("[data-comparison-rule]")){button.addEventListener("click",()=>{const sample=report.issues.find((issue)=>issue.ruleId===button.dataset.comparisonRule);if(!sample)return;rule.value=sample.rule;currentPage=1;document.querySelector('[data-view="issues"]').click();render()})}
+  for(const button of document.querySelectorAll("[data-comparison-template]")){button.addEventListener("click",()=>{template.value=button.dataset.comparisonTemplate;currentPage=1;document.querySelector('[data-view="issues"]').click();render()})}
   applyLocale();
 </script></body></html>`;
 }
