@@ -36,6 +36,13 @@ the discovered URL count and requires explicit confirmation above 5,000 URLs.
 The overview keeps scan coverage, issue counts, and locally stored trends in
 one place.
 
+The local UI also has a **History / Історія** section. Select two saved
+same-site runs to compare observed findings without recrawling. The comparison
+runs in a background worker and saves a separate HTML report, Markdown summary,
+and grouped CSV. Partial coverage and findings that cannot be verified are
+labelled instead of being counted as repairs. See the
+[local comparison guide](docs/local-comparisons.md).
+
 ### Site metrics
 
 ![SEO Crawl Audit site metrics and crawl coverage](docs/images/report-metrics.png)
