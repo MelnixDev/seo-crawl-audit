@@ -129,6 +129,14 @@ for (const [label, createServer] of [["source build", createLocalUiServer], ["pa
   context.after(() => restarted.close());
   assert.equal((await fetch(new URL("/api/history/comparison", restarted.url)).then((response) => response.json())).status, "ready");
   assert.equal((await fetch(new URL("/comparison", restarted.url))).status, 200);
+  assert.equal((await postComparison({ fromId: runs[1].runId, toId: runs[0].runId })).status, 202);
+  const cancelled = await fetch(new URL("/api/history/comparison/cancel", server.url), {
+    method: "POST", headers: { origin: server.url.slice(0, -1) },
+  });
+  assert.equal(cancelled.status, 202);
+  assert.equal((await cancelled.json()).cancelled, true);
+  assert.equal((await fetch(new URL("/comparison", server.url))).status, 200);
+  assert.equal((await fetch(new URL("/api/history/comparison", server.url)).then((response) => response.json())).status, "ready");
 });
 
 test("custom large scans require confirmation and estimates respect the origin gate", () => {
