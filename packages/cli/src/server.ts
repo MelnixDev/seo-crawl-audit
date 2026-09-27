@@ -240,6 +240,16 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         response.end(html);
         return;
       }
+      if (request.method === "GET" && (path === "/comparison.md" || path === "/comparison.csv")) {
+        const markdown = path.endsWith(".md");
+        const value = await historyController.export(markdown ? "markdown" : "csv");
+        if (value === null) { json(response, 404, { error: "comparison export is not ready" }); return; }
+        response.writeHead(200, { "content-type": markdown ? "text/markdown; charset=utf-8" : "text/csv; charset=utf-8",
+          "content-disposition": `attachment; filename="seo-crawl-audit-comparison.${markdown ? "md" : "csv"}"`,
+          "x-content-type-options": "nosniff", "cache-control": "no-store" });
+        response.end(value);
+        return;
+      }
       if (request.method === "GET" && path === "/api/history") {
         const siteUrl = requestUrl.searchParams.get("siteUrl");
         const offset = Math.max(0, Number.parseInt(requestUrl.searchParams.get("offset") ?? "0", 10) || 0);

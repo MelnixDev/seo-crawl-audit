@@ -107,6 +107,13 @@ for (const [label, createServer] of [["source build", createLocalUiServer], ["pa
   const report = await fetch(new URL("/comparison", server.url));
   assert.equal(report.status, 200);
   assert.match(await report.text(), /SEO regression report/);
+  const markdown = await fetch(new URL("/comparison.md", server.url));
+  assert.equal(markdown.status, 200);
+  assert.match(markdown.headers.get("content-disposition"), /attachment/);
+  assert.match(await markdown.text(), /local comparison/);
+  const csv = await fetch(new URL("/comparison.csv", server.url));
+  assert.equal(csv.status, 200);
+  assert.match(await csv.text(), /"scope","id","new"/);
   assert.equal((await fetch(new URL("/report", server.url))).status, 404);
   const restarted = await createServer({ directory, port: 0 });
   context.after(() => restarted.close());

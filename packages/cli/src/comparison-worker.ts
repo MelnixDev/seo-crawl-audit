@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { buildLocalComparison, renderReport, type ReportData } from "@seo-crawl-audit/core";
 import { readCatalogSnapshot, type HistoryCatalogEntry } from "@seo-crawl-audit/core/node";
+import { comparisonCsv, comparisonMarkdown } from "./local-ui-comparison-export.js";
 
 interface ComparisonWorkerInput {
   historyDirectory: string;
@@ -37,7 +38,9 @@ async function run(input: ComparisonWorkerInput): Promise<void> {
   await mkdir(input.outputDirectory, { recursive: true });
   await Promise.all([
     writeFile(join(input.outputDirectory, "report.html"), html, "utf8"),
-    writeFile(join(input.outputDirectory, "summary.json"), `${JSON.stringify({ summary, diff })}\n`, "utf8"),
+    writeFile(join(input.outputDirectory, "summary.json"), `${JSON.stringify({ summary })}\n`, "utf8"),
+    writeFile(join(input.outputDirectory, "summary.md"), comparisonMarkdown(summary), "utf8"),
+    writeFile(join(input.outputDirectory, "groups.csv"), comparisonCsv(summary), "utf8"),
   ]);
   parentPort?.postMessage({ phase: "complete" });
 }

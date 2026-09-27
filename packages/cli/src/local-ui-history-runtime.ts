@@ -8,12 +8,21 @@ export const LOCAL_HISTORY_RUNTIME = String.raw`
   let runs = [];
   let timer = null;
   let lastStatus = "";
+  const markdownLink = document.createElement("a");
+  markdownLink.href = "/comparison.md";
+  markdownLink.hidden = true;
+  const csvLink = document.createElement("a");
+  csvLink.href = "/comparison.csv";
+  csvLink.hidden = true;
+  el("historyOpen").parentElement.append(markdownLink, csvLink);
   const lang = () => el("historyLanguage").value;
   const t = () => copy[lang()];
   const status = (message) => { el("historyStatus").textContent = message; };
   function translate() {
     const value = t();
     for (const [id, text] of Object.entries({ historyTitle: value.title, historyDescription: value.description, historyLanguageLabel: value.language, historyBeforeLabel: value.before, historyAfterLabel: value.after, historyCompare: value.compare, historySwap: value.swap, historyCancel: value.cancel, historyOpen: value.open })) el(id).textContent = text;
+    markdownLink.textContent = lang() === "uk" ? "Завантажити Markdown" : "Download Markdown";
+    csvLink.textContent = lang() === "uk" ? "Завантажити CSV" : "Download CSV";
     if (lastStatus === "ready") status(value.ready);
     if (lastStatus === "empty") status(value.empty);
     if (lastStatus === "one") status(value.one);
@@ -57,6 +66,8 @@ export const LOCAL_HISTORY_RUNTIME = String.raw`
         el("historyCancel").hidden = true;
         el("historyCompare").disabled = runs.length < 2;
         el("historyOpen").hidden = !value.reportReady;
+        markdownLink.hidden = !value.reportReady;
+        csvLink.hidden = !value.reportReady;
         if (value.reportReady) {
           const result = await fetch("/api/history/comparison/result").then((item) => item.json());
           const summary = result.summary;

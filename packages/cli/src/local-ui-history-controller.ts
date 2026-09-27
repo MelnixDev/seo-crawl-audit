@@ -69,6 +69,13 @@ export class LocalHistoryController {
     return JSON.parse(await readFile(join(this.comparisonsDirectory, this.manifest.jobId, "summary.json"), "utf8")) as unknown;
   }
 
+  async export(format: "markdown" | "csv"): Promise<string | null> {
+    if (!this.manifest) return null;
+    const name = format === "markdown" ? "summary.md" : "groups.csv";
+    try { return await readFile(join(this.comparisonsDirectory, this.manifest.jobId, name), "utf8"); }
+    catch (error) { if (fileError(error, "ENOENT")) return null; throw error; }
+  }
+
   async start(fromId: string, toId: string): Promise<{ jobId: string }> {
     if (this.busy()) throw new Error("a comparison is already running");
     if (fromId === toId) throw new Error("select two different runs");
@@ -102,7 +109,7 @@ export class LocalHistoryController {
     this.committing = true;
     try {
       if (code !== 0 || this.state.message) throw new Error(this.state.message ?? `Comparison worker exited with code ${code}`);
-      await Promise.all([readFile(join(directory, "report.html")), readFile(join(directory, "summary.json"))]);
+      await Promise.all(["report.html", "summary.json", "summary.md", "groups.csv"].map((name) => readFile(join(directory, name))));
       const manifest: ComparisonManifest = { schemaVersion: 1, jobId, fromId: from.runId, toId: to.runId, siteUrl: to.siteUrl, completedAt: new Date().toISOString() };
       await mkdir(this.comparisonsDirectory, { recursive: true });
       const temporary = join(this.comparisonsDirectory, `latest.${jobId}.tmp`);
