@@ -6,7 +6,7 @@ backward compatible while the product grows.
 
 ## Delivery status (September 2026)
 
-Version `0.12.0` is released on GitHub and npm.
+Version `0.13.0` is released on GitHub and npm.
 It includes scan preflight and
 progress, checkpoint/resume diagnostics, Site Metrics, the loopback-only local
 web interface, opt-in Playwright rendering, MCP and agent documentation,
@@ -32,9 +32,7 @@ intentionally deferred. They are not prerequisites for the local product.
 - Provide deterministic sorting, combined filters, pagination, accessible page
   details, Pages ↔ Issues navigation, and safe filtered CSV export.
 
-## 0.13.0 — site architecture
-
-Implemented on the development branch; not yet released.
+## 0.13.0 — completed site architecture
 
 - Surface inlinks, low-linked and orphan pages, broken-link sources, redirect
   chains, deep pages, and URL-template distributions.
@@ -44,8 +42,12 @@ Implemented on the development branch; not yet released.
 
 ## 0.14.0 — regression workflow
 
-- Add rule and template trends, local run comparison, a focused "what became
-  worse" view, and concise change-summary exports.
+- Add a local run picker and background comparison without recrawling.
+- Explain coverage and distinguish verified resolution from missing evidence.
+- Group changes by rule and URL template; provide standalone HTML plus concise
+  Markdown and CSV summaries.
+- Keep richer multi-run trend drill-down deferred until it can be measured
+  without loading all stored snapshots at once.
 
 ## Deferred
 

@@ -1,6 +1,23 @@
 # Changelog
 
-## 0.13.0 — Unreleased
+## 0.14.0 — Unreleased
+
+- added a local run picker with background, cancellable comparison of saved
+  snapshots without recrawling either site;
+- added coverage-aware lifecycle summaries that keep unverified resolutions
+  separate from genuinely resolved findings;
+- grouped changes by rule and URL template in a standalone bilingual report,
+  with Markdown and CSV summary downloads;
+- added a bounded, rebuildable history catalogue with stable run IDs and
+  collision-safe snapshot filenames;
+- kept previous comparison artifacts available after cancellation, failed
+  generation, and local UI restart;
+- added same-site comparison summaries to MCP responses without changing
+  cross-site comparison behavior;
+- preserved SnapshotV2, issue fingerprints, existing CLI commands and exit
+  codes, and the local-only data model.
+
+## 0.13.0 — Released
 
 - added observed inlink counts and paginated source-page lists in Pages;
 - added filters for zero/one observed source, broken or redirecting outgoing

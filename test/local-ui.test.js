@@ -4,9 +4,10 @@ import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { browserLaunchCommand, createLocalUiServer, serveCommand } from "../packages/cli/dist/server.js";
+import { createLocalUiServer as createBundledLocalUiServer } from "../packages/cli/bundle/server.js";
 import { decideFullScan, estimateScanSeconds, resolveLocalScanConfig } from "../packages/cli/dist/local-ui-scan-controller.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
-import { writeSnapshot } from "../packages/core/dist/node.js";
+import { writeHistorySnapshot, writeSnapshot } from "../packages/core/dist/node.js";
 
 function siteFetch(input) {
   const url = new URL(String(input));
@@ -54,6 +55,90 @@ test("local UI scan profiles resolve quick standard full and custom limits", () 
   assert.throws(() => resolveLocalScanConfig({ profile: "custom", maxPages: 50_001 }, url), /between 1 and 50000/);
 });
 
+test("local UI lists history with opaque IDs and bounded pagination", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-local-history-"));
+  const snapshot = migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200 }] });
+  await writeHistorySnapshot(join(directory, ".seo-audit/history"), snapshot);
+  await writeHistorySnapshot(join(directory, ".seo-audit/history"), snapshot);
+  const server = await createLocalUiServer({ directory, port: 0 });
+  context.after(() => server.close());
+  const response = await fetch(new URL("/api/history?limit=1&offset=1", server.url));
+  assert.equal(response.status, 200);
+  const catalog = await response.json();
+  assert.equal(catalog.total, 2);
+  assert.equal(catalog.runs.length, 1);
+  assert.match(catalog.runs[0].runId, /^[a-f0-9]{64}$/);
+  assert.equal("name" in catalog.runs[0], false);
+  assert.equal("digest" in catalog.runs[0], false);
+  const firstPage = await fetch(new URL("/api/history?limit=1", server.url)).then((value) => value.json());
+  assert.ok(firstPage.nextCursor);
+  const secondPage = await fetch(new URL(`/api/history?limit=1&cursor=${encodeURIComponent(firstPage.nextCursor)}`, server.url));
+  assert.equal(secondPage.status, 200);
+  assert.notEqual((await secondPage.json()).runs[0].runId, firstPage.runs[0].runId);
+  await writeHistorySnapshot(join(directory, ".seo-audit/history"), snapshot);
+  const stale = await fetch(new URL(`/api/history?limit=1&cursor=${encodeURIComponent(firstPage.nextCursor)}`, server.url));
+  assert.equal(stale.status, 409);
+  assert.equal((await stale.json()).reloadNeeded, true);
+});
+
+for (const [label, createServer] of [["source build", createLocalUiServer], ["packed bundle", createBundledLocalUiServer]]) test(`local UI compares two saved runs in a worker and restores the artifact (${label})`, async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-local-comparison-"));
+  const historyDirectory = join(directory, ".seo-audit/history");
+  const before = migrateSnapshot({ schemaVersion: 1, generatedAt: "2026-01-01T00:00:00.000Z", startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200, title: "Before" }] });
+  const after = migrateSnapshot({ schemaVersion: 1, generatedAt: "2026-01-02T00:00:00.000Z", startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200, title: "After" }] });
+  await writeHistorySnapshot(historyDirectory, before);
+  await writeHistorySnapshot(historyDirectory, after);
+  const server = await createServer({ directory, port: 0 });
+  context.after(() => server.close());
+  const runs = (await fetch(new URL("/api/history", server.url)).then((response) => response.json())).runs;
+  assert.equal(runs.length, 2);
+  const postComparison = (payload, origin = server.url.slice(0, -1)) => fetch(new URL("/api/history/compare", server.url), {
+    method: "POST", headers: { "content-type": "application/json", origin }, body: JSON.stringify(payload),
+  });
+  assert.equal((await postComparison({ fromId: runs[0].runId, toId: runs[0].runId })).status, 400);
+  assert.equal((await postComparison({ fromId: "a".repeat(64), toId: runs[0].runId })).status, 404);
+  assert.equal((await postComparison({ fromId: runs[0].runId, toId: runs[1].runId })).status, 409);
+  assert.equal((await postComparison({ fromId: runs[1].runId, toId: runs[0].runId }, "https://other.example")).status, 403);
+  const start = await fetch(new URL("/api/history/compare", server.url), {
+    method: "POST", headers: { "content-type": "application/json", origin: server.url.slice(0, -1) },
+    body: JSON.stringify({ fromId: runs[1].runId, toId: runs[0].runId }),
+  });
+  assert.equal(start.status, 202);
+  let status;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    status = await fetch(new URL("/api/history/comparison", server.url)).then((response) => response.json());
+    if (status.status !== "running") break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.equal(status.status, "ready", status.message);
+  const result = await fetch(new URL("/api/history/comparison/result", server.url)).then((response) => response.json());
+  assert.ok(result.summary);
+  assert.equal("diff" in result, false);
+  const report = await fetch(new URL("/comparison", server.url));
+  assert.equal(report.status, 200);
+  assert.match(await report.text(), /SEO regression report/);
+  const markdown = await fetch(new URL("/comparison.md", server.url));
+  assert.equal(markdown.status, 200);
+  assert.match(markdown.headers.get("content-disposition"), /attachment/);
+  assert.match(await markdown.text(), /local comparison/);
+  const csv = await fetch(new URL("/comparison.csv", server.url));
+  assert.equal(csv.status, 200);
+  assert.match(await csv.text(), /"scope","id","new"/);
+  assert.equal((await fetch(new URL("/report", server.url))).status, 404);
+  const restarted = await createServer({ directory, port: 0 });
+  context.after(() => restarted.close());
+  assert.equal((await fetch(new URL("/api/history/comparison", restarted.url)).then((response) => response.json())).status, "ready");
+  assert.equal((await fetch(new URL("/comparison", restarted.url))).status, 200);
+  assert.equal((await postComparison({ fromId: runs[1].runId, toId: runs[0].runId })).status, 202);
+  const cancelled = await fetch(new URL("/api/history/comparison/cancel", server.url), {
+    method: "POST", headers: { origin: server.url.slice(0, -1) },
+  });
+  assert.equal(cancelled.status, 202);
+  assert.equal((await cancelled.json()).cancelled, true);
+  assert.equal((await fetch(new URL("/comparison", server.url))).status, 200);
+  assert.equal((await fetch(new URL("/api/history/comparison", server.url)).then((response) => response.json())).status, "ready");
+});
+
 test("custom large scans require confirmation and estimates respect the origin gate", () => {
   const config = resolveLocalScanConfig({ profile: "custom", maxPages: 6_000, concurrency: 10, delay: 1_000 }, "https://example.com/");
   const plan = { planVersion: 1, config, startUrl: config.url, origin: "https://example.com", robots: { url: "https://example.com/robots.txt", status: 200, sha256: null, error: null }, sitemap: null, candidateUrls: [config.url], candidateCount: null, mode: "links", identity: "fixture" };
@@ -83,6 +168,9 @@ test("local UI binds only to loopback and serves its application shell", async (
   assert.match(page, /reportFrame\.contentDocument/);
   assert.match(page, /id="googleEstimate"/);
   assert.match(page, /id="profile"/);
+  assert.match(page, /id="historyBefore"/);
+  assert.match(page, /id="historyAfter"/);
+  assert.match(page, /Історія/);
   assert.match(page, /Full sitemap/);
   assert.match(page, /max="50000"/);
   assert.match(page, /id="updateMetrics"/);

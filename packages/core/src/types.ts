@@ -1,3 +1,5 @@
+import type { ComparisonSummaryV1 } from "./local-comparison.js";
+
 export type Severity = "error" | "warning" | "info";
 export type IssueScope = "page" | "site";
 export type IssueOwner = "seo" | "content" | "developer";
@@ -42,6 +44,8 @@ export interface ReportData {
   startUrl?: string;
   generatedAt?: string;
   pages?: Array<{ url: string }>;
+  /** Optional previous-run URLs for stable local comparison template inference; not embedded in HTML. */
+  previousPages?: Array<{ url: string }>;
   /** Optional full page details used by the local Page Explorer. */
   pageDetails?: PageSnapshot[];
   issues?: Partial<Issue>[];
@@ -59,6 +63,9 @@ export interface ReportData {
     kind: "preview";
     productionUrl: string;
     previewUrl: string;
+  } | {
+    kind: "local";
+    summary: ComparisonSummaryV1;
   };
   history?: HistorySeries;
   siteMetrics?: SiteMetrics;

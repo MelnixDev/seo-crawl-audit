@@ -1,5 +1,6 @@
 import {
   audit,
+  buildLocalComparison,
   buildSiteMetrics,
   diff,
   getRuleDefinitions,
@@ -308,7 +309,11 @@ export async function compareTool(context: ToolContext, input: { production?: st
   const previewPath = await localPath(context, input.preview, ".seo-audit.current.json");
   const production = await readSnapshot(productionPath);
   const preview = await readSnapshot(previewPath);
-  const comparison = diff(production, preview);
+  const localComparison = production.siteUrl === preview.siteUrl
+    ? buildLocalComparison(production, preview, { evaluatedAt: new Date().toISOString() })
+    : null;
+  const comparison = localComparison?.diff ?? diff(production, preview);
+  const comparisonSummary = localComparison ? { comparisonSummary: localComparison.summary } : {};
   if (input.report !== undefined) {
     const report = await localPath(context, input.report, "seo-audit-compare.html");
     await ensureParents(report);
@@ -316,9 +321,9 @@ export async function compareTool(context: ToolContext, input: { production?: st
       newIssues: comparison.newIssues, ongoingIssues: comparison.ongoingIssues, resolvedIssues: comparison.resolvedIssues,
       unchangedIssues: comparison.unchangedIssues, complete: comparison.complete,
     }));
-    return { ...diffSummary(comparison), production: relativeArtifact(context.root, productionPath), preview: relativeArtifact(context.root, previewPath), report: relativeArtifact(context.root, report) };
+    return { ...diffSummary(comparison), ...comparisonSummary, production: relativeArtifact(context.root, productionPath), preview: relativeArtifact(context.root, previewPath), report: relativeArtifact(context.root, report) };
   }
-  return { ...diffSummary(comparison), production: relativeArtifact(context.root, productionPath), preview: relativeArtifact(context.root, previewPath) };
+  return { ...diffSummary(comparison), ...comparisonSummary, production: relativeArtifact(context.root, productionPath), preview: relativeArtifact(context.root, previewPath) };
 }
 
 export async function reportTool(context: ToolContext, input: { snapshot?: string | undefined; output?: string | undefined }): Promise<Record<string, unknown>> {

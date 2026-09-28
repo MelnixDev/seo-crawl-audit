@@ -69,6 +69,8 @@ test("MCP tools plan, scan, inspect, compare, and render local artifacts", async
   const compared = await compareTool(context, { production: "baseline.json", preview: "current.json", report: "compare.html" });
   assert.equal(compared.complete, true);
   assert.ok(compared.new > 0);
+  assert.equal(compared.comparisonSummary.schemaVersion, 1);
+  assert.equal(compared.comparisonSummary.from.siteUrl, "https://example.com/");
 
   const lifecycle = await issuesTool(context, { snapshot: "current.json", baseline: "baseline.json", lifecycle: "new", limit: 100 });
   assert.equal(lifecycle.total, new Set(lifecycle.issues.map((issue) => issue.fingerprint)).size);
@@ -241,9 +243,9 @@ test("bundled stdio server negotiates MCP and advertises the complete tool set",
     child.once("close", resolve);
   });
   assert.equal(exitCode, 0, stderr);
-  assert.match(stderr, /^\[seo-crawl-audit:mcp\] MCP server 0\.13\.0 is running on stdio\. Waiting for client requests; press Ctrl\+C to stop\.\n$/);
+  assert.match(stderr, /^\[seo-crawl-audit:mcp\] MCP server 0\.14\.0 is running on stdio\. Waiting for client requests; press Ctrl\+C to stop\.\n$/);
   const responses = stdout.trim().split("\n").map(JSON.parse);
-  assert.equal(responses[0].result.serverInfo.version, "0.13.0");
+  assert.equal(responses[0].result.serverInfo.version, "0.14.0");
   assert.deepEqual(responses[1].result.tools.map((tool) => tool.name).sort(), [
     "seo_audit_check",
     "seo_audit_compare",
@@ -271,5 +273,5 @@ test("repository development entrypoint starts the MCP server", async () => {
   });
   assert.equal(exitCode, 0, stderr);
   assert.equal(stdout, "");
-  assert.match(stderr, /MCP server 0\.13\.0 is running on stdio/);
+  assert.match(stderr, /MCP server 0\.14\.0 is running on stdio/);
 });
