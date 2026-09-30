@@ -260,7 +260,10 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         return;
       }
       if (request.method === "GET" && path === "/api/history") {
-        const siteUrl = requestUrl.searchParams.get("siteUrl");
+        const requestedSite = requestUrl.searchParams.get("siteUrl");
+        let siteUrl: string | null = null;
+        if (requestedSite) { try { const parsed = new URL(requestedSite); if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error(); siteUrl = parsed.href; }
+          catch { json(response, 400, { error: "invalid site URL" }); return; } }
         const offset = Math.max(0, Number.parseInt(requestUrl.searchParams.get("offset") ?? "0", 10) || 0);
         const limit = Math.min(100, Math.max(1, Number.parseInt(requestUrl.searchParams.get("limit") ?? "20", 10) || 20));
         const page = await historyController.list(siteUrl, limit, requestUrl.searchParams.get("cursor"), offset);
@@ -310,10 +313,15 @@ export async function createLocalUiServer(options: LocalUiOptions = {}): Promise
         if (controller || metricsRunning || historyController.busy() || trendController.busy()) { json(response, 409, { error: "another local operation is running" }); return; }
         const input = await body(request);
         if (input.limit !== 20 && input.limit !== 50 && input.limit !== 100) { json(response, 400, { error: "trend limit must be 20, 50, or 100" }); return; }
-        if (input.siteUrl !== undefined && (typeof input.siteUrl !== "string" || !/^https?:\/\//.test(input.siteUrl))) { json(response, 400, { error: "invalid site URL" }); return; }
+        let trendSiteUrl: string | undefined;
+        if (input.siteUrl !== undefined) {
+          try { if (typeof input.siteUrl !== "string") throw new Error(); const parsed = new URL(input.siteUrl);
+            if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error(); trendSiteUrl = parsed.href; }
+          catch { json(response, 400, { error: "invalid site URL" }); return; }
+        }
         if (input.ruleId !== undefined && (typeof input.ruleId !== "string" || input.ruleId.length > 120)) { json(response, 400, { error: "invalid rule ID" }); return; }
         if (input.template !== undefined && (typeof input.template !== "string" || input.template.length > 500)) { json(response, 400, { error: "invalid template" }); return; }
-        await trendController.start({ limit: input.limit, ...(input.siteUrl ? { siteUrl: input.siteUrl } : {}),
+        await trendController.start({ limit: input.limit, ...(trendSiteUrl ? { siteUrl: trendSiteUrl } : {}),
           ...(input.ruleId ? { ruleId: input.ruleId } : {}), ...(input.template ? { template: input.template } : {}) });
         json(response, 202, trendController.status());
         return;

@@ -33,3 +33,7 @@ file paths or full snapshots. The local UI exposes the versioned result at
 `GET /api/history/trend/result` after a calculation completes. Only one
 adjacent snapshot pair is retained during calculation; the UI worker can be
 cancelled without deleting the last completed comparison.
+
+For a reproducible local load check, run `npm run build` followed by
+`node scripts/benchmark-trends.mjs 100 1000`. The script reports sampled
+heap/RSS and elapsed time, then deletes its temporary fixtures.

@@ -105,6 +105,8 @@ export const LOCAL_TREND_RUNTIME = String.raw`
     } catch (error) { status.textContent = t().error + ": " + error.message; }
   }
   async function start() {
+    if (metric.input.value === "rule" && !rule.input.value) { status.textContent = t().chooseRule; return; }
+    if (metric.input.value === "template" && !template.input.value) { status.textContent = t().chooseTemplate; return; }
     const siteUrl = byId("url").value || undefined;
     try {
       const response = await fetch("/api/history/trend", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ siteUrl, limit: Number(range.input.value),
@@ -117,7 +119,9 @@ export const LOCAL_TREND_RUNTIME = String.raw`
   }
   run.addEventListener("click", start);
   cancel.addEventListener("click", async () => { if (timer) clearTimeout(timer); await fetch("/api/history/trend/cancel", { method: "POST" }); await poll(); });
-  metric.input.addEventListener("change", () => { updateControls(); if (latest && metric.input.value !== "rule" && metric.input.value !== "template") render(latest); else if (metric.input.value === "rule" || metric.input.value === "template") start(); });
+  metric.input.addEventListener("change", () => { updateControls(); if (metric.input.value === "rule" || metric.input.value === "template") {
+    chart.replaceChildren(); status.textContent = metric.input.value === "rule" ? t().chooseRule : t().chooseTemplate;
+  } else if (latest) render(latest); });
   rule.input.addEventListener("change", start); template.input.addEventListener("change", start);
   range.input.addEventListener("change", start);
   byId("historyLanguage").addEventListener("change", translate);
