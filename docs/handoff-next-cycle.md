@@ -1,17 +1,17 @@
-# Handoff: local comparison workflow
+# Handoff: report stabilization and local trends
 
-Version `0.13.0` is published. The `feat/0.14-regression-workflow` branch adds
-local comparisons; it is not a released feature until its release checks,
-merge, and publication complete.
+Version `0.14.0` is published. Local two-run comparison is available in the
+local UI and CLI. Version `0.14.1` targets smaller standalone comparison reports;
+`0.15.0` will add bounded multi-run trends.
 
-The comparison must remain local-first and exact-site. It must not issue page
-requests, alter SnapshotV2 or fingerprints, overwrite the latest scan report,
-or move the GitHub Action `v0` tag without separate approval. Source changes
-are committed logically; generated bundles belong in the release commit.
+Both cycles remain local-first and exact-site. They must not request site pages,
+alter SnapshotV2 or fingerprints, overwrite the latest scan report, or move the
+GitHub Action `v0` tag without separate approval. Generated bundles belong in
+the release commit.
 
-Before release, verify the browser picker in English and Ukrainian, worker
-cancellation and crash recovery, catalogue integrity, 50k memory/report
-performance, package imports, npm audit, and all remote CI jobs. The large
-comparison HTML remains self-contained, so record its output size and browser
-limitations honestly. Use only permitted sites for dogfood. Manual README
-screenshots follow after the UI is stable.
+The 0.14.0 synthetic 50k comparison baseline was about 171 MiB HTML,
+890 MiB sampled peak heap, and 1759 MiB sampled RSS. Preserve EN/UK, exports,
+filtering, print, package contracts and browser security while reducing size.
+For trends, read at most two snapshots at a time and keep the browser payload
+compact. Use only saved permitted runs for dogfood. Manual README screenshots
+follow after the UI is stable.

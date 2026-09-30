@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.14.0 — Unreleased
+## 0.14.1 — Unreleased
+
+- reduced the embedded issue payload in self-contained comparison reports while
+  preserving evidence, remediation, filters, CSV exports, and both languages;
+- measured a 50,000-page comparison at 66 MiB HTML and below 900 MiB sampled
+  peak heap, with Chromium filtering and page details below their limits;
+- corrected release-status documentation after 0.14.0 publication.
+
+## 0.14.0 — Released
 
 - added a local run picker with background, cancellable comparison of saved
   snapshots without recrawling either site;
