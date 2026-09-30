@@ -43,6 +43,11 @@ and grouped CSV. Partial coverage and findings that cannot be verified are
 labelled instead of being counted as repairs. See the
 [local comparison guide](docs/local-comparisons.md).
 
+The same local History panel also draws issue trends from saved runs (20 by
+default, or 50/100 on request). Dashed segments flag incomplete coverage or a
+changed evaluation policy; lower counts alone do not prove SEO improvement.
+See [local trends](docs/local-trends.md) for coverage and automation semantics.
+
 ### Site metrics
 
 ![SEO Crawl Audit site metrics and crawl coverage](docs/images/report-metrics.png)
@@ -367,6 +372,7 @@ Lists locally saved runs and creates an HTML report with issue trends:
 ```bash
 seo-audit history https://example.com/
 seo-audit history --history-dir ./audit-history --report history.html
+seo-audit history https://example.com/ --json --trend-limit 50
 ```
 
 Compare any two saved runs without crawling:
@@ -406,6 +412,7 @@ seo-audit history \
 --preview-headers-env <name>
                         Read preview headers from a JSON environment variable
 --history-dir <path>    Local snapshot history directory
+--trend-limit <n>       Trend range: 20 (default), 50, or 100 saved runs
 --no-history            Do not save this scan to local history
 --from <snapshot>       Older snapshot for an explicit history comparison
 --to <snapshot>         Newer snapshot for an explicit history comparison

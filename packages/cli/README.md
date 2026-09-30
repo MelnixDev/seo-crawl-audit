@@ -36,6 +36,10 @@ the discovered URL count and requires explicit confirmation above 5,000 URLs.
 The overview keeps scan coverage, issue counts, and locally stored trends in
 one place.
 
+The local History panel can plot 20, 50, or 100 saved-run observations without
+new page requests. Dashed segments flag changed coverage or policy; a lower
+count alone is not proof of SEO improvement.
+
 ### Site metrics
 
 ![SEO Crawl Audit site metrics and crawl coverage](https://raw.githubusercontent.com/MelnixDev/seo-crawl-audit/main/docs/images/report-metrics.png)
@@ -360,6 +364,7 @@ Lists locally saved runs and creates an HTML report with issue trends:
 ```bash
 seo-audit history https://example.com/
 seo-audit history --history-dir ./audit-history --report history.html
+seo-audit history https://example.com/ --json --trend-limit 50
 ```
 
 Compare any two saved runs without crawling:
@@ -399,6 +404,7 @@ seo-audit history \
 --preview-headers-env <name>
                         Read preview headers from a JSON environment variable
 --history-dir <path>    Local snapshot history directory
+--trend-limit <n>       Trend range: 20 (default), 50, or 100 saved runs
 --no-history            Do not save this scan to local history
 --from <snapshot>       Older snapshot for an explicit history comparison
 --to <snapshot>         Newer snapshot for an explicit history comparison

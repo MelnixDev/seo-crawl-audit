@@ -1,6 +1,15 @@
 # Changelog
 
-## 0.14.1 — Unreleased
+## 0.15.0 — Unreleased
+
+- added bounded, versioned local trend summaries across the latest 20 saved
+  exact-site runs, with optional 50- and 100-run ranges;
+- added a cancellable EN/UK trend chart in the loopback-only UI, with
+  coverage/policy gap markers and links into adjacent-run comparisons;
+- added compact `trendSummary` JSON to CLI history output and read-only
+  `seo_audit_history` to MCP, without recrawling pages or exposing file paths.
+
+## 0.14.1 — Released
 
 - reduced the embedded issue payload in self-contained comparison reports while
   preserving evidence, remediation, filters, CSV exports, and both languages;
