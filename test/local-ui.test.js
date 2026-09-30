@@ -81,6 +81,32 @@ test("local UI lists history with opaque IDs and bounded pagination", async (con
   assert.equal((await stale.json()).reloadNeeded, true);
 });
 
+for (const [label, createServer] of [["source build", createLocalUiServer], ["packed bundle", createBundledLocalUiServer]]) test(`local UI calculates versioned trends in a worker without page requests (${label})`, async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "seo-local-trend-"));
+  const historyDirectory = join(directory, ".seo-audit/history");
+  const before = migrateSnapshot({ schemaVersion: 1, generatedAt: "2026-01-01T00:00:00.000Z", startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200, contentType: "text/html", title: null }] });
+  const after = migrateSnapshot({ schemaVersion: 1, generatedAt: "2026-01-02T00:00:00.000Z", startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200, contentType: "text/html", title: "Fixed" }] });
+  await writeHistorySnapshot(historyDirectory, before);
+  await writeHistorySnapshot(historyDirectory, after);
+  const server = await createServer({ directory, port: 0, fetch: () => { throw new Error("trend must not crawl"); } });
+  context.after(() => server.close());
+  const post = (path, body, origin = server.url.slice(0, -1)) => fetch(new URL(path, server.url), { method: "POST", headers: { "content-type": "application/json", origin }, body: JSON.stringify(body) });
+  assert.equal((await post("/api/history/trend", { limit: 21 })).status, 400);
+  assert.equal((await post("/api/history/trend", { limit: 20 }, "https://other.example")).status, 403);
+  assert.equal((await post("/api/history/trend", { siteUrl: "https://example.com/", limit: 20 })).status, 202);
+  let state;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    state = await fetch(new URL("/api/history/trend", server.url)).then((response) => response.json());
+    if (state.status !== "running") break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.equal(state.status, "ready", state.message);
+  const summary = await fetch(new URL("/api/history/trend/result", server.url)).then((response) => response.json());
+  assert.equal(summary.schemaVersion, 1);
+  assert.equal(summary.points.length, 2);
+  assert.ok(!JSON.stringify(summary).includes(directory));
+});
+
 for (const [label, createServer] of [["source build", createLocalUiServer], ["packed bundle", createBundledLocalUiServer]]) test(`local UI compares two saved runs in a worker and restores the artifact (${label})`, async (context) => {
   const directory = await mkdtemp(join(tmpdir(), "seo-local-comparison-"));
   const historyDirectory = join(directory, ".seo-audit/history");

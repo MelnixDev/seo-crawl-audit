@@ -37,7 +37,8 @@ export const LOCAL_HISTORY_RUNTIME = String.raw`
   async function loadRuns() {
     status(t().loading);
     try {
-      const response = await fetch("/api/history?limit=100");
+      const requestedSite = el("url").value;
+      const response = await fetch("/api/history?limit=100" + (requestedSite ? "&siteUrl=" + encodeURIComponent(requestedSite) : ""));
       if (!response.ok) throw new Error("Could not load local runs");
       const data = await response.json();
       const selectedSite = el("url").value || data.runs[0]?.siteUrl;

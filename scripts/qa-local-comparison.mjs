@@ -17,12 +17,14 @@ try {
     await writeHistorySnapshot(history, snapshot);
   }
   server = await createLocalUiServer({ directory, port: 0 });
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}) });
   const page = await browser.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(server.url);
   await page.waitForFunction(() => document.querySelectorAll("#historyBefore option").length === 2);
+  await page.waitForFunction(() => document.querySelectorAll(".trend-chart circle").length === 2);
+  assert.match(await page.locator(".trend-panel h3").textContent(), /Local issue trends/);
   assert.equal(await page.locator("#historyAfter option").count(), 2);
   await page.locator("#historyCompare").click();
   await page.locator("#historyOpen:visible").waitFor({ timeout: 15_000 });
@@ -31,10 +33,11 @@ try {
   await page.locator("#historyLanguage").selectOption("uk");
   assert.equal(await page.locator("#historyTitle").textContent(), "Історія");
   assert.equal(await page.locator("#historyCompare").textContent(), "Порівняти");
+  assert.equal(await page.locator(".trend-panel h3").textContent(), "Локальні тренди проблем");
   const report = await page.request.get(new URL("/comparison", server.url).href);
   assert.match(await report.text(), /Порівняння локальних запусків/);
   assert.deepEqual(errors, []);
-  console.log("Local comparison browser QA passed (EN/UK, picker, worker, report, no page errors).");
+  console.log("Local comparison and trends browser QA passed (EN/UK, chart, picker, worker, report, no page errors).");
 } finally {
   await browser?.close();
   await server?.close();
