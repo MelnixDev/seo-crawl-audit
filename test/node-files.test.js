@@ -17,4 +17,10 @@ test("concurrent atomic report writes use independent temporary files", async ()
 
   const html = await readFile(path, "utf8");
   assert.match(html, /https:\/\/(?:first|second)\.example\//);
+
+  for (let round = 0; round < 5; round += 1) {
+    await Promise.all(Array.from({ length: 4 }, (_, index) => writeReport(path, report(`https://round-${round}-${index}.example/`))));
+    const current = await readFile(path, "utf8");
+    assert.match(current, new RegExp(`https://round-${round}-[0-3]\\.example/`));
+  }
 });

@@ -1,12 +1,25 @@
 import { access, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { join, resolve } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { migrateSnapshot } from "./baseline.js";
 import { DEFAULT_CONFIG_FILE, validateConfig } from "./config.js";
 import { renderHtmlReport } from "./html-report.js";
 import { buildSiteMetrics } from "./site-metrics.js";
 import { markStaleSiteMetrics, mergeSiteMetrics, validateSiteMetricsState } from "./site-metrics-state.js";
 import type { HistorySnapshotRecord, ReportData, ReportOptions, ScanConfigV1, SiteMetrics, SiteMetricsStateV1, SnapshotV2 } from "./types.js";
+
+async function replaceFile(temporaryPath: string, destination: string): Promise<void> {
+  for (let attempt = 0; ; attempt += 1) {
+    try { await rename(temporaryPath, destination); return; }
+    catch (error) {
+      const code = error && typeof error === "object" && "code" in error ? error.code : null;
+      if (process.platform !== "win32" || attempt >= 5 || (code !== "EPERM" && code !== "EACCES" && code !== "EBUSY")) throw error;
+      // Windows may briefly deny replacing a destination another writer just opened.
+      await delay(10 * 2 ** attempt);
+    }
+  }
+}
 
 export async function findConfigFile(cwd = process.cwd()): Promise<string | null> {
   const path = resolve(cwd, DEFAULT_CONFIG_FILE);
@@ -31,7 +44,7 @@ export async function loadConfig(path?: string | null): Promise<Partial<ScanConf
 export async function writeSnapshot(path: string, snapshot: SnapshotV2): Promise<void> {
   const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(temporaryPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
-  await rename(temporaryPath, path);
+  await replaceFile(temporaryPath, path);
 }
 
 export const writeBaseline = writeSnapshot;
@@ -56,7 +69,7 @@ export async function writeSiteMetricsState(path: string, state: SiteMetricsStat
   const validated = validateSiteMetricsState(state);
   const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(temporaryPath, `${JSON.stringify(validated, null, 2)}\n`, "utf8");
-  await rename(temporaryPath, path);
+  await replaceFile(temporaryPath, path);
 }
 
 export async function readSiteMetricsState(path: string, expectedSiteUrl?: string, now = new Date()): Promise<SiteMetricsStateV1 | null> {
@@ -100,7 +113,7 @@ export async function writeReport(
 ): Promise<void> {
   const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(temporaryPath, renderHtmlReport(data, options), "utf8");
-  await rename(temporaryPath, path);
+  await replaceFile(temporaryPath, path);
 }
 
 export const writeHtmlReport = writeReport;
