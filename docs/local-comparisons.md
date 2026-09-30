@@ -12,6 +12,12 @@ CSV. The current scan baseline, report, and external metrics are not changed.
 The background job can be cancelled; a previously completed comparison remains
 available. Completed comparisons survive a local UI restart.
 
+Large self-contained reports can take noticeable time and memory to generate
+and open because all findings remain in the HTML file. The Pages tab uses
+URL-only records above 5,000 checked pages; open the original scan report for
+full per-page details. Benchmark figures are synthetic, not a guarantee for
+every site or browser.
+
 The report distinguishes **new**, **ongoing**, **resolved**, and **unchanged**
 findings. A previous issue is not called resolved if the current URL was not
 checked or a failed/blocked/non-HTML response gives insufficient evidence.

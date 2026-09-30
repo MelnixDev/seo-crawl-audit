@@ -2,6 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildLocalComparison, getRuleDefinitions, migrateSnapshot, renderReport as renderHtmlReport } from "../packages/core/dist/index.js";
 
+function embeddedReport(html) {
+  const encoded = html.match(/const report=([\s\S]*?);\n  const issueString=/)?.[1];
+  assert.ok(encoded);
+  const report = JSON.parse(encoded);
+  report.issues = report.issueRows.map((row) => ({ fingerprint: row[0], localized: {
+    en: { rule: report.issueStrings[row[15]], message: row[16] },
+    uk: { rule: report.issueStrings[row[18]], message: row[19] },
+  } }));
+  return report;
+}
+
 test("local comparison header shows coverage and escapes group labels", () => {
   const before = migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200 }] });
   const after = migrateSnapshot({ schemaVersion: 1, startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200 }] });
@@ -136,9 +147,7 @@ test("renders a bilingual detailed Page Explorer without embedding unused page d
   assert.match(html, /setTimeout\(\(\)=>\{pagesCurrentPage=1;renderPages\(\)\},200\)/);
   assert.match(html, /seo-crawl-audit-pages-/);
   assert.doesNotMatch(html, /secretUnusedPayload|unused-content-hash/);
-  const encoded = html.match(/const report=([\s\S]*?);\n  const byId=/)?.[1];
-  assert.ok(encoded);
-  const report = JSON.parse(encoded);
+  const report = embeddedReport(html);
   assert.equal(report.pageExplorer.pages.length, 1);
   assert.equal(report.pageExplorer.pages[0].ix, "allowed");
   assert.deepEqual(report.pageExplorer.pages[0].counts, { error: 0, warning: 1, info: 0 });
@@ -182,9 +191,7 @@ test("Page Explorer keeps unknown, redirect, XHTML, and none indexability distin
     { ...base, url: "https://example.com/none", finalUrl: "https://example.com/none", robots: "none" },
   ];
   const html = renderHtmlReport({ pages: pageDetails.map(({ url }) => ({ url })), pageDetails, issues: [] });
-  const encoded = html.match(/const report=([\s\S]*?);\n  const byId=/)?.[1];
-  assert.ok(encoded);
-  const report = JSON.parse(encoded);
+  const report = embeddedReport(html);
   assert.deepEqual(report.pageExplorer.pages.map((page) => page.ix), ["unknown", "unknown", "redirect", "allowed", "noindex"]);
 });
 
@@ -229,9 +236,7 @@ test("embeds deterministic interactive chart statistics", () => {
     resolvedIssues: [issue("missing-description", "info", "developer", "resolved", 4)],
   });
 
-  const encoded = html.match(/const report=([\s\S]*?);\n  const byId=/)?.[1];
-  assert.ok(encoded);
-  const report = JSON.parse(encoded);
+  const report = embeddedReport(html);
   assert.deepEqual(report.statistics, {
     total: 4,
     pagesChecked: 2,
@@ -281,9 +286,7 @@ test("embeds Ukrainian text for every built-in rule without changing issue ident
     })),
   });
 
-  const encoded = html.match(/const report=([\s\S]*?);\n  const byId=/)?.[1];
-  assert.ok(encoded);
-  const report = JSON.parse(encoded);
+  const report = embeddedReport(html);
   assert.equal(report.issues.length, definitions.length);
   assert.deepEqual(
     report.issues.map((issue) => issue.fingerprint),
