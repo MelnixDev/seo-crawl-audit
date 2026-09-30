@@ -15,6 +15,30 @@ function safeJson(value: unknown): string {
   return JSON.stringify(value).replaceAll("<", "\\u003c").replaceAll(">", "\\u003e").replaceAll("&", "\\u0026");
 }
 
+type NormalizedIssue = ReturnType<typeof normalizeIssue>;
+
+/** The wire format is private to the self-contained report, not ReportData. */
+function compactIssues(issues: readonly NormalizedIssue[]): { strings: string[]; rows: unknown[][] } {
+  const strings: string[] = [];
+  const indexes = new Map<string, number>();
+  const intern = (value: string): number => {
+    const known = indexes.get(value);
+    if (known !== undefined) return known;
+    const id = strings.length;
+    strings.push(value);
+    indexes.set(value, id);
+    return id;
+  };
+  return { strings, rows: issues.map((issue) => [
+    issue.fingerprint, intern(issue.ruleId), intern(issue.rule), intern(issue.severity), intern(issue.scope),
+    issue.url, issue.message, issue.evidence, intern(issue.owner), intern(issue.remediation), intern(issue.documentationUrl),
+    issue.before ?? null, issue.after ?? null, intern(issue.lifecycle), intern(issue.template),
+    intern(issue.localized.en.rule), issue.localized.en.message, intern(issue.localized.en.remediation),
+    intern(issue.localized.uk.rule), issue.localized.uk.message, intern(issue.localized.uk.remediation),
+    (issue.before !== undefined ? 1 : 0) | (issue.after !== undefined ? 2 : 0),
+  ]) };
+}
+
 function productMark(): string {
   return `<svg class="logo product-mark" viewBox="0 0 64 64" role="img" aria-label="SEO Crawl Audit logo"><rect width="64" height="64" rx="16" fill="var(--accent)"/><circle cx="27" cy="27" r="13" fill="none" stroke="#fff" stroke-width="6"/><path d="m37 37 12 12" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="6"/><path d="m21 27 5 5 9-11" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/></svg>`;
 }
@@ -204,7 +228,8 @@ export function renderHtmlReport(input: ReportData, options: ReportOptions = {})
   const isCheck = mode === "check";
   const largeIssueCount = issues.length > 25_000;
   const pageExplorer = buildPageExplorer(pages, input.pageDetails, issues);
-  const data = safeJson({ mode, issues, statistics, pageExplorer, copy: REPORT_COPY, partial, incompleteComparison, comparison: input.comparison ?? null, history: input.history ?? null, siteMetrics: input.siteMetrics ?? null });
+  const compact = compactIssues(issues);
+  const data = safeJson({ mode, issueRows: compact.rows, issueStrings: compact.strings, statistics, pageExplorer, copy: REPORT_COPY, partial, incompleteComparison, comparison: input.comparison ?? null, history: input.history ?? null, siteMetrics: input.siteMetrics ?? null });
 
   return `<!doctype html>
 <html lang="en">
@@ -271,6 +296,8 @@ ${input.history && input.history.points.length > 0 ? `  <section id="history-pan
 </main>
 <script>
   const report=${data};
+  const issueString=(id)=>report.issueStrings[id];
+  report.issues=report.issueRows.map((row)=>{const issue={fingerprint:row[0],ruleId:issueString(row[1]),rule:issueString(row[2]),severity:issueString(row[3]),scope:issueString(row[4]),url:row[5],message:row[6],evidence:row[7],owner:issueString(row[8]),remediation:issueString(row[9]),documentationUrl:issueString(row[10]),lifecycle:issueString(row[13]),template:issueString(row[14]),localized:{en:{rule:issueString(row[15]),message:row[16],remediation:issueString(row[17])},uk:{rule:issueString(row[18]),message:row[19],remediation:issueString(row[20])}}};if(row[21]&1)issue.before=row[11];if(row[21]&2)issue.after=row[12];return issue});delete report.issueRows;delete report.issueStrings;
   const byId=(id)=>document.querySelector("#"+id); const generatedAt=byId("generated-at"); const language=byId("language"); const search=byId("search"); const severity=byId("severity"); const rule=byId("rule"); const template=byId("template"); const owner=byId("owner"); const pageSize=byId("page-size"); const tbody=byId("issues"); const empty=byId("empty"); const emptyTitle=byId("empty-title"); const emptyMessage=byId("empty-message"); const clearFilters=byId("clear-filters"); const tableWrap=byId("table-wrap"); const resultCount=byId("result-count"); const pagination=byId("pagination"); const previous=byId("previous"); const next=byId("next"); const pageInfo=byId("page-info"); const severityChart=byId("severity-chart"); const rulesChart=byId("rules-chart"); const distributionChart=byId("distribution-chart"); const templatesChart=byId("templates-chart"); const historyChart=byId("history-chart"); const historySummary=byId("history-summary"); const metricsHero=byId("metrics-hero"); const metricsInsights=byId("metrics-insights"); const metricsGroups=byId("metrics-groups"); const priorityList=byId("priority-list"); const pageSearch=byId("page-search");const pageStatus=byId("page-status");const pageIndexability=byId("page-indexability");const pageIssues=byId("page-issues");const pagePageSize=byId("page-page-size");const pagesBody=byId("pages-body");const pagesEmpty=byId("pages-empty");const pagesTableWrap=byId("pages-table-wrap");const pageResultCount=byId("page-result-count");const pagePagination=byId("page-pagination");const pagePrevious=byId("page-previous");const pageNext=byId("page-next");const pagePageInfo=byId("page-page-info");const pageDialog=byId("page-dialog");const pageDialogBackdrop=byId("page-dialog-backdrop");const pageDialogContent=byId("page-dialog-content");const pageDialogClose=byId("page-dialog-close"); let locale="en"; let currentPage=1; let activeTab=""; let exactIssueUrl=null;let lastFiltered=[];let pagesCurrentPage=1;let pagesFiltered=[];let pageSort={key:"url",direction:1};let pageReturnFocus=null;
   const generatedDate=new Date(generatedAt.dateTime); const copy=()=>report.copy[locale]; const issueText=(issue)=>issue.localized[locale]||issue.localized.en; const number=(value)=>Number(value).toLocaleString(locale==="uk"?"uk-UA":"en-US");
   const safeHttpUrl=(value)=>{try{const url=new URL(value);return url.protocol==="http:"||url.protocol==="https:"?url.href:null}catch{return null}};
