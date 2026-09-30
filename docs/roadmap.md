@@ -6,7 +6,7 @@ backward compatible while the product grows.
 
 ## Delivery status (September 2026)
 
-Version `0.14.0` is released on GitHub and npm.
+Versions through `0.14.1` are released on GitHub and npm.
 It includes scan preflight and
 progress, checkpoint/resume diagnostics, Site Metrics, the loopback-only local
 web interface, opt-in Playwright rendering, MCP and agent documentation,
@@ -47,13 +47,13 @@ intentionally deferred. They are not prerequisites for the local product.
 - Group changes by rule and URL template; provide standalone HTML plus concise
   Markdown and CSV summaries.
 
-## 0.14.1 — report-size stabilization
+## 0.14.1 — completed report-size stabilization
 
 - Keep comparison HTML self-contained while compacting repeated issue fields.
 - Benchmark 50,000-page comparisons in Node and Chromium; record report size,
   sampled heap/RSS, load time, filtering, and page-detail responsiveness.
 
-## 0.15.0 — bounded local trends
+## 0.15.0 — completed bounded local trends
 
 - Add 20-run default trends with explicit 50/100-run ranges, rule and URL-template
   drill-down, and coverage/policy discontinuity warnings.

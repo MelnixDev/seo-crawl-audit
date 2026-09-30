@@ -31,11 +31,15 @@ mcp`; the published package also exposes the `seo-audit-mcp` executable.
 ## MCP tools
 
 The server exposes `seo_audit_plan`, `seo_audit_scan`, `seo_audit_check`,
-`seo_audit_compare`, `seo_audit_issues`, `seo_audit_report`, and
+`seo_audit_compare`, `seo_audit_history`, `seo_audit_issues`, `seo_audit_report`, and
 `seo_audit_rules`. Plan first, keep the default 100-page limit unless a larger
 scan is requested, and use the issue tool's pagination and filters for detailed
 findings. Scan and check return paths to local SnapshotV2, HTML report, and
 (when interrupted) checkpoint artifacts.
+
+`seo_audit_history` is read-only. It summarizes the latest 20 saved exact-site
+runs by default, or an explicitly selected 50/100, without fetching pages or
+returning absolute paths or full snapshots. See [local trends](local-trends.md).
 
 All artifact paths are workspace-bound. Robots are respected by default, partial
 comparisons are marked incomplete, and request headers are never returned in

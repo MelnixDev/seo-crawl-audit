@@ -18,6 +18,7 @@ import {
   type HistorySeries,
 } from "@seo-crawl-audit/core";
 import {
+  calculateTrendSummary,
   checkpointPathForOutput,
   createFileCheckpointStore,
   inspectFileCheckpoint,
@@ -530,6 +531,9 @@ export async function reportCommand(inputPath: string | undefined, values: CliVa
 export async function historyCommand(siteUrl: string | undefined, values: CliValues): Promise<number> {
   if (Boolean(values.from) !== Boolean(values.to)) throw new Error("history comparison requires both --from and --to");
   const directory = historyDirectory(values);
+  const requestedLimit = values["trend-limit"] ?? "20";
+  if (!["20", "50", "100"].includes(requestedLimit)) throw new Error("--trend-limit must be 20, 50, or 100");
+  const trendLimit = Number(requestedLimit) as 20 | 50 | 100;
   if (values.from && values.to) {
     const previous = await readSnapshot(resolve(values.from));
     const current = await readSnapshot(resolve(values.to));
@@ -542,7 +546,8 @@ export async function historyCommand(siteUrl: string | undefined, values: CliVal
       ...(history ? { history } : {}),
     }), true);
     const summary = summarizeIssues(comparison.newIssues);
-    if (values.json) console.log(JSON.stringify({ command: "history", from: resolve(values.from), to: resolve(values.to), summary, lifecycle: comparison, comparisonSummary, report }, null, 2));
+    if (values.json) console.log(JSON.stringify({ command: "history", from: resolve(values.from), to: resolve(values.to), summary, lifecycle: comparison, comparisonSummary, report,
+      trendSummary: await calculateTrendSummary(directory, { siteUrl: current.siteUrl, limit: trendLimit }) }, null, 2));
     else {
       console.log(`Compared local snapshots from ${previous.generatedAt} to ${current.generatedAt}.`);
       console.log(`Coverage: ${comparisonSummary.coverage.common} common pages; ${comparisonSummary.coverage.onlyBefore} only before; ${comparisonSummary.coverage.onlyAfter} only after.`);
@@ -568,7 +573,8 @@ export async function historyCommand(siteUrl: string | undefined, values: CliVal
   const history = buildHistorySeries(records.map((record) => record.snapshot));
   const report = await saveReport(values, await reportDataWithMetrics(latest.snapshot, "scan", audit(latest.snapshot), latest.path, history ? { history } : {}), true);
   const points = history?.points ?? [];
-  if (values.json) console.log(JSON.stringify({ command: "history", directory, snapshots: records.map((record, index) => ({ path: record.path, ...points[index] })), report }, null, 2));
+  if (values.json) console.log(JSON.stringify({ command: "history", directory, snapshots: records.map((record, index) => ({ path: record.path, ...points[index] })), report,
+    trendSummary: await calculateTrendSummary(directory, { siteUrl: latest.snapshot.siteUrl, limit: trendLimit }) }, null, 2));
   else {
     console.log(`Local history for ${latest.snapshot.siteUrl}:`);
     for (const [index, record] of records.entries()) {

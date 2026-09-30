@@ -1,6 +1,6 @@
 {
   "name": "seo-crawl-audit",
-  "version": "0.14.1",
+  "version": "0.15.0",
   "description": "Free, open-source, local-first SEO crawler and regression audit tool.",
   "type": "module",
   "bin": {
@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "build": "tsc -b",
-    "bundle": "esbuild dist/cli.js --bundle --platform=node --target=node20 --format=esm --minify --external:./server.js --external:playwright --outfile=bundle/cli.js && esbuild dist/server.js --bundle --platform=node --target=node20 --format=esm --minify --external:playwright --outfile=bundle/server.js && esbuild dist/comparison-worker.js --bundle --platform=node --target=node20 --format=esm --minify --outfile=bundle/comparison-worker.js"
+    "bundle": "esbuild dist/cli.js --bundle --platform=node --target=node20 --format=esm --minify --external:./server.js --external:playwright --outfile=bundle/cli.js && esbuild dist/server.js --bundle --platform=node --target=node20 --format=esm --minify --external:playwright --outfile=bundle/server.js && esbuild dist/comparison-worker.js --bundle --platform=node --target=node20 --format=esm --minify --outfile=bundle/comparison-worker.js && esbuild dist/trend-worker.js --bundle --platform=node --target=node20 --format=esm --minify --outfile=bundle/trend-worker.js"
   },
   "keywords": [
     "seo",
@@ -56,7 +56,7 @@
     }
   },
   "devDependencies": {
-    "@seo-crawl-audit/core": "0.14.1",
-    "@seo-crawl-audit/renderer-playwright": "0.14.1"
+    "@seo-crawl-audit/core": "0.15.0",
+    "@seo-crawl-audit/renderer-playwright": "0.15.0"
   }
 }

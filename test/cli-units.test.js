@@ -75,6 +75,9 @@ test("history command lists local runs and renders their trend report", async (c
   const report = await readFile(reportPath, "utf8");
   assert.match(report, /id="history-chart"/);
   assert.match(messages.at(-1), /"snapshots"/);
+  assert.equal(JSON.parse(messages.at(-1)).trendSummary.schemaVersion, 1);
+  assert.equal(JSON.parse(messages.at(-1)).trendSummary.points.length, 2);
+  assert.equal(await main(["history", "https://example.com/", "--history-dir", historyDirectory, "--trend-limit", "21", "--json"]), 2);
 });
 
 test("status command reports snapshots and resumable checkpoints", async (context) => {
