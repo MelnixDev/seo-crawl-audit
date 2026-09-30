@@ -126,5 +126,6 @@ export const LOCAL_TREND_RUNTIME = String.raw`
   range.input.addEventListener("change", start);
   byId("historyLanguage").addEventListener("change", translate);
   byId("url").addEventListener("change", start);
+  events.addEventListener("message", (event) => { try { if (JSON.parse(event.data).status === "complete") void start(); } catch {} });
   translate(); updateControls(); void start();
 })();`;
