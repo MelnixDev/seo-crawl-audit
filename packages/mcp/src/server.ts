@@ -3,7 +3,7 @@ import { z } from "zod";
 import { ENGINE_VERSION } from "@seo-crawl-audit/core";
 import { workspaceRoot } from "./paths.js";
 import { toolError, toolResult } from "./result.js";
-import { checkTool, compareTool, issuesTool, planTool, reportTool, rulesTool, scanTool } from "./tools.js";
+import { checkTool, compareTool, historyTool, issuesTool, planTool, reportTool, rulesTool, scanTool } from "./tools.js";
 
 const common = {
   url: z.string().url().optional().describe("HTTP(S) site URL; may come from config"),
@@ -33,6 +33,7 @@ export function createServer(root = workspaceRoot()): McpServer {
   register(server, "seo_audit_check", "Check SEO regressions", "Scan against a saved baseline and return new, ongoing, resolved, and unchanged issue counts. Every check above 5,000 pages requires a parameter-bound confirmation.", { ...common, confirmLargeScan: z.boolean().optional(), confirmationId: z.string().optional(), baseline: z.string().optional(), output: z.string().optional(), report: z.string().optional(), checkpoint: z.string().optional(), resume: z.boolean().optional() }, (input, signal) => checkTool(context(signal), input));
   register(server, "seo_audit_compare", "Compare snapshots", "Compare two local SnapshotV2 files without network access and optionally render a regression report.", { production: z.string().optional(), preview: z.string().optional(), report: z.string().optional() }, (input, signal) => compareTool(context(signal), input));
   register(server, "seo_audit_issues", "List SEO issues", "Read a local snapshot or comparison and return filtered, paginated issues.", { snapshot: z.string().optional(), baseline: z.string().optional(), query: z.string().optional(), severity: z.enum(["error", "warning", "info"]).optional(), rule: z.string().optional(), owner: z.enum(["seo", "content", "developer"]).optional(), lifecycle: z.enum(["new", "ongoing", "resolved", "unchanged"]).optional(), offset: z.number().int().nonnegative().optional(), limit: z.number().int().positive().max(100).optional() }, (input, signal) => issuesTool(context(signal), input));
+  register(server, "seo_audit_history", "Summarize local scan trends", "Read at most 100 saved runs and return compact issue trends without crawling or exposing local paths.", { url: z.string().url().optional(), historyDir: z.string().optional(), limit: z.union([z.literal(20), z.literal(50), z.literal(100)]).optional(), ruleId: z.string().optional(), template: z.string().optional() }, (input, signal) => historyTool(context(signal), input));
   register(server, "seo_audit_report", "Render SEO report", "Render a clean HTML report from a local SnapshotV2 without network access.", { snapshot: z.string().optional(), output: z.string().optional() }, (input, signal) => reportTool(context(signal), input));
   server.registerTool("seo_audit_rules", { title: "List SEO rules", description: "List built-in rules, severities, owners, and documentation links.", annotations: { readOnlyHint: true, idempotentHint: true } }, async () => {
     try { return toolResult(await rulesTool()); } catch (error) { return toolError(error); }

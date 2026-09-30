@@ -16,6 +16,7 @@ import {
   type SnapshotV2,
 } from "@seo-crawl-audit/core";
 import {
+  calculateTrendSummary,
   createFileCheckpointStore,
   findConfigFile,
   loadConfig,
@@ -200,6 +201,18 @@ export async function rulesTool(): Promise<Record<string, unknown>> {
       documentationUrl: `https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/rules.md#${rule.id}`,
     })),
   };
+}
+
+export async function historyTool(context: ToolContext, input: { url?: string | undefined; historyDir?: string | undefined; limit?: 20 | 50 | 100 | undefined; ruleId?: string | undefined; template?: string | undefined }): Promise<Record<string, unknown>> {
+  const directory = await localPath(context, input.historyDir, ".seo-audit/history");
+  const summary = await calculateTrendSummary(directory, {
+    ...(input.url ? { siteUrl: requireUrl(input.url) } : {}),
+    ...(input.limit ? { limit: input.limit } : {}),
+    ...(input.ruleId ? { ruleId: input.ruleId } : {}),
+    ...(input.template ? { template: input.template } : {}),
+    ...(context.signal ? { signal: context.signal } : {}),
+  });
+  return { trendSummary: summary };
 }
 
 export async function planTool(context: ToolContext, input: CommonInput): Promise<Record<string, unknown>> {

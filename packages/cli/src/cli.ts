@@ -66,6 +66,7 @@ Options:
   --preview-headers-env <name>
                            Read preview request headers from a JSON environment variable
   --history-dir <path>     Local snapshot history directory
+  --trend-limit <n>       Trend range: 20 (default), 50, or 100 saved runs
   --no-history            Do not save this scan to local history
   --from <snapshot>        Older history snapshot for an explicit comparison
   --to <snapshot>          Newer history snapshot for an explicit comparison

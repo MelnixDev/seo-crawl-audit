@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import {
   checkTool,
   compareTool,
+  historyTool,
   issuesTool,
   planTool,
   reportTool,
@@ -16,6 +17,18 @@ import {
 import { toolError, toolResult } from "../packages/mcp/dist/result.js";
 import { assertRealWorkspacePath, workspacePath } from "../packages/mcp/dist/paths.js";
 import { authenticatedCheckpointPath, headersFromEnvironment } from "../packages/mcp/dist/request-headers.js";
+import { migrateSnapshot } from "../packages/core/dist/index.js";
+import { writeHistorySnapshot } from "../packages/core/dist/node.js";
+
+test("MCP history tool returns compact local trends without absolute paths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "seo-mcp-history-"));
+  const snapshot = migrateSnapshot({ schemaVersion: 1, generatedAt: "2026-01-01T00:00:00.000Z", startUrl: "https://example.com/", pages: [{ url: "https://example.com/", status: 200 }] });
+  await writeHistorySnapshot(join(root, ".seo-audit/history"), snapshot);
+  const result = await historyTool({ root, fetch: () => { throw new Error("history must not fetch"); } }, { url: "https://example.com/", limit: 20 });
+  assert.equal(result.trendSummary.schemaVersion, 1);
+  assert.equal(result.trendSummary.points.length, 1);
+  assert.ok(!JSON.stringify(result).includes(root));
+});
 
 function siteFetch({ noindex = false, h1 = true } = {}) {
   return async (input) => {
@@ -249,6 +262,7 @@ test("bundled stdio server negotiates MCP and advertises the complete tool set",
   assert.deepEqual(responses[1].result.tools.map((tool) => tool.name).sort(), [
     "seo_audit_check",
     "seo_audit_compare",
+    "seo_audit_history",
     "seo_audit_issues",
     "seo_audit_plan",
     "seo_audit_report",
