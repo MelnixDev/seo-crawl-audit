@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.15.0 — Unreleased
+## 0.15.0
 
 - added bounded, versioned local trend summaries across the latest 20 saved
   exact-site runs, with optional 50- and 100-run ranges;

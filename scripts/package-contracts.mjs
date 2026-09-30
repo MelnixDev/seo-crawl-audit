@@ -38,6 +38,7 @@ try {
   const cliBundle = cli.metadata.files.find((file) => file.path === "bundle/cli.js");
   const serverBundle = cli.metadata.files.find((file) => file.path === "bundle/server.js");
   const comparisonWorkerBundle = cli.metadata.files.find((file) => file.path === "bundle/comparison-worker.js");
+  const trendWorkerBundle = cli.metadata.files.find((file) => file.path === "bundle/trend-worker.js");
   const mcpBundle = cli.metadata.files.find((file) => file.path === "bundle/mcp.js");
   const cliPaths = cli.metadata.files.map((file) => file.path);
   const builtCli = await readFile(resolve(projectRoot, "packages/cli/bundle/cli.js"), "utf8");
@@ -45,6 +46,7 @@ try {
   assert.ok(cliBundle && cliBundle.size <= 500 * 1024, `CLI bundle is ${cliBundle?.size ?? 0} bytes`);
   assert.ok(serverBundle, "Local UI server bundle is missing");
   assert.ok(comparisonWorkerBundle, "Local comparison worker bundle is missing");
+  assert.ok(trendWorkerBundle, "Local trend worker bundle is missing");
   assert.ok(mcpBundle && mcpBundle.size <= 1.5 * 1024 * 1024, `MCP bundle is ${mcpBundle?.size ?? 0} bytes`);
   assert.equal(cliPaths.includes("bin/seo-audit-mcp.js"), true);
   assert.equal(cliPaths.includes("agent-skill/seo-crawl-audit/SKILL.md"), true);
@@ -67,9 +69,9 @@ try {
 
   await writeFile(join(temporaryRoot, "smoke.mjs"), `
     import { audit, buildHistorySeries, collectSiteMetrics, createRdapDomainProvider, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan } from "@seo-crawl-audit/core";
-    import { createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot } from "@seo-crawl-audit/core/node";
+    import { calculateTrendSummary, createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot } from "@seo-crawl-audit/core/node";
     import { createPlaywrightRenderer } from "@seo-crawl-audit/renderer-playwright";
-    for (const value of [audit, buildHistorySeries, collectSiteMetrics, createRdapDomainProvider, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan, createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot, createPlaywrightRenderer]) {
+    for (const value of [audit, buildHistorySeries, collectSiteMetrics, createRdapDomainProvider, diff, getRuleDefinitions, groupIssuesByTemplate, migrateSnapshot, planScan, renderReport, scan, calculateTrendSummary, createFileCheckpointStore, loadConfig, readHistorySnapshots, readSnapshot, writeHistorySnapshot, writeReport, writeSnapshot, createPlaywrightRenderer]) {
       if (typeof value !== "function") throw new Error("packed export is not callable");
     }
   `);
@@ -77,10 +79,12 @@ try {
 
   await writeFile(join(temporaryRoot, "smoke.ts"), `
     import { type ScanConfigInput, type ScanPlan, planScan, scan } from "@seo-crawl-audit/core";
-    import { createFileCheckpointStore } from "@seo-crawl-audit/core/node";
+    import { calculateTrendSummary, createFileCheckpointStore, type TrendSummaryV1 } from "@seo-crawl-audit/core/node";
     const input: ScanConfigInput = { url: "https://example.com/" };
     const planned: Promise<ScanPlan> = planScan(input);
     void planned.then((plan) => scan(plan, { checkpointStore: createFileCheckpointStore("checkpoint.ndjson") }));
+    const trend: Promise<TrendSummaryV1> = calculateTrendSummary("history");
+    void trend;
   `);
   await run(process.execPath, [
     resolve(projectRoot, "node_modules/typescript/bin/tsc"),

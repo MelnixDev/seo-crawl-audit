@@ -53,7 +53,7 @@ intentionally deferred. They are not prerequisites for the local product.
 - Benchmark 50,000-page comparisons in Node and Chromium; record report size,
   sampled heap/RSS, load time, filtering, and page-detail responsiveness.
 
-## 0.15.0 — bounded local trends
+## 0.15.0 — completed bounded local trends
 
 - Add 20-run default trends with explicit 50/100-run ranges, rule and URL-template
   drill-down, and coverage/policy discontinuity warnings.
