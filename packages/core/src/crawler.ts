@@ -6,7 +6,7 @@ import { NOOP_LOGGER } from "./logger.js";
 import { createPerOriginRequestGate } from "./request-gate.js";
 import { fetchRobots, isAllowedByRobots, type RobotsData } from "./robots.js";
 import { loadSitemapUrls } from "./sitemap.js";
-import type { PageRenderResult, PageSnapshot, ReportBranding, ScanEvent, ScanOptions, ScanResult, Severity, SitemapState, Suppression } from "./types.js";
+import type { PageRenderResult, PageSnapshot, ReportBranding, ScanEvent, ScanOptions, ScanResult, Severity, SitemapState, Suppression, TrailingSlashPolicy } from "./types.js";
 import { isCrawlableUrl, isSameOrigin, normalizeUrl } from "./urls.js";
 import { DEFAULT_USER_AGENT } from "./version.js";
 
@@ -15,6 +15,7 @@ interface CrawlerOptions extends ScanOptions {
   concurrency?: number;
   timeout?: number;
   includeQuery?: boolean;
+  trailingSlash?: TrailingSlashPolicy;
   respectRobots?: boolean;
   sitemap?: string | null;
   sitemapData?: SitemapState | null;
@@ -39,6 +40,7 @@ interface InternalOptions extends CrawlerOptions {
   concurrency: number;
   timeout: number;
   includeQuery: boolean;
+  trailingSlash: TrailingSlashPolicy;
   respectRobots: boolean;
   sitemap: string | null;
   sitemapData: SitemapState | null;
@@ -112,7 +114,7 @@ async function fetchPage(
         userAgent: options.userAgent,
         ...(options.signal ? { signal: options.signal } : {}),
       });
-      return populateRenderedPage(page, rendered, requestUrl, siteOrigin, options.includeQuery);
+      return populateRenderedPage(page, rendered, requestUrl, siteOrigin, options.includeQuery, options.trailingSlash);
     }
     const { response, redirectChain } = await fetchWithRetry(requestUrl, {
       headers: {
@@ -126,7 +128,7 @@ async function fetchPage(
     });
     const contentType = response.headers.get("content-type") ?? "";
     const isHtml = contentType.includes("text/html") || contentType.includes("application/xhtml+xml");
-    const finalUrl = normalizeUrl(response.url, undefined, { includeQuery: options.includeQuery });
+    const finalUrl = normalizeUrl(response.url, undefined, { includeQuery: options.includeQuery, trailingSlash: options.trailingSlash });
     page.finalUrl = finalUrl;
     page.status = response.status;
     page.contentType = contentType || null;
@@ -142,16 +144,16 @@ async function fetchPage(
     const seo = extractSeoData(body);
     const baseUrl = finalUrl ?? requestUrl;
     const canonical = seo.canonical
-      ? normalizeUrl(seo.canonical, baseUrl, { includeQuery: true })
+      ? normalizeUrl(seo.canonical, baseUrl, { includeQuery: true, trailingSlash: options.trailingSlash })
       : null;
     const links = [...new Set(
       seo.links
-        .map((link) => normalizeUrl(link, baseUrl, { includeQuery: options.includeQuery }))
+        .map((link) => normalizeUrl(link, baseUrl, { includeQuery: options.includeQuery, trailingSlash: options.trailingSlash }))
         .filter((link): link is string => Boolean(link)),
     )].sort();
     const hreflang = seo.hreflang.map((item) => ({
       lang: item.lang,
-      url: normalizeUrl(item.url, baseUrl, { includeQuery: true }),
+      url: normalizeUrl(item.url, baseUrl, { includeQuery: true, trailingSlash: options.trailingSlash }),
     }));
     Object.assign(page, {
       ...seo,
@@ -176,9 +178,9 @@ async function fetchPage(
   }
 }
 
-function populateRenderedPage(page: PageSnapshot, rendered: PageRenderResult, requestUrl: string, siteOrigin: string, includeQuery: boolean): PageSnapshot {
+function populateRenderedPage(page: PageSnapshot, rendered: PageRenderResult, requestUrl: string, siteOrigin: string, includeQuery: boolean, trailingSlash: TrailingSlashPolicy): PageSnapshot {
   const contentType = rendered.headers["content-type"] ?? "text/html";
-  const finalUrl = normalizeUrl(rendered.finalUrl, undefined, { includeQuery });
+  const finalUrl = normalizeUrl(rendered.finalUrl, undefined, { includeQuery, trailingSlash });
   page.finalUrl = finalUrl;
   page.status = rendered.status;
   page.contentType = contentType;
@@ -187,8 +189,8 @@ function populateRenderedPage(page: PageSnapshot, rendered: PageRenderResult, re
   if (!contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) return page;
   const seo = extractSeoData(rendered.html);
   const baseUrl = finalUrl ?? requestUrl;
-  const canonical = seo.canonical ? normalizeUrl(seo.canonical, baseUrl, { includeQuery: true }) : null;
-  const links = [...new Set(seo.links.map((link) => normalizeUrl(link, baseUrl, { includeQuery })).filter((link): link is string => Boolean(link)))].sort();
+  const canonical = seo.canonical ? normalizeUrl(seo.canonical, baseUrl, { includeQuery: true, trailingSlash }) : null;
+  const links = [...new Set(seo.links.map((link) => normalizeUrl(link, baseUrl, { includeQuery, trailingSlash })).filter((link): link is string => Boolean(link)))].sort();
   Object.assign(page, {
     ...seo,
     visibleText: undefined,
@@ -197,7 +199,7 @@ function populateRenderedPage(page: PageSnapshot, rendered: PageRenderResult, re
     links,
     internalLinks: links.filter((link) => isSameOrigin(link, siteOrigin)),
     externalLinks: links.filter((link) => !isSameOrigin(link, siteOrigin)),
-    hreflang: seo.hreflang.map((item) => ({ lang: item.lang, url: normalizeUrl(item.url, baseUrl, { includeQuery: true }) })),
+    hreflang: seo.hreflang.map((item) => ({ lang: item.lang, url: normalizeUrl(item.url, baseUrl, { includeQuery: true, trailingSlash }) })),
     contentHash: seo.visibleText ? createHash("sha256").update(seo.visibleText.toLowerCase()).digest("hex") : null,
     responseBytes: rendered.responseBytes,
   });
@@ -213,6 +215,7 @@ function withDefaults(raw: CrawlerOptions = {}): InternalOptions {
     concurrency: Math.max(1, raw.concurrency ?? 5),
     timeout: raw.timeout ?? 10_000,
     includeQuery: raw.includeQuery ?? false,
+    trailingSlash: raw.trailingSlash ?? "preserve",
     respectRobots: raw.respectRobots ?? true,
     sitemap: raw.sitemap ?? null,
     sitemapData: raw.sitemapData ?? null,
@@ -272,7 +275,7 @@ export async function fetchPages(urls: string[], rawOptions: CrawlerOptions = {}
 export async function crawlSite(inputUrl: string, rawOptions: CrawlerOptions = {}): Promise<ScanResult> {
   const startedAt = Date.now();
   const options = withDefaults(rawOptions);
-  const startUrl = normalizeUrl(inputUrl, undefined, { includeQuery: options.includeQuery });
+  const startUrl = normalizeUrl(inputUrl, undefined, { includeQuery: options.includeQuery, trailingSlash: options.trailingSlash });
   if (!startUrl) throw new Error(`invalid start URL: ${inputUrl}`);
   const origin = new URL(startUrl).origin;
   await emit(options, { type: "scan-start", url: startUrl, total: options.maxPages });

@@ -3,6 +3,7 @@ import type { ComparisonSummaryV1 } from "./local-comparison.js";
 export type Severity = "error" | "warning" | "info";
 export type IssueScope = "page" | "site";
 export type IssueOwner = "seo" | "content" | "developer";
+export type TrailingSlashPolicy = "preserve" | "strip";
 
 export type ScanConfigInput = Partial<ScanConfigV1> & Pick<ScanConfigV1, "url">;
 export type EngineLogger = Pick<Console, "debug" | "info" | "warn" | "error">;
@@ -17,6 +18,7 @@ export interface ScanConfigV1 {
   timeout: number;
   respectRobots: boolean;
   includeQuery: boolean;
+  trailingSlash: TrailingSlashPolicy;
   maxRedirects: number;
   maxResponseBytes: number;
   enabledRules: string[] | null;
@@ -284,6 +286,7 @@ export interface CheckpointIdentity {
   siteUrl: string;
   sitemapUrl: string | null;
   includeQuery: boolean;
+  trailingSlash: TrailingSlashPolicy;
   respectRobots: boolean;
   timeout: number;
   maxRedirects: number;

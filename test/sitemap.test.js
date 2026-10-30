@@ -49,8 +49,37 @@ test("loads page URLs from a sitemap index", async (context) => {
   });
 
   assert.equal(result.sitemapCount, 2);
-  assert.deepEqual(result.urls, [`${origin}/first`, `${origin}/second`]);
+  assert.deepEqual(result.urls, [`${origin}/first`, `${origin}/second/`]);
   assert.equal(requestSlots, 2);
+});
+
+test("applies the configured trailing-slash policy to sitemap URLs", async (context) => {
+  const server = createServer((request, response) => {
+    response.writeHead(200, { "content-type": "application/xml" });
+    response.end(`
+      <urlset>
+        <url><loc>/first/</loc></url>
+        <url><loc>/second</loc></url>
+      </urlset>
+    `);
+  });
+
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  context.after(() => server.close());
+
+  const address = server.address();
+  const origin = `http://127.0.0.1:${address.port}`;
+  const result = await loadSitemapUrls(`${origin}/sitemap.xml`, {
+    siteOrigin: origin,
+    trailingSlash: "strip",
+    maxUrls: 10,
+    timeout: 5_000,
+    userAgent: "seo-crawl-audit/test",
+    requestGate: async () => {},
+  });
+
+  assert.deepEqual(result.urls, [`${origin}/first`, `${origin}/second`]);
 });
 
 test("discovers a sitemap declared in robots.txt", async (context) => {

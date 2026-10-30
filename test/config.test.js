@@ -17,6 +17,13 @@ test("resolves CLI over config file over baseline over safe defaults", () => {
   assert.equal(result.maxPages, 500);
   assert.equal(result.timeout, 10_000);
   assert.equal(result.respectRobots, true);
+  assert.equal(result.trailingSlash, "preserve");
+});
+
+test("validates the trailing-slash policy", () => {
+  assert.equal(validateConfig({ trailingSlash: "strip" }).trailingSlash, "strip");
+  assert.equal(validateConfig({ trailingSlash: "preserve" }).trailingSlash, "preserve");
+  assert.throws(() => validateConfig({ trailingSlash: "drop" }), /preserve or strip/);
 });
 
 test("validates suppressions and report branding", () => {

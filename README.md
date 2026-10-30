@@ -410,6 +410,7 @@ seo-audit history \
 --sitemap <url>         Use a specific sitemap or sitemap index
 --no-sitemap            Skip sitemap discovery and crawl internal links
 --include-query         Treat query-string URLs as separate pages
+--trailing-slash <mode> Preserve or strip trailing slashes: preserve (default) or strip
 --ignore-robots         Ignore robots.txt disallow rules
 --strict                Fail check on warnings as well as errors
 --headers-env <name>    Read target headers from a JSON environment variable
@@ -453,6 +454,7 @@ safe defaults.
   "timeout": 10000,
   "respectRobots": true,
   "includeQuery": false,
+  "trailingSlash": "preserve",
   "enabledRules": null,
   "severityOverrides": {
     "low-word-count": "info"

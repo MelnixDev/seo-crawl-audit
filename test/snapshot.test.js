@@ -47,6 +47,7 @@ test("migrates a v1 baseline to deterministic SnapshotV2", () => {
   assert.equal(migrated.schemaVersion, 2);
   assert.equal(migrated.siteUrl, "https://example.com/");
   assert.equal(migrated.config.delay, 100);
+  assert.equal(migrated.config.trailingSlash, "strip");
   assert.equal(migrated.pages[0].xRobotsTag, null);
   assert.deepEqual(migrated.pages[0].internalLinks, []);
   assert.equal(migrated.statistics.completed, 1);

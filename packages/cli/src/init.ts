@@ -82,6 +82,7 @@ function configContent(url: string): string {
     timeout: 10_000,
     respectRobots: true,
     includeQuery: false,
+    trailingSlash: "preserve",
     maxRedirects: 10,
     maxResponseBytes: 5 * 1024 * 1024,
     enabledRules: null,

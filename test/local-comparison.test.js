@@ -4,12 +4,12 @@ import { audit, migrateSnapshot } from "../packages/core/dist/index.js";
 import { buildLocalComparison } from "../packages/core/dist/local-comparison.js";
 
 const url = "https://example.com/";
-function snapshot({ title = null, error = null, status = 200, partial = false, overrides = {} } = {}) {
+function snapshot({ title = null, error = null, status = 200, partial = false, overrides = {}, trailingSlash = "preserve" } = {}) {
   const value = migrateSnapshot({ schemaVersion: 1, startUrl: url, generatedAt: "2026-09-01T00:00:00.000Z", pages: [{
     url, status, error, contentType: error ? null : "text/html", title,
     description: "A clear description for the page.", h1Count: 1,
   }] });
-  return { ...value, partial, config: { ...value.config, severityOverrides: overrides } };
+  return { ...value, partial, config: { ...value.config, severityOverrides: overrides, trailingSlash } };
 }
 
 test("comparison cannot claim a metadata repair after a failed request", () => {
@@ -33,6 +33,13 @@ test("comparison uses current policy for both snapshots and keeps stored inputs 
   assert.equal(result.summary.evaluationPolicy.source, "after");
   assert.equal(result.summary.lifecycleBySeverity.error.resolved >= 0, true);
   assert.equal(Array.isArray(result.summary.budgetExceeded), true);
+});
+
+test("comparison warns when the trailing-slash policy changes", () => {
+  const previous = snapshot({ trailingSlash: "strip" });
+  const current = snapshot({ trailingSlash: "preserve" });
+  const result = buildLocalComparison(previous, current, { evaluatedAt: "2026-09-23T00:00:00.000Z" });
+  assert.equal(result.summary.warnings.includes("url-policy-changed"), true);
 });
 
 test("partial current coverage never resolves unchecked findings", () => {

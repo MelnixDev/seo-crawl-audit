@@ -119,6 +119,7 @@ function defaultConfig(input: BaselineInput): ScanConfigV1 {
     timeout: options.timeout ?? 10_000,
     respectRobots: options.respectRobots ?? source.respectRobots ?? true,
     includeQuery: options.includeQuery ?? source.includeQuery ?? false,
+    trailingSlash: options.trailingSlash ?? "strip",
     maxRedirects: options.maxRedirects ?? 10,
     maxResponseBytes: options.maxResponseBytes ?? 5 * 1024 * 1024,
     enabledRules: options.enabledRules ?? null,

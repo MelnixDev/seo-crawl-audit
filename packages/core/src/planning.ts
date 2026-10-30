@@ -22,7 +22,7 @@ export async function planScan(
   options: PlanScanOptions = {},
 ): Promise<ScanPlan> {
   const config = resolveConfig(configInput);
-  const startUrl = normalizeUrl(config.url, undefined, { includeQuery: config.includeQuery });
+  const startUrl = normalizeUrl(config.url, undefined, { includeQuery: config.includeQuery, trailingSlash: config.trailingSlash });
   if (!startUrl) throw new Error(`invalid start URL: ${config.url}`);
   const origin = new URL(startUrl).origin;
   const fetch = options.fetch ?? globalThis.fetch;
@@ -49,6 +49,7 @@ export async function planScan(
       timeout: config.timeout,
       maxRedirects: config.maxRedirects,
       userAgent: DEFAULT_USER_AGENT,
+      trailingSlash: config.trailingSlash,
       fetch,
       signal: options.signal,
       requestGate,
@@ -65,6 +66,7 @@ export async function planScan(
       sitemap = await loadSitemapUrls(sitemapUrl, {
         siteOrigin: origin,
         includeQuery: config.includeQuery,
+        trailingSlash: config.trailingSlash,
         maxUrls: 50_000,
         timeout: config.timeout,
         maxRedirects: config.maxRedirects,

@@ -14,6 +14,7 @@
     "timeout": { "type": "integer", "minimum": 1 },
     "respectRobots": { "type": "boolean" },
     "includeQuery": { "type": "boolean" },
+    "trailingSlash": { "type": "string", "enum": ["preserve", "strip"], "default": "preserve" },
     "maxRedirects": { "type": "integer", "minimum": 0, "maximum": 50 },
     "maxResponseBytes": { "type": "integer", "minimum": 1024 },
     "enabledRules": { "type": ["array", "null"], "items": { "type": "string" }, "uniqueItems": true },

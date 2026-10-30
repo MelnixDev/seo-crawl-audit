@@ -63,6 +63,72 @@ test("crawls same-origin HTML pages and respects robots.txt", async (context) =>
   assert.equal(requestSlots, 3);
 });
 
+test("requests a trailing-slash URL exactly as configured without following a slash redirect", async (context) => {
+  const requests = [];
+  const server = createServer((request, response) => {
+    requests.push(request.url);
+    if (request.url === "/robots.txt") {
+      response.writeHead(200, { "content-type": "text/plain" });
+      response.end("User-agent: *\nAllow: /\n");
+      return;
+    }
+    if (request.url === "/section") {
+      response.writeHead(301, { location: "/section/" });
+      response.end();
+      return;
+    }
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end('<title>Section</title><link rel="canonical" href="/section/"><h1>Section</h1>');
+  });
+
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  context.after(() => server.close());
+
+  const address = server.address();
+  const origin = `http://127.0.0.1:${address.port}`;
+  const result = await crawlSite(`${origin}/section/`, {
+    maxPages: 1,
+    concurrency: 1,
+    requestDelay: 0,
+  });
+
+  assert.equal(result.pages[0].url, `${origin}/section/`);
+  assert.equal(result.pages[0].canonical, `${origin}/section/`);
+  assert.deepEqual(result.pages[0].redirectChain, []);
+  assert.deepEqual(requests.filter((url) => url !== "/robots.txt"), ["/section/"]);
+});
+
+test("strips a trailing slash from the start URL when configured", async (context) => {
+  const requests = [];
+  const server = createServer((request, response) => {
+    requests.push(request.url);
+    if (request.url === "/robots.txt") {
+      response.writeHead(200, { "content-type": "text/plain" });
+      response.end("User-agent: *\nAllow: /\n");
+      return;
+    }
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end('<title>Section</title><h1>Section</h1>');
+  });
+
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  context.after(() => server.close());
+
+  const address = server.address();
+  const origin = `http://127.0.0.1:${address.port}`;
+  const result = await crawlSite(`${origin}/section/`, {
+    maxPages: 1,
+    concurrency: 1,
+    requestDelay: 0,
+    trailingSlash: "strip",
+  });
+
+  assert.equal(result.pages[0].url, `${origin}/section`);
+  assert.deepEqual(requests.filter((url) => url !== "/robots.txt"), ["/section"]);
+});
+
 test("reuses cached page results without requesting those URLs again", async (context) => {
   const requests = [];
   const server = createServer((request, response) => {

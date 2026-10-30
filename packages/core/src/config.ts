@@ -12,6 +12,7 @@ export const DEFAULT_SCAN_CONFIG: Readonly<ScanConfigV1> = Object.freeze({
   timeout: 10_000,
   respectRobots: true,
   includeQuery: false,
+  trailingSlash: "preserve",
   maxRedirects: 10,
   maxResponseBytes: 5 * 1024 * 1024,
   enabledRules: null,
@@ -45,7 +46,7 @@ export function validateConfig(input: unknown): Partial<ScanConfigV1> {
   const value = object(input, "config");
   const allowed = new Set([
     "$schema", "schemaVersion", "url", "sitemap", "maxPages", "concurrency", "delay", "timeout",
-    "respectRobots", "includeQuery", "maxRedirects", "maxResponseBytes", "enabledRules",
+    "respectRobots", "includeQuery", "trailingSlash", "maxRedirects", "maxResponseBytes", "enabledRules",
     "severityOverrides", "suppressions", "regressionBudgets", "report",
   ]);
   for (const key of Object.keys(value)) {
@@ -77,6 +78,12 @@ export function validateConfig(input: unknown): Partial<ScanConfigV1> {
       if (typeof value[field] !== "boolean") throw new Error(`${field} must be a boolean`);
       result[field] = value[field] as boolean;
     }
+  }
+  if (value.trailingSlash !== undefined) {
+    if (value.trailingSlash !== "preserve" && value.trailingSlash !== "strip") {
+      throw new Error("trailingSlash must be preserve or strip");
+    }
+    result.trailingSlash = value.trailingSlash;
   }
   if (value.enabledRules !== undefined) {
     if (value.enabledRules !== null && (!Array.isArray(value.enabledRules) || value.enabledRules.some((rule) => typeof rule !== "string"))) {

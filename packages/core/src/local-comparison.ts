@@ -113,7 +113,8 @@ export function buildLocalComparison(previous: SnapshotV2, current: SnapshotV2, 
   if (previous.partial || previous.truncated) warnings.push("incomplete-before");
   if (current.partial || current.truncated) warnings.push("incomplete-after");
   if (previous.configurationHash !== current.configurationHash) warnings.push("configuration-changed");
-  if (previous.config.includeQuery !== current.config.includeQuery) warnings.push("url-policy-changed");
+  if (previous.config.includeQuery !== current.config.includeQuery
+    || (previous.config.trailingSlash ?? "strip") !== (current.config.trailingSlash ?? "strip")) warnings.push("url-policy-changed");
   if (previous.ruleSetVersion !== current.ruleSetVersion) warnings.push("rule-set-changed");
   if (previous.generatedAt === current.generatedAt) warnings.push("same-timestamp");
   if (JSON.stringify(previous.config.enabledRules) !== JSON.stringify(effective.enabledRules)

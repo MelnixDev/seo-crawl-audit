@@ -1,7 +1,7 @@
 import { gunzipSync } from "node:zlib";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
 import { fetchWithRetry, readResponseBody } from "./fetcher.js";
-import type { ScanEvent, SitemapState } from "./types.js";
+import type { ScanEvent, SitemapState, TrailingSlashPolicy } from "./types.js";
 import { isCrawlableUrl, isSameOrigin, normalizeUrl } from "./urls.js";
 
 const MAX_SITEMAP_BYTES = 10 * 1024 * 1024;
@@ -11,6 +11,7 @@ const DEFAULT_SITEMAP_LIMIT = 50_000;
 interface SitemapOptions {
   siteOrigin: string;
   includeQuery?: boolean | undefined;
+  trailingSlash?: TrailingSlashPolicy | undefined;
   maxUrls?: number | undefined;
   timeout: number;
   maxRedirects?: number | undefined;
@@ -96,7 +97,7 @@ async function isSitemapResponse(url: string, options: SitemapOptions): Promise<
 }
 
 export async function discoverSitemapUrl(inputUrl: string, options: Omit<SitemapOptions, "siteOrigin"> & { siteOrigin?: string | undefined }): Promise<string | null> {
-  const startUrl = normalizeUrl(inputUrl, undefined);
+  const startUrl = normalizeUrl(inputUrl, undefined, { trailingSlash: options.trailingSlash });
   if (!startUrl) throw new Error(`invalid start URL: ${inputUrl}`);
   const origin = new URL(startUrl).origin;
   const robotsUrl = new URL("/robots.txt", origin).href;
@@ -105,7 +106,7 @@ export async function discoverSitemapUrl(inputUrl: string, options: Omit<Sitemap
       for (const match of options.robotsBody.matchAll(/^sitemap:\s*(\S+)\s*$/gim)) {
         const location = match[1];
         if (!location) continue;
-        const candidate = normalizeUrl(location, robotsUrl, { includeQuery: true });
+        const candidate = normalizeUrl(location, robotsUrl, { includeQuery: true, trailingSlash: options.trailingSlash });
         if (candidate && isSameOrigin(candidate, origin)) return candidate;
       }
     } else {
@@ -117,7 +118,7 @@ export async function discoverSitemapUrl(inputUrl: string, options: Omit<Sitemap
       for (const match of text.matchAll(/^sitemap:\s*(\S+)\s*$/gim)) {
         const location = match[1];
         if (!location) continue;
-        const candidate = normalizeUrl(location, robotsUrl, { includeQuery: true });
+        const candidate = normalizeUrl(location, robotsUrl, { includeQuery: true, trailingSlash: options.trailingSlash });
         if (candidate && isSameOrigin(candidate, origin)) return candidate;
       }
       } else await response.body?.cancel();
@@ -133,7 +134,7 @@ export async function discoverSitemapUrl(inputUrl: string, options: Omit<Sitemap
 }
 
 export async function loadSitemapUrls(inputUrl: string, options: SitemapOptions): Promise<SitemapState> {
-  const sitemapUrl = normalizeUrl(inputUrl, undefined, { includeQuery: true });
+  const sitemapUrl = normalizeUrl(inputUrl, undefined, { includeQuery: true, trailingSlash: options.trailingSlash });
   if (!sitemapUrl) throw new Error(`invalid sitemap URL: ${inputUrl}`);
   const sitemapOrigin = new URL(sitemapUrl).origin;
   const sitemapQueue = [sitemapUrl];
@@ -150,14 +151,14 @@ export async function loadSitemapUrls(inputUrl: string, options: SitemapOptions)
     const parsed = parseSitemap(await fetchSitemap(currentUrl, options), currentUrl);
     if (parsed.kind === "index") {
       for (const location of parsed.locations) {
-        const child = normalizeUrl(location, currentUrl, { includeQuery: true });
+        const child = normalizeUrl(location, currentUrl, { includeQuery: true, trailingSlash: options.trailingSlash });
         if (child && isSameOrigin(child, sitemapOrigin) && !visitedSitemaps.has(child) && !sitemapQueue.includes(child)) sitemapQueue.push(child);
       }
       sitemapQueue.sort();
       continue;
     }
     for (const location of parsed.locations) {
-      const pageUrl = normalizeUrl(location, currentUrl, { includeQuery: options.includeQuery ?? false });
+      const pageUrl = normalizeUrl(location, currentUrl, { includeQuery: options.includeQuery ?? false, trailingSlash: options.trailingSlash });
       if (!pageUrl || pageSet.has(pageUrl) || !isSameOrigin(pageUrl, options.siteOrigin) || !isCrawlableUrl(pageUrl)) continue;
       pageSet.add(pageUrl);
       pageUrls.push(pageUrl);

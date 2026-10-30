@@ -94,6 +94,7 @@ test("status command reports snapshots and resumable checkpoints", async (contex
     siteUrl: "https://example.com/",
     sitemapUrl: null,
     includeQuery: false,
+    trailingSlash: "preserve",
     respectRobots: true,
     timeout: 10_000,
     maxRedirects: 10,
@@ -129,7 +130,10 @@ test("CLI config mapping validates conflicts and explicit policies", () => {
   assert.equal(config.delay, 0);
   assert.equal(config.sitemap, "none");
   assert.equal(config.includeQuery, true);
+  assert.equal(config.trailingSlash, "preserve");
   assert.equal(config.respectRobots, false);
+  assert.equal(scanConfig("https://example.com/", { "trailing-slash": "strip" }).trailingSlash, "strip");
+  assert.throws(() => scanConfig("https://example.com/", { "trailing-slash": "drop" }), /preserve or strip/);
   assert.throws(() => scanConfig("https://example.com/", { pages: "0" }), /positive integer/);
 });
 

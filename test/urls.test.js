@@ -6,10 +6,36 @@ import {
   normalizeUrl,
 } from "../packages/core/dist/urls.js";
 
-test("normalizes links and strips query strings by default", () => {
+test("normalizes links, strips query strings by default, and preserves trailing slashes", () => {
   assert.equal(
     normalizeUrl("/docs/?utm_source=test#intro", "https://example.com/base"),
+    "https://example.com/docs/",
+  );
+});
+
+test("preserves a meaningful trailing slash by default", () => {
+  assert.equal(
+    normalizeUrl("https://example.com/docs/"),
+    "https://example.com/docs/",
+  );
+  assert.equal(
+    normalizeUrl("https://example.com/docs"),
     "https://example.com/docs",
+  );
+});
+
+test("strips trailing slashes when configured", () => {
+  assert.equal(
+    normalizeUrl("https://example.com/docs/", undefined, { trailingSlash: "strip" }),
+    "https://example.com/docs",
+  );
+  assert.equal(
+    normalizeUrl("/docs/?utm_source=test#intro", "https://example.com/base", { trailingSlash: "strip" }),
+    "https://example.com/docs",
+  );
+  assert.equal(
+    normalizeUrl("https://example.com/", undefined, { trailingSlash: "strip" }),
+    "https://example.com/",
   );
 });
 

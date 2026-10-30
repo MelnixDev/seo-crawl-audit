@@ -45,6 +45,7 @@ interface CommonInput {
   timeout?: number | undefined;
   sitemap?: string | undefined;
   includeQuery?: boolean | undefined;
+  trailingSlash?: "preserve" | "strip" | undefined;
   respectRobots?: boolean | undefined;
   headersEnv?: string | undefined;
 }
@@ -89,6 +90,7 @@ function confirmationId(plan: Awaited<ReturnType<typeof planScan>>, limit: numbe
     timeout: plan.config.timeout,
     respectRobots: plan.config.respectRobots,
     includeQuery: plan.config.includeQuery,
+    trailingSlash: plan.config.trailingSlash,
     maxRedirects: plan.config.maxRedirects,
     maxResponseBytes: plan.config.maxResponseBytes,
   });
@@ -154,6 +156,7 @@ async function inputConfig(context: ToolContext, input: CommonInput, fallbackUrl
     ...(input.timeout === undefined ? {} : { timeout: input.timeout }),
     ...(input.sitemap === undefined ? {} : { sitemap: input.sitemap }),
     ...(input.includeQuery === undefined ? {} : { includeQuery: input.includeQuery }),
+    ...(input.trailingSlash === undefined ? {} : { trailingSlash: input.trailingSlash }),
     ...(input.respectRobots === undefined ? {} : { respectRobots: input.respectRobots }),
   }, file);
 }
@@ -227,7 +230,7 @@ export async function planTool(context: ToolContext, input: CommonInput): Promis
     candidateCount: plan.candidateCount,
     robots: { url: plan.robots.url, status: plan.robots.status, error: plan.robots.error, denyAll: plan.robots.denyAll ?? false },
     sitemap: plan.sitemap ? { url: plan.sitemap.url, count: plan.sitemap.urls.length, truncated: plan.sitemap.truncated, error: plan.sitemap.error ?? null } : null,
-    config: { maxPages: plan.config.maxPages, concurrency: plan.config.concurrency, delay: plan.config.delay, timeout: plan.config.timeout, respectRobots: plan.config.respectRobots },
+    config: { maxPages: plan.config.maxPages, concurrency: plan.config.concurrency, delay: plan.config.delay, timeout: plan.config.timeout, respectRobots: plan.config.respectRobots, trailingSlash: plan.config.trailingSlash },
   };
 }
 

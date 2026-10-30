@@ -14,6 +14,7 @@ const common = {
   timeout: z.number().int().positive().max(120000).optional(),
   sitemap: z.string().optional(),
   includeQuery: z.boolean().optional(),
+  trailingSlash: z.enum(["preserve", "strip"]).optional(),
   respectRobots: z.boolean().optional(),
   headersEnv: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).optional().describe("Name of a JSON environment variable containing same-origin request headers; values are never returned"),
 };

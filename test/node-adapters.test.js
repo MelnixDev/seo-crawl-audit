@@ -11,6 +11,7 @@ const identity = {
   siteUrl: "https://example.com/",
   sitemapUrl: "https://example.com/sitemap.xml",
   includeQuery: false,
+  trailingSlash: "preserve",
   respectRobots: true,
   timeout: 10_000,
   maxRedirects: 10,

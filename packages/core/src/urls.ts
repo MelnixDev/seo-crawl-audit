@@ -1,10 +1,12 @@
+import type { TrailingSlashPolicy } from "./types.js";
+
 const SKIPPED_EXTENSIONS =
   /\.(?:avif|bmp|css|csv|docx?|eot|gif|gz|ico|jpe?g|js|json|map|mp3|mp4|mov|ogg|otf|pdf|png|pptx?|rar|rss|svg|tar|tiff?|ttf|txt|wav|webm|webp|woff2?|xlsx?|xml|zip)$/i;
 
 export function normalizeUrl(
   input: string,
   base?: string,
-  { includeQuery = false }: { includeQuery?: boolean } = {},
+  { includeQuery = false, trailingSlash = "preserve" }: { includeQuery?: boolean | undefined; trailingSlash?: TrailingSlashPolicy | undefined } = {},
 ): string | null {
   let url: URL;
 
@@ -24,7 +26,7 @@ export function normalizeUrl(
     url.search = "";
   }
 
-  if (url.pathname.length > 1 && url.pathname.endsWith("/")) {
+  if (trailingSlash === "strip" && url.pathname.length > 1 && url.pathname.endsWith("/")) {
     url.pathname = url.pathname.replace(/\/+$/, "");
   }
 

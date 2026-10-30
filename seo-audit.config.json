@@ -7,6 +7,7 @@
   "timeout": 10000,
   "respectRobots": true,
   "includeQuery": false,
+  "trailingSlash": "preserve",
   "maxRedirects": 10,
   "maxResponseBytes": 5242880,
   "enabledRules": null,
