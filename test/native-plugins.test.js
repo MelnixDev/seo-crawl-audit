@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, mkdtemp, cp, access, writeFile, realpath, mkdir, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { resolve, join } from 'node:path';
+import { resolve, join, dirname } from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { createInterface } from 'node:readline';
@@ -133,7 +133,7 @@ for (const adapter of ['codex','claude-code','claude-desktop']) test(`${adapter}
 });
 
 test('missing, relative, unresolved and installation workspace config fails closed',async()=>{
-  for(const root of ['', '.', '${user_config.workspace}',plugin,join(plugin,'server')]) {
+  for(const root of ['', '.', '${user_config.workspace}',plugin,join(plugin,'server'),dirname(plugin)]) {
     const child=spawn(process.execPath,[entry],{cwd:plugin,env:{...process.env,SEO_AUDIT_MCP_ROOT:root},stdio:['pipe','pipe','pipe']});
     let stdout=''; let stderr='';
     child.stdout.on('data',s=>{stdout+=s;}); child.stderr.on('data',s=>{stderr+=s;});
@@ -147,6 +147,7 @@ test('Codex configuration can be reapplied to an updated package without moving 
   const workspace=await temp('consumer with spaces');
   const installed=join(await temp('update'),'plugin');
   await cp(plugin,installed,{recursive:true});
+  assert.throws(()=>execFileSync(process.execPath,[join(installed,'configure.mjs'),dirname(installed)],{stdio:'pipe'}), /non-overlapping/);
   const configure=()=>execFileSync(process.execPath,[join(installed,'configure.mjs'),workspace]);
   configure();
   assert.equal((await json(join(installed,'mcp.json'))).mcpServers['seo-crawl-audit'].env.SEO_AUDIT_MCP_ROOT,workspace);

@@ -7,6 +7,21 @@ selected site; snapshots and reports remain in the configured workspace. Tool
 results are compact; issues are paginated (maximum 100 per call), and reports are
 returned as artifact paths.
 
+## Candidate release assets
+
+The native packages are separate GitHub release assets; the npm CLI tarball does
+**not** contain these native distributions. These exact links become available
+when the reviewed 0.17.0 release is published:
+
+- [Codex / Claude Code ZIP](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-codex-claude-code.zip)
+- [ZIP SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-codex-claude-code.zip.sha256)
+- [Claude Desktop MCPB](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-claude-desktop.mcpb)
+- [MCPB SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-claude-desktop.mcpb.sha256)
+
+Until publication, build from this candidate checkout or use the reviewed local
+artifacts. Verify the downloaded archive against its matching checksum before
+unpacking/opening it. Published 0.16.1 remains immutable.
+
 ## Build and verify
 
 Use Node >=20.19 and npm. From a clean source checkout:
@@ -20,9 +35,11 @@ This builds the existing engine first, copies its exact bundled MCP and shared
 skill into `plugins/seo-crawl-audit`, validates portable schemas and the official
 MCPB manifest, and writes these installable artifacts to `native-plugin-dist/`:
 
-- `seo-crawl-audit-0.16.1-codex-claude-code.zip`
-- `seo-crawl-audit-0.16.1-claude-desktop.mcpb`
+- `seo-crawl-audit-0.17.0-codex-claude-code.zip`
+- `seo-crawl-audit-0.17.0-claude-desktop.mcpb`
 - one `.sha256` checksum file per archive
+
+Run `npm run plugins:release-assets` after capture/review to assemble the exact GitHub-upload directory with notes, media, evidence and SHA256SUMS. This step does not publish anything.
 
 Artifacts contain the bundled JavaScript dependencies. Node is supplied by the
 local Codex/Claude Code environment, and Claude Desktop supplies Node for its
@@ -46,7 +63,7 @@ my-seo-marketplace/
   plugins/seo-crawl-audit/     # ZIP contents go here
 ```
 
-Configure the unpacked plugin for one existing project directory:
+Keep the unpacked package/marketplace outside the directory you audit: the package and workspace must not contain each other. This also protects the installed runtime when a user selects a broad parent directory. Configure the unpacked plugin for one existing project directory:
 
 ```sh
 node /absolute/my-seo-marketplace/plugins/seo-crawl-audit/configure.mjs /absolute/consumer-project
@@ -70,8 +87,11 @@ Use this marketplace file (paths are relative to `my-seo-marketplace`, **not** t
 
 Register with `codex plugin marketplace add /absolute/my-seo-marketplace`, restart
 the desktop app, select this marketplace in the plugin directory and install SEO
-Crawl Audit. For a repository marketplace use that repository as marketplace
-root; the checked-in catalog in this source repo is an example. Merge entries
+Crawl Audit. The native CLI alternative (tested with 0.167.0-alpha.4.1) is
+`codex plugin add seo-crawl-audit@seo-crawl-audit-local`; use your unique
+marketplace name if different. Inspect with
+`codex plugin list --marketplace seo-crawl-audit-local --json`. For a repository marketplace use that repository as marketplace
+root and select a separate, non-overlapping audit directory; the checked-in catalog in this source repo is an example. Merge entries
 into an existing catalog rather than overwriting unrelated plugins.
 
 Codex's portable plugin CWD defaults to the installation directory, and portable
@@ -121,7 +141,7 @@ Open the `.mcpb` file in Claude Desktop for macOS or Windows. Review the local
 extension and select an **existing audit workspace directory** in its required
 configuration picker. Desktop has no project CWD; this directory is the explicit
 boundary for configuration, scan files, checkpoints, histories, and reports.
-Missing, unresolved, relative, nonexistent, or extension-install-directory roots
+Missing, unresolved, relative, nonexistent, or extension-install-directory roots, and roots containing the extension
 fail closed. File paths supplied to tools must be relative to this workspace;
 traversal, absolute output paths, and symlinks escaping it are rejected by MCP.
 
@@ -172,8 +192,13 @@ marketplace, credentials, or client settings are changed by the build/tests.
 plan, fixture HTTP scan, paginated issues, report generation, traversal/symlink
 rejection and workspace configuration/update handling through each manifest's
 launch adapter. It verifies artifacts contain the exact existing engine bundle.
-These are manifest/package/runtime checks; they do **not** prove interactive
-installation in Codex desktop, Claude Code, or Claude Desktop. A release still
+Codex CLI 0.167.0-alpha.4.1 also successfully added a local marketplace,
+installed and listed version 0.17.0 in an isolated task-only `CODEX_HOME`,
+initialized the actual installed-cache runtime, listed all eight tools and
+removed the plugin. The real user's config hash stayed unchanged. This is
+native CLI import/cache/removal evidence, not GUI installation or an agent-driven
+scan. Interactive GUI installation remains unverified in Codex desktop, Claude
+Code and Claude Desktop. A release still
 needs a clean installation and first audit in each real client on supported
 platforms, including optional Playwright on a consumer project if used.
 

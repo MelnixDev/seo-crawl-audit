@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.17.0 — Unreleased
+
+- package the existing MCP server and shared audit skill as native Codex/Claude Code ZIP and Claude Desktop MCPB distributions;
+- add explicit Codex workspace configuration, Claude Code project binding, and required Desktop audit-directory configuration;
+- reject missing, mismatched, overlapping installation/workspace roots and Windows UNC/cross-volume artifact escapes;
+- generate allowlisted, version-matched offline runtime archives with SHA-256 checksums and installation/update/removal guidance;
+- add an accessible product landing, real local-fixture report screenshots and a report walkthrough; actual GUI installation remains a separate verification gate.
+
 ## 0.16.1 — Released
 
 - honor the first HTML base href when resolving canonical, hreflang and crawl links, preserving the response directory before URL normalization;

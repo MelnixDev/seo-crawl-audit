@@ -8,8 +8,13 @@ try {
   const root = await realpath(process.argv[2]);
   if (!(await stat(root)).isDirectory()) throw new Error('Workspace must be a directory.');
   const plugin = await realpath(fileURLToPath(new URL('./', import.meta.url)));
-  const rel = relative(plugin, root);
-  if (rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))) throw new Error('Workspace must be outside the plugin installation directory.');
+  const overlaps = (parent, child) => {
+    const rel = relative(parent, child);
+    return rel === '' || (rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
+  };
+  if (overlaps(plugin, root) || overlaps(root, plugin)) {
+    throw new Error('Workspace and plugin package must be separate, non-overlapping directories.');
+  }
   const path = new URL('./mcp.json', import.meta.url);
   const config = JSON.parse(await readFile(path, 'utf8'));
   config.mcpServers['seo-crawl-audit'].env.SEO_AUDIT_MCP_ROOT = root;

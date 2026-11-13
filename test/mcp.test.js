@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { access, mkdtemp, readFile, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, win32 } from "node:path";
 import { spawn } from "node:child_process";
 import {
   checkTool,
@@ -15,7 +15,7 @@ import {
   scanTool,
 } from "../packages/mcp/dist/tools.js";
 import { toolError, toolResult } from "../packages/mcp/dist/result.js";
-import { assertRealWorkspacePath, workspacePath } from "../packages/mcp/dist/paths.js";
+import { assertRealWorkspacePath, workspacePath, insideWorkspace } from "../packages/mcp/dist/paths.js";
 import { authenticatedCheckpointPath, headersFromEnvironment } from "../packages/mcp/dist/request-headers.js";
 import { migrateSnapshot } from "../packages/core/dist/index.js";
 import { writeHistorySnapshot } from "../packages/core/dist/node.js";
@@ -256,9 +256,9 @@ test("bundled stdio server negotiates MCP and advertises the complete tool set",
     child.once("close", resolve);
   });
   assert.equal(exitCode, 0, stderr);
-  assert.match(stderr, /^\[seo-crawl-audit:mcp\] MCP server 0\.16\.1 is running on stdio\. Waiting for client requests; press Ctrl\+C to stop\.\n$/);
+  assert.match(stderr, /^\[seo-crawl-audit:mcp\] MCP server 0\.17\.0 is running on stdio\. Waiting for client requests; press Ctrl\+C to stop\.\n$/);
   const responses = stdout.trim().split("\n").map(JSON.parse);
-  assert.equal(responses[0].result.serverInfo.version, "0.16.1");
+  assert.equal(responses[0].result.serverInfo.version, "0.17.0");
   assert.deepEqual(responses[1].result.tools.map((tool) => tool.name).sort(), [
     "seo_audit_check",
     "seo_audit_compare",
@@ -287,5 +287,19 @@ test("repository development entrypoint starts the MCP server", async () => {
   });
   assert.equal(exitCode, 0, stderr);
   assert.equal(stdout, "");
-  assert.match(stderr, /MCP server 0\.16\.1 is running on stdio/);
+  assert.match(stderr, /MCP server 0\.17\.0 is running on stdio/);
+});
+
+// Exercise Windows path semantics without touching a network share or requiring Windows.
+test("MCP workspace paths reject Windows UNC, device, cross-volume and drive-relative escapes", () => {
+  const root = String.raw`C:\audits\workspace`;
+  for (const requested of [String.raw`\\server\share\outside.html`, String.raw`\\?\C:\outside.html`, String.raw`D:\outside.html`, String.raw`D:outside.html`, String.raw`\outside.html`, String.raw`..\outside.html`]) {
+    assert.throws(() => workspacePath(root, requested, "report.html", win32), /relative|inside/);
+  }
+  assert.equal(workspacePath(root, String.raw`reports\audit.html`, "report.html", win32), String.raw`C:\audits\workspace\reports\audit.html`);
+  assert.equal(insideWorkspace(root, String.raw`\\server\share\outside.html`, win32), false);
+  assert.equal(insideWorkspace(root, String.raw`D:\outside.html`, win32), false);
+  assert.equal(insideWorkspace(root, String.raw`C:\audits\workspace-other\outside.html`, win32), false);
+  assert.equal(insideWorkspace(root, String.raw`C:\audits\workspace\reports\audit.html`, win32), true);
+  assert.throws(() => workspacePath(resolve("workspace"), String.raw`\\server\share\outside.html`, "report.html"), /relative/);
 });

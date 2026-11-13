@@ -1,14 +1,42 @@
 # SEO Crawl Audit
 
-Free, open-source, local-first SEO crawler and regression audit tool.
+**Find technical SEO issues. Keep the evidence. Catch regressions.**
 
-`seo-audit` crawls server-rendered pages, saves a versioned JSON snapshot,
-finds concrete SEO problems, and detects regressions after a deployment. It
-needs no account or API key. Page HTML is processed in memory; normalized
-results stay in local JSON, checkpoint, CSV, and self-contained HTML files.
+A free, open-source, local-first crawler with HTML reports, versioned JSON
+snapshots and eight MCP tools for Codex, Claude Code and Claude Desktop. Plan a
+bounded crawl, inspect concrete URL findings and compare runs after a deployment.
+No SEO service account or SEO API key is required. Scans default to 100 pages
+and respect robots.txt.
 
-[Open the interactive example report](https://melnixdev.github.io/seo-crawl-audit/)
-or [view its source file](examples/quotes-toscrape-report.html).
+[Explore the example report](https://melnixdev.github.io/seo-crawl-audit/) ·
+[Choose your installation](docs/native-plugins.md) ·
+[CLI quick start](#requirements-and-installation)
+
+## Choose your client
+
+| Client | Package and workspace |
+| --- | --- |
+| **Codex** | ZIP plugin and local marketplace. Configure one explicit, non-overlapping audit workspace before importing. Calls must name that workspace. [Setup](docs/native-plugins.md#codex-desktop-configure-then-install) |
+| **Claude Code** | Same ZIP, loaded from outside the audited project. Uses Claude Code’s project directory. [Setup](docs/native-plugins.md#claude-code) |
+| **Claude Desktop** | MCPB extension with a required existing-directory picker. [Setup](docs/native-plugins.md#claude-desktop-chat) |
+
+Native packages are prepared for **0.17.0**, an unreleased candidate. See the
+[release notes](docs/releases/0.17.0.md) for exact verification and limitations.
+No public directory listing or client endorsement is implied. The CLI remains
+available through npm; its [quick start](#requirements-and-installation) is below.
+
+The crawler sends HTTP requests to your chosen site and keeps artifacts in your
+configured workspace. Your AI client receives tool results under its own data
+policies. A crawl measures observed pages; it does not establish Google indexing,
+rankings, traffic or complete site coverage.
+
+### A real bundled-MCP report
+
+![Report produced by the bundled MCP server from a three-page local fixture](docs/site/media/native-report-pages.png)
+
+This report was generated through the plugin’s bundled STDIO MCP server against
+a deliberately small local fixture. It demonstrates actual report output, not an
+installed AI client interface. [Watch the report walkthrough](docs/site/media/native-workflow.mp4).
 
 ## Report preview
 
@@ -693,5 +721,3 @@ MIT
 ### Pagination and duplicate titles (0.16.0)
 
 Exact duplicate titles across successful indexable/self-canonical pages are critical errors. Query-pagination duplicates receive a dedicated `pagination-title-duplicate` finding; `near-duplicate-title` is a bounded review warning. These findings identify risks, not confirmed causes of Google exclusion. Use `seo-audit scan https://example.com/collection --no-sitemap --include-query --max-pages 100` and inspect checked URLs to include pagination absent from sitemaps.
-
-Native plugins for Codex desktop, Claude Code and Claude Desktop: [build, install, update and remove](docs/native-plugins.md).

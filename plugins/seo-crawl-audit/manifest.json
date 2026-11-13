@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "seo-crawl-audit",
   "display_name": "SEO Crawl Audit",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "description": "Local SEO crawling, regression checks and reports, with workspace-bound artifacts.",
   "author": {
     "name": "MelnixDev"
