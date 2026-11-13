@@ -1,0 +1,7 @@
+{
+  "name": "seo-crawl-audit-native-plugin",
+  "version": "0.16.1",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20.19" }
+}

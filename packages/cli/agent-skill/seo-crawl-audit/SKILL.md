@@ -9,7 +9,7 @@ Use this skill when a user asks to audit a website, check SEO regressions, inspe
 
 ## Workflow
 
-1. Start with `seo_audit_plan` when using MCP. Confirm the URL, sitemap mode, page limit, and robots policy before requesting pages.
+1. Read the bound workspace in MCP initialization and ensure it matches the user's current project. If tools declare a required `workspace` argument, pass the current project's absolute real path; stop on a mismatch and reconfigure the plugin rather than scanning another project. Start with `seo_audit_plan` when using MCP. Confirm the URL, sitemap mode, page limit, and robots policy before requesting pages.
 2. Run `seo_audit_scan` for a baseline, or `seo_audit_check` with a saved baseline for a regression comparison. Keep the default 100-page limit unless the user explicitly asks for more.
 3. Use `seo_audit_compare` for two saved snapshots, `seo_audit_history` for a compact read-only trend over saved runs, or `seo_audit_issues` with filters and pagination to inspect concrete findings. Prioritize errors, then warnings, then informational context. Never treat a lower count across an incomplete or policy-changed trend as proven improvement.
 4. Use `seo_audit_report` when a human-readable HTML artifact is needed. Return artifact paths rather than embedding a large report in chat.

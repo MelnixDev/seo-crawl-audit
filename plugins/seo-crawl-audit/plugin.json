@@ -1,0 +1,22 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "seo-crawl-audit",
+  "version": "0.16.1",
+  "description": "Local SEO crawling, regression checks and reports, with workspace-bound artifacts.",
+  "author": {
+    "name": "MelnixDev"
+  },
+  "repository": "https://github.com/MelnixDev/seo-crawl-audit",
+  "license": "MIT",
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "SEO Crawl Audit",
+        "shortDescription": "Local SEO scans and regression reports",
+        "developerName": "MelnixDev",
+        "category": "Developer Tools"
+      }
+    }
+  }
+}

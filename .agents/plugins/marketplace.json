@@ -1,0 +1,20 @@
+{
+  "name": "seo-crawl-audit-local",
+  "interface": {
+    "displayName": "SEO Crawl Audit"
+  },
+  "plugins": [
+    {
+      "name": "seo-crawl-audit",
+      "source": {
+        "source": "local",
+        "path": "./plugins/seo-crawl-audit"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

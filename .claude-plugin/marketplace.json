@@ -1,0 +1,13 @@
+{
+  "name": "seo-crawl-audit-local",
+  "owner": {
+    "name": "MelnixDev"
+  },
+  "plugins": [
+    {
+      "name": "seo-crawl-audit",
+      "source": "./plugins/seo-crawl-audit",
+      "description": "Local SEO crawling, regression checks and reports, with workspace-bound artifacts."
+    }
+  ]
+}
