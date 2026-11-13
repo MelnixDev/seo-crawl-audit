@@ -668,7 +668,7 @@ Use `--delay 0` only for local or explicitly controlled fixtures.
 - same-origin crawl discovery;
 - sitemap and internal-link seeding;
 - non-HTML responses are recorded but not parsed for page metadata;
-- authenticated pages are not supported;
+- HTTP authentication headers are supported; interactive login flows and browser session authentication are not supported;
 - results are normalized and ordered for reproducible output.
 
 ## Development

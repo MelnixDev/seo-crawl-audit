@@ -71,3 +71,20 @@ test("Playwright renderer reports invalid setup without falling back", async () 
   await assert.rejects(createPlaywrightRenderer({ concurrency: 0, playwright: {} }), /positive integer/);
   await assert.rejects(createPlaywrightRenderer({ playwright: { chromium: { launch: async () => { throw new Error("missing binary"); } } } }), /playwright install chromium/);
 });
+
+test("resolves optional Playwright from the consumer project outside the CLI installation", async (context) => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { promisify } = await import("node:util");
+  const { execFile } = await import("node:child_process");
+  const project = await mkdtemp(join(tmpdir(), "seo-consumer-playwright-"));
+  context.after(() => rm(project, { recursive: true, force: true }));
+  await mkdir(join(project, "node_modules/playwright"), { recursive: true });
+  await writeFile(join(project, "node_modules/playwright/package.json"), JSON.stringify({ name: "playwright", type: "module", exports: "./index.js" }));
+  await writeFile(join(project, "node_modules/playwright/index.js"), 'export const chromium = { launch: async () => ({ close: async () => {} }) };');
+  const moduleUrl = new URL("../packages/renderer-playwright/dist/index.js", import.meta.url).href;
+  const script = `const { createPlaywrightRenderer } = await import(${JSON.stringify(moduleUrl)}); const renderer = await createPlaywrightRenderer(); await renderer.close(); console.log("consumer peer resolved");`;
+  const result = await promisify(execFile)(process.execPath, ["--input-type=module", "-e", script], { cwd: project });
+  assert.match(result.stdout, /consumer peer resolved/);
+});

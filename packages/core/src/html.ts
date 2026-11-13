@@ -26,6 +26,7 @@ export interface ExtractedSeoData {
   title: string | null;
   description: string | null;
   canonical: string | null;
+  baseHref: string | null;
   robots: string | null;
   lang: string | null;
   h1Count: number;
@@ -45,6 +46,7 @@ export function extractSeoData(html: string): ExtractedSeoData {
     title: null,
     description: null,
     canonical: null,
+    baseHref: null,
     robots: null,
     lang: null,
     h1Count: 0,
@@ -76,7 +78,7 @@ export function extractSeoData(html: string): ExtractedSeoData {
       const property = getAttribute(node, "property")?.toLowerCase();
       const content = cleanText(getAttribute(node, "content"));
       if (name === "description" && result.description === null) result.description = content;
-      else if (name === "robots" && result.robots === null) result.robots = content;
+      else if (name === "robots" && content) result.robots = result.robots ? `${result.robots}, ${content}` : content;
       else if (property === "og:title" && result.openGraph.title === null) result.openGraph.title = content;
       else if (property === "og:description" && result.openGraph.description === null) result.openGraph.description = content;
       else if (property === "og:image" && result.openGraph.image === null) result.openGraph.image = content;
@@ -84,6 +86,11 @@ export function extractSeoData(html: string): ExtractedSeoData {
       else if (name === "twitter:title" && result.twitter.title === null) result.twitter.title = content;
       else if (name === "twitter:description" && result.twitter.description === null) result.twitter.description = content;
       else if (name === "twitter:image" && result.twitter.image === null) result.twitter.image = content;
+    }
+
+    if (tagName === "base" && result.baseHref === null) {
+      // Only the first base element with an href defines the document base.
+      result.baseHref = getAttribute(node, "href");
     }
 
     if (tagName === "link") {

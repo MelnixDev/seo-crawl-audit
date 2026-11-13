@@ -1,4 +1,7 @@
 import { Buffer } from "node:buffer";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { PageRenderer, PageRenderRequest, PageRenderResult } from "@seo-crawl-audit/core";
 
 interface PwRequest {
@@ -57,9 +60,22 @@ async function loadPlaywright(value?: unknown): Promise<PwModule> {
   if (value) return value as PwModule;
   try {
     const moduleName = "playwright";
-    return await import(moduleName) as unknown as PwModule;
+    // npx/global CLI installations are outside the consumer's node_modules.
+    // Prefer the optional peer installed in the project running the scan.
+    const projectRequire = createRequire(resolve(process.cwd(), "package.json"));
+    let moduleUrl: string;
+    try { moduleUrl = pathToFileURL(projectRequire.resolve(moduleName)).href; }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "MODULE_NOT_FOUND") throw error;
+      return await import(moduleName) as unknown as PwModule;
+    }
+    return await import(moduleUrl) as unknown as PwModule;
   } catch (error) {
-    throw new Error("Playwright is not installed. Run: npm install --save-dev playwright && npx playwright install chromium", { cause: error });
+    const code = (error as NodeJS.ErrnoException).code;
+    const message = code === "MODULE_NOT_FOUND" || code === "ERR_MODULE_NOT_FOUND"
+      ? "Playwright is not installed. Run: npm install --save-dev playwright && npx playwright install chromium"
+      : `Playwright could not be loaded: ${error instanceof Error ? error.message : String(error)}`;
+    throw new Error(message, { cause: error });
   }
 }
 

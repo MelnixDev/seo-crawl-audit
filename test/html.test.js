@@ -30,3 +30,19 @@ test("extracts SEO metadata and links from valid HTML", () => {
   assert.equal(result.openGraph.image, "/cover.jpg");
   assert.deepEqual(result.links, ["/about"]);
 });
+
+test("combines all generic robots directives and preserves the first base href", () => {
+  const result = extractSeoData(`<head>
+    <base target="_blank"><base href="/nested/"><base href="/ignored/">
+    <meta name="robots" content="index,follow">
+    <meta name="ROBOTS" content="noindex,nofollow">
+  </head>`);
+  assert.equal(result.baseHref, "/nested/");
+  assert.equal(result.robots, "index,follow, noindex,nofollow");
+  assert.equal(extractSeoData('<base href=""><base href="/ignored/">').baseHref, "");
+});
+
+test("retains restrictive robots in either order without applying bot-scoped metadata universally", () => {
+  assert.equal(extractSeoData('<meta name="robots" content="noindex"><meta name="robots" content="index">').robots, "noindex, index");
+  assert.equal(extractSeoData('<meta name="googlebot" content="noindex"><meta name="robots" content="index">').robots, "index");
+});

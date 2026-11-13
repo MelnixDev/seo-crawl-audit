@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { crawlSite } from "../packages/core/dist/crawler.js";
+import { auditBaseline } from "../packages/core/dist/audit.js";
 
 test("crawls same-origin HTML pages and respects robots.txt", async (context) => {
   let requestSlots = 0;
@@ -217,4 +218,46 @@ test("link discovery uses bounded concurrency and deterministic frontier orderin
     concurrent.pages.map((page) => page.url),
     sequential.pages.map((page) => page.url),
   );
+});
+
+test("resolves links, canonical and hreflang against the document base in HTTP and rendered pages", async (context) => {
+  const html = (base = '<base href="/nested/">') => `<html><head>${base}
+    <link rel="canonical" href="target"><link rel="alternate" hreflang="en" href="translation">
+    <meta name="robots" content="index,follow"><meta name="robots" content="noindex,nofollow">
+    </head><body><a href="target">Target</a></body></html>`;
+  const server = createServer((request, response) => {
+    if (request.url === "/redirect") { response.writeHead(302, { location: "/directory/" }); response.end(); return; }
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end(html(request.url === "/directory/" ? "" : undefined));
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  context.after(() => server.close());
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const options = { maxPages: 1, requestDelay: 0, respectRobots: false, sitemap: null };
+  const cases = [
+    ["/base", undefined, "/nested/"],
+    ["/redirect", undefined, "/directory/"],
+    ["/relative", { id: "test", render: async () => ({ finalUrl: `${origin}/directory/`, status: 200, headers: { "content-type": "text/html" }, html: html('<base href="../nested/">'), responseBytes: 100, redirectChain: [] }) }, "/nested/"],
+    ["/empty", { id: "test", render: async () => ({ finalUrl: `${origin}/directory/`, status: 200, headers: { "content-type": "text/html" }, html: html('<base href=""><base href="/ignored/">'), responseBytes: 100, redirectChain: [] }) }, "/directory/"],
+    ["/invalid", { id: "test", render: async () => ({ finalUrl: `${origin}/directory/`, status: 200, headers: { "content-type": "text/html" }, html: html('<base href="http://["><base href="/ignored/">'), responseBytes: 100, redirectChain: [] }) }, "/directory/"],
+    ["/unsafe", { id: "test", render: async () => ({ finalUrl: `${origin}/directory/`, status: 200, headers: { "content-type": "text/html" }, html: html('<base href="javascript:void(0)">'), responseBytes: 100, redirectChain: [] }) }, "/directory/"],
+    ["/rendered", { id: "test", render: async () => ({ finalUrl: `${origin}/rendered/`, status: 200, headers: { "content-type": "text/html" }, html: html(), responseBytes: 100, redirectChain: [] }) }, "/nested/"],
+  ];
+  for (const [path, renderer, directory] of cases) {
+    const result = await crawlSite(`${origin}${path}`, { ...options, ...(renderer ? { renderer } : {}) });
+    const page = result.pages[0];
+    assert.equal(page.error, null);
+    assert.equal(page.canonical, `${origin}${directory}target`);
+    assert.deepEqual(page.links, [`${origin}${directory}target`]);
+    assert.deepEqual(page.hreflang, [{ lang: "en", url: `${origin}${directory}translation` }]);
+    assert.match(page.robots, /noindex/);
+    assert.ok(auditBaseline({ pages: [page] }, { enabledRules: ["noindex"] }).some((issue) => issue.rule === "noindex"));
+  }
+  const crossOrigin = await crawlSite(`${origin}/cross-origin`, { ...options, maxPages: 3, renderer: { id: "test", render: async () => ({ finalUrl: `${origin}/cross-origin`, status: 200, headers: { "content-type": "text/html" }, html: html('<base href="https://external.example/nested/">'), responseBytes: 100, redirectChain: [] }) } });
+  assert.equal(crossOrigin.pages.length, 1);
+  assert.equal(crossOrigin.pages[0].canonical, "https://external.example/nested/target");
+  assert.deepEqual(crossOrigin.pages[0].internalLinks, []);
+  assert.deepEqual(crossOrigin.pages[0].externalLinks, ["https://external.example/nested/target"]);
+
 });
