@@ -56,6 +56,12 @@ export interface PlaywrightRendererOptions {
   playwright?: unknown;
 }
 
+function playwrightExports(module: { default?: unknown }): PwModule {
+  // require.resolve can select Playwright's CJS entry, whose import namespace
+  // exposes the API under default rather than synthetic named exports.
+  return (module.default ?? module) as PwModule;
+}
+
 async function loadPlaywright(value?: unknown): Promise<PwModule> {
   if (value) return value as PwModule;
   try {
@@ -67,9 +73,9 @@ async function loadPlaywright(value?: unknown): Promise<PwModule> {
     try { moduleUrl = pathToFileURL(projectRequire.resolve(moduleName)).href; }
     catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "MODULE_NOT_FOUND") throw error;
-      return await import(moduleName) as unknown as PwModule;
+      return playwrightExports(await import(moduleName));
     }
-    return await import(moduleUrl) as unknown as PwModule;
+    return playwrightExports(await import(moduleUrl));
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     const message = code === "MODULE_NOT_FOUND" || code === "ERR_MODULE_NOT_FOUND"
