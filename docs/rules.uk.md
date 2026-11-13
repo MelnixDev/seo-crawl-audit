@@ -127,6 +127,14 @@ sitemap його кінцевий канонічний URL.
 Кілька просканованих сторінок мають однаковий title. Відповідальний: `content`.
 Розрізняйте сторінки відповідно до їхнього призначення.
 
+### pagination-title-duplicate
+
+Критична помилка (`error`): успішні індексовані сторінки з різними кінцевими/self-canonical URL однієї query-пагінації (`page`, `paged`, `p`) мають однаковий нормалізований title. Власник: `developer`. Додайте зрозумілий номер сторінки, зберігаючи коректні canonical та robots. Нумерація параметра не вгадується. Доказ містить до 20 URL і загальну кількість. Це критичний ризик для розрізнення сторінок, а не доказ причини виключення з Google.
+
+### near-duplicate-title
+
+Попередження: title з 6–40 токенів відрізняються лише пунктуацією або одним токеном із перекриттям від 90%. Власник: `content`. Детермінований пошук обмежений 20 кандидатами на сигнатуру; це не повний семантичний аналіз. Точні дублікати покриває `duplicate-title`; коректна пагінація не отримує fuzzy-попереджень. Обидва нові правила пропускають noindex, заблоковані, невдалі, не-200 та non-self-canonical сторінки. Схожість сама по собі не доводить дублювання контенту або виключення з індексу.
+
 ### title-length
 
 Title коротший за 10 або довший за 60 символів. Відповідальний: `content`.
@@ -255,3 +263,7 @@ Canonical, який раніше був присутній, тепер відс�
 
 Кінцева адреса перенаправлення змінилася. Нова адреса на іншому origin підвищує
 критичність проблеми до `error`.
+
+## Pagination coverage / Охоплення пагінації
+
+Run `seo-audit scan https://example.com/collection --no-sitemap --include-query --max-pages 100` for targeted pager coverage. A sitemap sample may miss query pages; inspect actual checked URLs before calling pagination clean. A Drupal `?page=1` case reused the first title despite different content and a self canonical. Exact duplicate titles across successful indexable/self-canonical pages are now critical errors; intentional variants remain review warnings. Inspect Search Console for the actual exclusion reason and chosen canonical.

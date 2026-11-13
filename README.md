@@ -689,3 +689,7 @@ Maintainers publish the CLI through token-free
 ## License
 
 MIT
+
+### Pagination and duplicate titles (0.16.0)
+
+Exact duplicate titles across successful indexable/self-canonical pages are critical errors. Query-pagination duplicates receive a dedicated `pagination-title-duplicate` finding; `near-duplicate-title` is a bounded review warning. These findings identify risks, not confirmed causes of Google exclusion. Use `seo-audit scan https://example.com/collection --no-sitemap --include-query --max-pages 100` and inspect checked URLs to include pagination absent from sitemaps.

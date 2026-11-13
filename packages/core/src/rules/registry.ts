@@ -21,6 +21,8 @@ const definitions: RuleDefinition[] = [
   { id: "redirect-in-sitemap", severity: "error", owner: "seo", scope: "page", remediation: "Replace the sitemap URL with its final canonical destination." },
   { id: "missing-title", severity: "error", owner: "content", scope: "page", remediation: "Add a unique, descriptive HTML title." },
   { id: "duplicate-title", severity: "warning", owner: "content", scope: "page", remediation: "Write a title that uniquely describes this page." },
+  { id: "pagination-title-duplicate", severity: "error", owner: "developer", scope: "page", remediation: "Add a human-readable page number to pagination titles, preserve correct canonicals, and inspect indexing evidence in Search Console." },
+  { id: "near-duplicate-title", severity: "warning", owner: "content", scope: "page", remediation: "Review similar titles and differentiate page intent; similarity alone does not prove indexing exclusion." },
   { id: "title-length", severity: "warning", owner: "content", scope: "page", remediation: "Keep the title concise and descriptive, usually 10–60 characters." },
   { id: "missing-description", severity: "warning", owner: "content", scope: "page", remediation: "Add a useful meta description." },
   { id: "duplicate-description", severity: "warning", owner: "content", scope: "page", remediation: "Write a unique meta description for this page." },

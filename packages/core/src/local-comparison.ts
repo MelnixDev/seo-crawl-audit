@@ -50,7 +50,7 @@ function lifecycleCounts(): Counts { return { new: 0, ongoing: 0, resolved: 0, u
 const STATUS_RULES = new Set(["page-unreachable", "http-error", "robots-blocked", "redirect-loop", "long-redirect-chain", "status-regression", "page-missing", "redirect-changed"]);
 const HTML_RULES = new Set([
   "noindex", "x-robots-noindex", "missing-canonical", "invalid-canonical", "cross-domain-canonical", "canonical-target-error",
-  "noindex-in-sitemap", "redirect-in-sitemap", "missing-title", "duplicate-title", "title-length", "missing-description",
+  "noindex-in-sitemap", "redirect-in-sitemap", "missing-title", "duplicate-title", "pagination-title-duplicate", "near-duplicate-title", "title-length", "missing-description",
   "duplicate-description", "description-length", "missing-h1", "broken-internal-link", "orphan-sitemap-page",
   "crawlable-not-in-sitemap", "invalid-hreflang", "malformed-json-ld", "http-on-https-site", "invalid-language",
   "duplicate-content", "multiple-h1", "missing-open-graph", "missing-twitter-metadata", "image-missing-alt", "low-word-count",

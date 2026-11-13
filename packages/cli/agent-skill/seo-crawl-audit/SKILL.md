@@ -28,3 +28,7 @@ Use this skill when a user asks to audit a website, check SEO regressions, inspe
 If MCP is unavailable, use `seo-audit scan <url> --json`, `seo-audit check --json`, or `seo-audit report <snapshot>`. Keep generated snapshots, checkpoints, and reports inside the project workspace.
 
 Rule documentation: https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/rules.md
+
+## Pagination and title coverage
+
+For collection audits, run a targeted crawl from a collection with `--no-sitemap --include-query --max-pages 100`. Verify that first and later pages actually appear in the saved snapshot; a sitemap-only sample can miss pagination. Review critical `pagination-title-duplicate` and indexable `duplicate-title` separately from warning-level `near-duplicate-title`. Do not infer Google exclusion from titles alone; inspect Search Console. Preserve intentional canonical/robots policy.
