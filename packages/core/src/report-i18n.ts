@@ -30,6 +30,8 @@ const UK_RULE_LABELS: Readonly<Record<string, string>> = {
   "redirect-in-sitemap": "Перенаправлення у sitemap",
   "missing-title": "Відсутній title",
   "duplicate-title": "Дубльований title",
+  "pagination-title-duplicate": "Критичні дублікати title пагінації",
+  "near-duplicate-title": "Дуже схожі title",
   "title-length": "Довжина title",
   "missing-description": "Відсутній description",
   "duplicate-description": "Дубльований description",
@@ -79,6 +81,8 @@ const UK_REMEDIATIONS: Readonly<Record<string, string>> = {
   "redirect-in-sitemap": "Замініть URL у sitemap на його кінцеву canonical-адресу.",
   "missing-title": "Додайте унікальний описовий HTML title.",
   "duplicate-title": "Напишіть title, який унікально описує цю сторінку.",
+  "pagination-title-duplicate": "Додайте номер сторінки до title; збережіть коректні canonical і перевірте причину виключення в Search Console.",
+  "near-duplicate-title": "Перегляньте схожі title та наміри сторінок. Схожість не доводить виключення з індексу.",
   "title-length": "Зробіть title стислим і змістовним, зазвичай 10–60 символів.",
   "missing-description": "Додайте корисний meta description.",
   "duplicate-description": "Напишіть унікальний meta description для цієї сторінки.",
@@ -133,6 +137,8 @@ function ukrainianMessage(issue: Partial<Issue>, ruleId: string): string {
     case "noindex-in-sitemap": return "URL із sitemap позначений noindex";
     case "redirect-in-sitemap": return "URL із sitemap перенаправляється";
     case "missing-title": return "Сторінка не має title";
+    case "pagination-title-duplicate": return "Критичне дублювання title сторінок пагінації";
+    case "near-duplicate-title": return "Title дуже схожий на іншу перевірену сторінку";
     case "duplicate-title": return "Кілька сторінок мають однаковий title";
     case "title-length": return `Довжина title — ${String(value ?? 0)} символів`;
     case "missing-description": return "Сторінка не має meta description";

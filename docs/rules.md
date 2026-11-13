@@ -121,6 +121,14 @@ descriptive title.
 Multiple crawled pages use the same title. Owner: `content`. Differentiate each
 page by its intent.
 
+### pagination-title-duplicate
+
+Critical (`error`): successful indexable pages with distinct final/self-canonical URLs in one query-pagination family (`page`, `paged`, `p`) share a normalized title. Owner: `developer`. Add a readable page number while preserving correct canonicals and robots. The tool does not guess zero- versus one-based offsets. Evidence includes up to 20 URLs and an affected count. This is a critical risk to distinguishing pages, not proof of Google exclusion.
+
+### near-duplicate-title
+
+Warning: titles of 6–40 tokens differ only in punctuation or one token with at least 90% overlap. Owner: `content`. Deterministic candidate search is bounded to 20 candidates per signature, not exhaustive semantic comparison. Exact duplicates use `duplicate-title`; correctly differentiated same-family pagination is excluded from fuzzy review. Both new rules exclude noindex, blocked, failed, non-200 and non-self-canonical pages. Similarity alone does not prove duplicate content or indexing exclusion.
+
 ### title-length
 
 The title is shorter than 10 or longer than 60 characters. Owner: `content`.
@@ -244,3 +252,7 @@ A page that had an H1 no longer has one.
 
 The final redirect destination changed. A new cross-origin destination is
 promoted to an error.
+
+## Pagination coverage / Охоплення пагінації
+
+Run `seo-audit scan https://example.com/collection --no-sitemap --include-query --max-pages 100` for targeted pager coverage. A sitemap sample may miss query pages; inspect actual checked URLs before calling pagination clean. A Drupal `?page=1` case reused the first title despite different content and a self canonical. Exact duplicate titles across successful indexable/self-canonical pages are now critical errors; intentional variants remain review warnings. Inspect Search Console for the actual exclusion reason and chosen canonical.

@@ -1,4 +1,5 @@
 import type { Issue, PageSnapshot, SnapshotV2 } from "../types.js";
+import { evaluateTitleSimilarity, indexableTitlePage } from "./title-similarity.js";
 import { createIssue } from "./registry.js";
 
 function hasDirective(value: string | null | undefined, directive: string): boolean {
@@ -28,6 +29,7 @@ export function evaluateCurrentRules(snapshot: SnapshotV2): Issue[] {
   const pageByUrl = new Map(snapshot.pages.map((page) => [page.url, page]));
   const sitemapUrls = new Set(snapshot.sitemap?.urls ?? []);
   const titles = duplicateMap(snapshot.pages, (page) => page.title);
+  const indexableTitles = duplicateMap(snapshot.pages.filter(indexableTitlePage), (page) => page.title);
   const descriptions = duplicateMap(snapshot.pages, (page) => page.description);
   const content = duplicateMap(snapshot.pages, (page) => page.contentHash);
 
@@ -54,7 +56,12 @@ export function evaluateCurrentRules(snapshot: SnapshotV2): Issue[] {
     if (sitemapUrls.has(page.url) && page.redirectChain.length > 0) add(createIssue("redirect-in-sitemap", page.url, "Sitemap URL redirects", { actual: page.finalUrl, redirectChain: page.redirectChain }));
     if (!page.title) add(createIssue("missing-title", page.url, "Page does not have a title", { actual: null }));
     else {
-      if (titles.get(page.title.trim().toLowerCase())) add(createIssue("duplicate-title", page.url, "Title is shared by multiple pages", { actual: page.title, urls: titles.get(page.title.trim().toLowerCase()) }, page.title.trim().toLowerCase()));
+      if (titles.get(page.title.trim().toLowerCase())) {
+        const critical = indexableTitlePage(page) && Boolean(indexableTitles.get(page.title.trim().toLowerCase()));
+        const issue = createIssue("duplicate-title", page.url, critical ? "Critical title duplication across indexable URLs" : "Title is shared by multiple pages", { actual: page.title, urls: titles.get(page.title.trim().toLowerCase()), indexingRisk: critical ? "critical; verify Google's chosen canonical and indexing reason in Search Console" : "review intentional variants" }, page.title.trim().toLowerCase());
+        if (critical) issue.severity = "error";
+        add(issue);
+      }
       if (page.title.length < 10 || page.title.length > 60) add(createIssue("title-length", page.url, `Title length is ${page.title.length} characters`, { actual: page.title.length, value: page.title }));
     }
     if (!page.description) add(createIssue("missing-description", page.url, "Page does not have a meta description", { actual: null }));
@@ -82,5 +89,6 @@ export function evaluateCurrentRules(snapshot: SnapshotV2): Issue[] {
     if (page.wordCount < 200) add(createIssue("low-word-count", page.url, `Page contains approximately ${page.wordCount} visible words`, { actual: page.wordCount }));
   }
 
+  issues.push(...evaluateTitleSimilarity(snapshot.pages));
   return issues;
 }

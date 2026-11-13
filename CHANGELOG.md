@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.16.0 — Released
+
+- added critical pagination-title duplication findings with concrete URL evidence;
+- escalated exact duplicate titles across successful indexable/self-canonical pages to errors; intentional variants remain review warnings;
+- added bounded near-duplicate title review, excluding correctly differentiated pagination;
+- added EN/UK remediation and a Drupal page=1 regression case; documented targeted query-page coverage and Search Console interpretation;
+- updated compatible production dependencies to clear current npm advisories;
+- bumped rule set to 1.2.0 because default duplicate-title severity now depends on indexability.
+
 ## 0.15.1 — Released
 
 - fixed Local scan history lines being filled as polygons and clarified labels
