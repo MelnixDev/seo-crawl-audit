@@ -140,7 +140,7 @@ async function fetchPage(
 
     const { text: body, bytes } = await readResponseBody(response, options.maxResponseBytes);
     const seo = extractSeoData(body);
-    const baseUrl = finalUrl ?? requestUrl;
+    const baseUrl = documentBase(seo.baseHref, response.url || requestUrl);
     const canonical = seo.canonical
       ? normalizeUrl(seo.canonical, baseUrl, { includeQuery: true })
       : null;
@@ -156,6 +156,7 @@ async function fetchPage(
     Object.assign(page, {
       ...seo,
       visibleText: undefined,
+      baseHref: undefined,
       canonical,
       canonicalRaw: seo.canonical,
       links,
@@ -176,6 +177,17 @@ async function fetchPage(
   }
 }
 
+function documentBase(baseHref: string | null, responseUrl: string): string {
+  if (baseHref === null) return responseUrl;
+  try {
+    const base = new URL(baseHref, responseUrl);
+    // Browsers ignore data: and javascript: base URLs.
+    return base.protocol === "data:" || base.protocol === "javascript:" ? responseUrl : base.href;
+  } catch {
+    return responseUrl;
+  }
+}
+
 function populateRenderedPage(page: PageSnapshot, rendered: PageRenderResult, requestUrl: string, siteOrigin: string, includeQuery: boolean): PageSnapshot {
   const contentType = rendered.headers["content-type"] ?? "text/html";
   const finalUrl = normalizeUrl(rendered.finalUrl, undefined, { includeQuery });
@@ -186,12 +198,13 @@ function populateRenderedPage(page: PageSnapshot, rendered: PageRenderResult, re
   page.redirectChain = rendered.redirectChain;
   if (!contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) return page;
   const seo = extractSeoData(rendered.html);
-  const baseUrl = finalUrl ?? requestUrl;
+  const baseUrl = documentBase(seo.baseHref, rendered.finalUrl || requestUrl);
   const canonical = seo.canonical ? normalizeUrl(seo.canonical, baseUrl, { includeQuery: true }) : null;
   const links = [...new Set(seo.links.map((link) => normalizeUrl(link, baseUrl, { includeQuery })).filter((link): link is string => Boolean(link)))].sort();
   Object.assign(page, {
     ...seo,
     visibleText: undefined,
+    baseHref: undefined,
     canonical,
     canonicalRaw: seo.canonical,
     links,

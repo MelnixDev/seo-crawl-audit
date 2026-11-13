@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.1 — Released
+
+- honor the first HTML base href when resolving canonical, hreflang and crawl links, preserving the response directory before URL normalization;
+- combine repeated generic meta robots directives so later noindex restrictions are retained;
+- resolve optional Playwright from the consumer project for npx/global CLI installs, while retaining package-local fallback;
+- clarify supported HTTP-header authentication versus unsupported interactive login flows.
+
 ## 0.16.0 — Released
 
 - added critical pagination-title duplication findings with concrete URL evidence;
