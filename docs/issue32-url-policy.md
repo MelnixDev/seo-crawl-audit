@@ -1,6 +1,6 @@
 # Issue 32: URL path preservation — implementation plan and acceptance
 
-Status: prepared from main after v0.17.2; not released. Issue: https://github.com/MelnixDev/seo-crawl-audit/issues/32
+Status: implementation included in the 0.17.3 release candidate. Issue: https://github.com/MelnixDev/seo-crawl-audit/issues/32
 
 1. Preserve meaningful path slashes by default. Add `trailingSlash: preserve | strip` to validated config, CLI and MCP; Action uses the same config file. Preserve sitemap index/file URLs independently of page traversal policy.
 2. Keep evidence separate from traversal: `page.url` is the actual requested URL after the explicit traversal policy; final URLs retain the observed response path/query. Canonical and hreflang resolve against the actual document base and retain their paths/query even with strip traversal. Redirect hops remain unchanged. No new canonical-target network requests are introduced.
@@ -10,6 +10,6 @@ Status: prepared from main after v0.17.2; not released. Issue: https://github.co
 
 Live preflight on Balachky was read-only, not a site audit: sampled clean film/category URLs are slashless 200 with slashless canonical; slash variants redirect to them. This is the opposite policy to the original reproduction, so its mass false-positive scenario is not established for Balachky. The generic auditor bug and pass-gen.app evidence remain valid.
 
-Release boundary: this work prepares a reviewable fix and PR. It does not change Balachky production or publish a new npm version. The requested new Balachky audit remains paused until the URL correctness question is resolved.
+Release boundary: 0.17.3 synchronizes the CLI, native client packages and versioned Action. It does not change Balachky production or run the pending new site audit.
 
 Packaging note: CLI esbuild output uses UTF-8 rather than ASCII escaping of localized strings. This preserves runtime text and keeps the added URL logic within the existing 500 KiB CLI budget; no size thresholds are raised.

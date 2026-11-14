@@ -25,8 +25,8 @@ The screenshots show the actual 0.17.2 interface with controlled local fixtures 
 | **Claude Code** | Same ZIP, loaded from outside the audited project. Uses Claude Code’s project directory. [Setup](docs/native-plugins.md#claude-code) |
 | **Claude Desktop** | MCPB extension with a required existing-directory picker. [Setup](docs/native-plugins.md#claude-desktop-chat) |
 
-Native packages and the crab identity are included in **0.17.2**. See the
-[release notes](docs/releases/0.17.2.md) for exact verification and limitations.
+Current maintenance release: **0.17.3**, including the trailing-slash audit fix. See the
+[release notes](docs/releases/0.17.3.md) for exact verification and limitations.
 No public directory listing or client endorsement is implied. The CLI remains
 available through npm; its [quick start](#requirements-and-installation) is below.
 
@@ -622,7 +622,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: MelnixDev/seo-crawl-audit@v0.17.2
+      - uses: MelnixDev/seo-crawl-audit@v0.17.3
         id: seo
         with:
           url: https://preview.example.com/
