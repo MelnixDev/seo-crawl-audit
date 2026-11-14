@@ -18,6 +18,7 @@ type ConfigInput = Partial<ScanConfigV1> & { requestDelay?: number };
 
 export interface BaselineInput {
   schemaVersion?: unknown;
+  urlObservationVersion?: 1 | undefined;
   engineVersion?: string;
   ruleSetVersion?: string;
   generatedAt?: string;
@@ -119,6 +120,7 @@ function defaultConfig(input: BaselineInput): ScanConfigV1 {
     timeout: options.timeout ?? 10_000,
     respectRobots: options.respectRobots ?? source.respectRobots ?? true,
     includeQuery: options.includeQuery ?? source.includeQuery ?? false,
+    trailingSlash: options.trailingSlash ?? source.trailingSlash ?? (input.schemaVersion === 1 || input.schemaVersion === 2 ? "strip" : "preserve"),
     maxRedirects: options.maxRedirects ?? 10,
     maxResponseBytes: options.maxResponseBytes ?? 5 * 1024 * 1024,
     enabledRules: options.enabledRules ?? null,
@@ -182,6 +184,7 @@ export function createBaseline(scanInput: unknown): SnapshotV2 {
 
   return {
     schemaVersion: 2,
+    urlObservationVersion: scan.schemaVersion === 1 || scan.schemaVersion === 2 ? scan.urlObservationVersion : 1,
     engineVersion: ENGINE_VERSION,
     ruleSetVersion: RULE_SET_VERSION,
     generatedAt: scan.generatedAt ?? new Date().toISOString(),
@@ -205,6 +208,7 @@ export function createBaseline(scanInput: unknown): SnapshotV2 {
       maxPages: config.maxPages,
       requestDelay: config.delay,
       includeQuery: config.includeQuery,
+      trailingSlash: config.trailingSlash,
       respectRobots: config.respectRobots,
       sitemap: typeof config.sitemap === "string" && !["auto", "none"].includes(config.sitemap) ? config.sitemap : null,
     },
@@ -218,19 +222,20 @@ export function migrateSnapshot(input: unknown): SnapshotV2 {
     throw new Error("snapshot pages must be an array");
   }
   if (value.schemaVersion === 2) {
-    return createBaseline({
+    const migrated = createBaseline({
       ...value,
       startUrl: value.siteUrl,
-      options: value.config,
+      options: { ...value.config, trailingSlash: value.config?.trailingSlash ?? "strip" },
       pages: value.pages,
       generatedAt: value.generatedAt,
       partial: value.partial,
       statistics: value.statistics,
       linkGraph: value.linkGraph,
     });
+    return { ...migrated, urlObservationVersion: value.urlObservationVersion, engineVersion: value.engineVersion ?? migrated.engineVersion, ruleSetVersion: value.ruleSetVersion ?? migrated.ruleSetVersion };
   }
   if (value.schemaVersion === 1) {
-    return createBaseline(value);
+    return { ...createBaseline({ ...value, options: { ...value.options, trailingSlash: value.options?.trailingSlash ?? value.source?.trailingSlash ?? "strip" } }), urlObservationVersion: undefined };
   }
   throw new Error(`unsupported snapshot schema version: ${String(value.schemaVersion)}`);
 }

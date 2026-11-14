@@ -62,9 +62,11 @@ test("locks SnapshotV2 normalization, configuration hash, and issue fingerprints
   const snapshot = createBaseline(legacySnapshot);
   assert.equal(snapshot.schemaVersion, 2);
   assert.equal(snapshot.siteUrl, "https://example.com/");
+  assert.equal(snapshot.config.trailingSlash, "strip");
+  assert.equal(snapshot.urlObservationVersion, undefined);
   assert.equal(
     snapshot.configurationHash,
-    "66ae7d2616f5e03c51981412325fb46717d7727d848fd95763992cb04d85794f",
+    "f445c768da47a3a9d83f801cd8d95b1b520e315f9317eb52233ea2920334adf6",
   );
   assert.deepEqual(
     audit(snapshot).map(({ ruleId, fingerprint }) => [ruleId, fingerprint]),

@@ -1,3 +1,4 @@
+import { sameSnapshotUrlPolicy } from "./urls.js";
 import { audit } from "./audit.js";
 import type { BaselineInput } from "./baseline.js";
 import { applyRulePolicy, sortIssues } from "./rules/policy.js";
@@ -27,7 +28,8 @@ export function diff(
 ): DiffResult {
   const previous = normalizeSnapshotInput(previousInput);
   const current = normalizeSnapshotInput(currentInput);
-  const complete = !current.partial && !current.truncated;
+  const comparableUrlPolicy = sameSnapshotUrlPolicy(previous, current);
+  const complete = !current.partial && !current.truncated && comparableUrlPolicy;
   const checkedUrls = new Set(current.pages.map((page) => page.url));
   const previousIssues = new Map(audit(previous, ruleSet).map((candidate) => [candidate.fingerprint, candidate]));
   const currentIssues = new Map(audit(current, ruleSet).map((candidate) => [candidate.fingerprint, candidate]));
@@ -44,7 +46,7 @@ export function diff(
   }
   for (const [fingerprint, candidate] of previousIssues) {
     const evaluated = candidate.scope === "page" ? checkedUrls.has(candidate.url) : complete;
-    if (evaluated && !currentIssues.has(fingerprint)) resolvedIssues.push(lifecycle(candidate, "resolved"));
+    if (comparableUrlPolicy && evaluated && !currentIssues.has(fingerprint)) resolvedIssues.push(lifecycle(candidate, "resolved"));
   }
   const known = new Set(newIssues.map((candidate) => candidate.fingerprint));
   for (const regression of compareBaselines(previous, current, ruleSet)) {

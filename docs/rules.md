@@ -40,6 +40,10 @@ informational in a standalone audit because it can be intentional.
 The HTTP `X-Robots-Tag` contains `noindex`. Owner: `developer`. Confirm that the
 header is deliberate; remove it when the page should be indexed.
 
+### canonical-target-redirect
+
+A canonical target that was actually requested in the snapshot redirects to a different observed final URL. Owner: `seo`; severity: `warning`. Evidence includes the requested target, final URL and redirect hops/Location. Prefer the intended final canonical, but do not treat a 301 alone as proof of indexing exclusion. Unchecked targets are not fetched or guessed by this rule, and multiple aliases of one observed page produce a single finding. Correct canonicals pointing at an observed final URL are not flagged just because that resource was also reached via a redirecting alias.
+
 ### redirect-loop
 
 The redirect chain returns to an already visited URL. Owner: `developer`. Break

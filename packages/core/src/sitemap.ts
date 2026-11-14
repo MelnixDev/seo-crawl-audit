@@ -11,6 +11,7 @@ const DEFAULT_SITEMAP_LIMIT = 50_000;
 interface SitemapOptions {
   siteOrigin: string;
   includeQuery?: boolean | undefined;
+  trailingSlash?: "preserve" | "strip" | undefined;
   maxUrls?: number | undefined;
   timeout: number;
   maxRedirects?: number | undefined;
@@ -157,7 +158,7 @@ export async function loadSitemapUrls(inputUrl: string, options: SitemapOptions)
       continue;
     }
     for (const location of parsed.locations) {
-      const pageUrl = normalizeUrl(location, currentUrl, { includeQuery: options.includeQuery ?? false });
+      const pageUrl = normalizeUrl(location, currentUrl, { includeQuery: options.includeQuery ?? false, trailingSlash: options.trailingSlash ?? "preserve" });
       if (!pageUrl || pageSet.has(pageUrl) || !isSameOrigin(pageUrl, options.siteOrigin) || !isCrawlableUrl(pageUrl)) continue;
       pageSet.add(pageUrl);
       pageUrls.push(pageUrl);

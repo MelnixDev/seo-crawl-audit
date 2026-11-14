@@ -25,8 +25,8 @@ The screenshots show the actual 0.17.2 interface with controlled local fixtures 
 | **Claude Code** | Same ZIP, loaded from outside the audited project. Uses Claude Code’s project directory. [Setup](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/native-plugins.md#claude-code) |
 | **Claude Desktop** | MCPB extension with a required existing-directory picker. [Setup](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/native-plugins.md#claude-desktop-chat) |
 
-Native packages and the crab identity are included in **0.17.2**. See the
-[release notes](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/releases/0.17.2.md) for exact verification and limitations.
+Current maintenance release: **0.17.3**, including the trailing-slash audit fix. See the
+[release notes](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/releases/0.17.3.md) for exact verification and limitations.
 No public directory listing or client endorsement is implied. The CLI remains
 available through npm; its [quick start](#requirements-and-installation) is below.
 
@@ -435,6 +435,7 @@ seo-audit history \
 --sitemap <url>         Use a specific sitemap or sitemap index
 --no-sitemap            Skip sitemap discovery and crawl internal links
 --include-query         Treat query-string URLs as separate pages
+--trailing-slash <mode> Preserve URL paths (default: preserve), or opt into strip
 --ignore-robots         Ignore robots.txt disallow rules
 --strict                Fail check on warnings as well as errors
 --headers-env <name>    Read target headers from a JSON environment variable
@@ -478,6 +479,7 @@ safe defaults.
   "timeout": 10000,
   "respectRobots": true,
   "includeQuery": false,
+  "trailingSlash": "preserve",
   "enabledRules": null,
   "severityOverrides": {
     "low-word-count": "info"
@@ -612,7 +614,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: MelnixDev/seo-crawl-audit@v0.17.2
+      - uses: MelnixDev/seo-crawl-audit@v0.17.3
         id: seo
         with:
           url: https://preview.example.com/
@@ -718,3 +720,9 @@ MIT
 ### Pagination and duplicate titles (0.16.0)
 
 Exact duplicate titles across successful indexable/self-canonical pages are critical errors. Query-pagination duplicates receive a dedicated `pagination-title-duplicate` finding; `near-duplicate-title` is a bounded review warning. These findings identify risks, not confirmed causes of Google exclusion. Use `seo-audit scan https://example.com/collection --no-sitemap --include-query --max-pages 100` and inspect checked URLs to include pagination absent from sitemaps.
+
+### Trailing-slash URL policy
+
+Paths are preserved by default: `/section` and `/section/` are distinct resources. Use `--trailing-slash strip` or `"trailingSlash": "strip"` only for legacy traversal compatibility; the option is also available on MCP scan/planning inputs and through the Action configuration file. Final URLs, canonical targets and hreflang are observed metadata and retain their actual paths and queries even in strip mode.
+
+Older snapshots without URL policy metadata are read as legacy strip observations, without guessing the original paths. New observation checkpoints do not reuse old normalized page records. Comparisons across URL/observation policy changes are incomplete and do not claim resolutions or missing pages caused solely by changed URL keys; capture a fresh baseline under the intended policy. See [issue #32](https://github.com/MelnixDev/seo-crawl-audit/issues/32).

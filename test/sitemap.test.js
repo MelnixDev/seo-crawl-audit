@@ -49,7 +49,7 @@ test("loads page URLs from a sitemap index", async (context) => {
   });
 
   assert.equal(result.sitemapCount, 2);
-  assert.deepEqual(result.urls, [`${origin}/first`, `${origin}/second`]);
+  assert.deepEqual(result.urls, [`${origin}/first`, `${origin}/second/`]);
   assert.equal(requestSlots, 2);
 });
 
