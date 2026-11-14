@@ -19,3 +19,14 @@ The README local-app screenshot separately shows a completed three-page HTTP sca
 - `logo.png`: the existing selected 512px production crab artwork, unchanged in this media refresh.
 
 PNG files are format-only conversions of the browser JPEG captures. No colors, controls, values or logos were redrawn or pasted into them. The video adds at most one pixel of padding for the codec's even-width requirement. GUI plugin installation remains a separate verification gate; report captures do not establish client picker rendering or platform endorsement.
+
+## Codex native verification — 0.17.4, 2026-11-14
+
+The public native ZIP was downloaded and SHA-256 verified. Codex CLI 0.169.0-alpha.11.1 imported the configured plugin into the actual local profile. A fresh Codex app-server discovered all eight tools; native tool dispatch returned engine 0.17.4 and performed plan, a one-page HTTP localhost fixture scan, paginated issues and report generation. No model invocation or production-site crawl was used. See `codex-0.17.4-verification.json` for a sanitized evidence summary.
+
+- `codex-installation-prompt.jpg`: actual browser capture of the installation prompt and copy status on the product page.
+- `codex-0.17.4-report.jpg` and `codex-0.17.4-issues.jpg`: unretouched browser viewport captures of that native-dispatched scan's report. Fixture findings are intentional missing metadata, not customer-site defects.
+- `codex-0.17.4-report.html`: the actual generated report, with a noindex directive added for hosting. The stopped loopback URL identifies the test input, not a public website.
+- `codex-0.17.4-walkthrough.mp4`: a 12-second silent sequence of the three browser captures, four seconds each, fitted to 1440×720 with white padding. Recreate using `codex-captures.txt` and ffmpeg concat with libx264/yuv420p.
+
+This evidence verifies native installation and Codex tool dispatch. It does not establish interactive Codex GUI installation/update/removal. Desktop automation blocked access to both Codex and Terminal; no simulated client screenshots or terminal footage have been substituted. Claude acceptance remains open in #50; Codex follow-up is #51.

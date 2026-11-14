@@ -1,0 +1,28 @@
+{
+  "client": "codex-cli 0.169.0-alpha.11.1",
+  "node": "v24.8.0",
+  "engineVersion": "0.17.4",
+  "tools": [
+    "seo_audit_check",
+    "seo_audit_compare",
+    "seo_audit_history",
+    "seo_audit_issues",
+    "seo_audit_plan",
+    "seo_audit_report",
+    "seo_audit_rules",
+    "seo_audit_scan"
+  ],
+  "guiVerified": false,
+  "passed": true,
+  "date": "2026-11-14",
+  "os": "macOS",
+  "fixturePages": 1,
+  "workflow": [
+    "plan",
+    "scan",
+    "issues",
+    "report"
+  ],
+  "archiveSha256": "eac674e8855feb3d3aa42a6bfa1671f76370f404ad6a3ab14f9d7012ae0c6d13",
+  "captureType": "Browser screenshots of the installation prompt and generated HTML report; video is a silent sequence of these captures, not Codex GUI footage."
+}
