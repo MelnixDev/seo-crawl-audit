@@ -15,6 +15,8 @@ and respect robots.txt.
 [Choose your installation](docs/native-plugins.md) ·
 [CLI quick start](#requirements-and-installation)
 
+The screenshots show the actual 0.17.1 interface with controlled local fixtures or deterministic demonstration data. They contain no personal workspace paths or customer audits; the larger regression example is synthetic.
+
 ## Choose your client
 
 | Client | Package and workspace |
