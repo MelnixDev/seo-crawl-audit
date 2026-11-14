@@ -1,6 +1,6 @@
 {
   "name": "@seo-crawl-audit/renderer-playwright",
-  "version": "0.17.3",
+  "version": "0.17.4",
   "description": "Optional Playwright renderer for SEO Crawl Audit.",
   "type": "module",
   "exports": {
@@ -40,7 +40,7 @@
     }
   },
   "devDependencies": {
-    "@seo-crawl-audit/core": "0.17.3"
+    "@seo-crawl-audit/core": "0.17.4"
   },
   "private": true
 }

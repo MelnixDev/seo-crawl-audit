@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.17.4 — 2026-11-14
+
+- honor resolved config/baseline page limits in non-interactive scans; retain safe defaults, explicit CLI overrides and intentional interactive selection;
+- add subprocess and installed-package regressions checking actual HTTP request counts and snapshot scope;
+- correct the Ukrainian estimated-indexable-pages label without implying a verified search-engine index count;
+- verify that existing report navigation stays inside 320/375/390px EN/UK viewports while tables keep internal horizontal scrolling.
+
 ## 0.17.3 — 2026-11-14
 
 - preserve trailing slashes by default across crawl requests, sitemap entries and discovered links; add explicit preserve/strip traversal policy to JSON, CLI and MCP;

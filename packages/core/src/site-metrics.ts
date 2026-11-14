@@ -82,7 +82,7 @@ export function buildSiteMetrics(snapshot: SnapshotV2): SiteMetrics {
       ),
       estimate(
         "search.indexable-estimate",
-        { en: "Estimated indexable pages", uk: "Орієнтовна кількість індексованих сторінок" },
+        { en: "Estimated indexable pages", uk: "Орієнтовна кількість сторінок, доступних для індексації" },
         estimatedIndexablePages,
         observedAt,
         {

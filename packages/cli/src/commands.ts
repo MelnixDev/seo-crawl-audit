@@ -242,7 +242,7 @@ function selectScan(plan: ScanPlan, values: CliValues): Promise<ScanSelection> |
     return { mode: "fixed", target: Math.min(plan.config.maxPages, plan.candidateCount) };
   }
   if (process.stdin.isTTY && process.stdout.isTTY && !values.json) return chooseScanPlan(plan.candidateCount);
-  return { mode: "fixed", target: Math.min(100, plan.candidateCount) };
+  return { mode: "fixed", target: Math.min(plan.config.maxPages, plan.candidateCount) };
 }
 
 export async function scanCommand(url: string | undefined, values: CliValues, signal?: AbortSignal): Promise<number> {

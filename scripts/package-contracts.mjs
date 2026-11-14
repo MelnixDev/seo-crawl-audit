@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { createServer } from "node:http";
+import { once } from "node:events";
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -106,6 +108,32 @@ try {
   assert.equal(versionOutput.trim(), cliPackage.version);
   const { stdout: npxVersionOutput } = await run("npx", ["--no-install", "seo-crawl-audit", "--version"], temporaryRoot);
   assert.equal(npxVersionOutput.trim(), cliPackage.version);
+  // Exercise the frozen installed CLI, not only its argument-builder function.
+  let fixtureOrigin;
+  let htmlRequests = 0;
+  const fixture = createServer((request, response) => {
+    if (request.url === "/robots.txt") return response.end("User-agent: *\nAllow: /\n");
+    if (request.url === "/sitemap.xml") {
+      response.setHeader("content-type", "application/xml");
+      return response.end("<urlset>" + ["/", "/one", "/two", "/three", "/four"].map((path) => `<url><loc>${fixtureOrigin}${path}</loc></url>`).join("") + "</urlset>");
+    }
+    htmlRequests += 1;
+    response.setHeader("content-type", "text/html");
+    response.end(`<title>Budget fixture ${request.url}</title><h1>Fixture</h1>`);
+  });
+  fixture.listen(0, "127.0.0.1");
+  await once(fixture, "listening");
+  fixtureOrigin = `http://127.0.0.1:${fixture.address().port}`;
+  try {
+    await writeFile(join(temporaryRoot, "budget.config.json"), JSON.stringify({ url: fixtureOrigin + "/", sitemap: fixtureOrigin + "/sitemap.xml", maxPages: 2, delay: 0, concurrency: 1 }));
+    const { stdout } = await run(process.execPath, [join(temporaryRoot, "node_modules/seo-crawl-audit/bin/seo-audit.js"), "scan", fixtureOrigin + "/", "--config", "budget.config.json", "--output", "budget.snapshot.json", "--json", "--no-report", "--no-cache", "--no-history"], temporaryRoot);
+    JSON.parse(stdout);
+    const budget = JSON.parse(await readFile(join(temporaryRoot, "budget.snapshot.json"), "utf8"));
+    assert.equal(budget.pages.length, 2);
+    assert.equal(budget.config.maxPages, 2);
+    assert.equal(htmlRequests, 2);
+    assert.equal(budget.truncated, true);
+  } finally { fixture.closeAllConnections(); await new Promise((resolve) => fixture.close(resolve)); }
   console.log(`Packed core root/node imports, TypeScript declarations, and CLI ${cliPackage.version} passed.`);
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
