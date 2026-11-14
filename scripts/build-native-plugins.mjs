@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { resolve, relative } from 'node:path';
 import { zipSync } from 'fflate';
+import { assertPortableCodexTemplate } from './native-plugin-contracts.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const plugin = resolve(root, 'plugins/seo-crawl-audit');
@@ -13,7 +14,7 @@ for (const file of ['plugin.json', '.claude-plugin/plugin.json', 'manifest.json'
   if (manifest.version !== version) throw new Error(`Bump ${file} to match engine ${version} before packaging`);
 }
 const config = JSON.parse(await readFile(resolve(plugin, 'mcp.json'), 'utf8'));
-if (config.mcpServers['seo-crawl-audit'].env.SEO_AUDIT_MCP_ROOT !== '') throw new Error('Do not distribute a workspace-configured plugin; restore the empty template root first.');
+assertPortableCodexTemplate(config);
 // No install/network at runtime: use exactly the engine bundle produced by npm run build.
 await mkdir(resolve(plugin, 'server'), { recursive: true });
 await cp(resolve(root, 'packages/cli/bundle/mcp.js'), resolve(plugin, 'server/mcp.js'));

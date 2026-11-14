@@ -8,6 +8,7 @@ import { createServer } from 'node:http';
 import { createInterface } from 'node:readline';
 import { unzipSync } from 'fflate';
 import Ajv2020 from 'ajv/dist/2020.js';
+import { assertPortableCodexTemplate } from '../scripts/native-plugin-contracts.mjs';
 
 const plugin = resolve('plugins/seo-crawl-audit');
 const json = async (p) => JSON.parse(await readFile(p, 'utf8'));
@@ -16,8 +17,8 @@ const generated = [];
 const temp = async (label) => { const path = await realpath(await mkdtemp(join(tmpdir(), `seo-native-${label}-`))); generated.push(path); return path; };
 test.after(async () => { for (const path of generated) await rm(path, { recursive:true, force:true }); });
 
-function connect(args, env, cwd) {
-  const child = spawn(process.execPath, args, { cwd, env: { ...process.env, ...env }, stdio: ['pipe','pipe','pipe'] });
+function connect(args, env, cwd, executable = process.execPath) {
+  const child = spawn(executable, args, { cwd, env: { ...process.env, ...env }, stdio: ['pipe','pipe','pipe'] });
   let stderr = '';
   child.stderr.on('data', chunk => { stderr += chunk; });
   const pending = new Map();
@@ -55,6 +56,12 @@ test('portable schemas, MCPB authoritative validator and pinned engine versions'
     else invalid.name = '../escape';
     assert.equal(validate(invalid), false, 'canonical schema must reject incompatible shapes');
   }
+  const template = await json(join(plugin, 'mcp.json'));
+  assertPortableCodexTemplate(template);
+  template.mcpServers['seo-crawl-audit'].command = process.execPath;
+  // Clearing a workspace must not allow a personal runtime path into a public archive.
+  template.mcpServers['seo-crawl-audit'].env.SEO_AUDIT_MCP_ROOT = '';
+  assert.throws(() => assertPortableCodexTemplate(template), /portable.*node/);
   const {version} = await json('package.json');
   for (const name of ['plugin.json','.claude-plugin/plugin.json','manifest.json','package.json']) assert.equal((await json(join(plugin,name))).version,version);
   execFileSync(process.execPath,['node_modules/@anthropic-ai/mcpb/dist/cli/cli.js','validate',join(plugin,'manifest.json')]);
@@ -98,7 +105,9 @@ for (const adapter of ['codex','claude-code','claude-desktop']) test(`${adapter}
   const config=await json(join(installed,adapter==='codex'?'mcp.json':adapter==='claude-code'?'.mcp.json':'manifest.json'));
   const server=adapter==='claude-desktop'?config.server.mcp_config:config.mcpServers['seo-crawl-audit'];
   const expand=s=>Object.entries(replacements).reduce((s,[key,v])=>s.replaceAll(key,v),s);
-  const client=connect(server.args.map(expand),Object.fromEntries(Object.entries(server.env).map(([k,v])=>[k,expand(v)])),installed);
+  const runtimeEnv=Object.fromEntries(Object.entries(server.env).map(([k,v])=>[k,expand(v)]));
+  if(adapter==='codex') { assert.equal(server.command,process.execPath); runtimeEnv.PATH=''; }
+  const client=connect(server.args.map(expand),runtimeEnv,installed,adapter==='codex'?server.command:process.execPath);
   t.after(()=>client.close());
   const initialized=await client.request('initialize',{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:adapter,version:'1'}});
   assert.equal(initialized.serverInfo.version,(await json('package.json')).version);
@@ -150,13 +159,17 @@ test('Codex configuration can be reapplied to an updated package without moving 
   assert.throws(()=>execFileSync(process.execPath,[join(installed,'configure.mjs'),dirname(installed)],{stdio:'pipe'}), /non-overlapping/);
   const configure=()=>execFileSync(process.execPath,[join(installed,'configure.mjs'),workspace]);
   configure();
-  assert.equal((await json(join(installed,'mcp.json'))).mcpServers['seo-crawl-audit'].env.SEO_AUDIT_MCP_ROOT,workspace);
+  const configured=(await json(join(installed,'mcp.json'))).mcpServers['seo-crawl-audit'];
+  assert.equal(configured.env.SEO_AUDIT_MCP_ROOT,workspace);
+  assert.equal(configured.command,process.execPath);
   await writeFile(join(workspace,'report.html'),'retained');
   await cp(join(plugin,'mcp.json'),join(installed,'mcp.json'));
   configure();
   assert.equal(await readFile(join(workspace,'report.html'),'utf8'),'retained');
   // Verify the launcher changes CWD before dynamically importing its bundled runtime.
   await writeFile(join(installed,'server/mcp.js'),'export async function serve(){ console.log(JSON.stringify({cwd:process.cwd(),root:process.env.SEO_AUDIT_MCP_ROOT})); }');
-  const result=execFileSync(process.execPath,[join(installed,'server/launch.mjs')],{cwd:installed,env:{...process.env,SEO_AUDIT_MCP_ROOT:workspace},encoding:'utf8'});
+  const refreshed=(await json(join(installed,'mcp.json'))).mcpServers['seo-crawl-audit'];
+  assert.equal(refreshed.command,process.execPath);
+  const result=execFileSync(refreshed.command,[join(installed,'server/launch.mjs')],{cwd:installed,env:{...process.env,...refreshed.env,PATH:''},encoding:'utf8'});
   assert.deepEqual(JSON.parse(result),{cwd:workspace,root:workspace});
 });

@@ -18,8 +18,9 @@ try {
   const path = new URL('./mcp.json', import.meta.url);
   const config = JSON.parse(await readFile(path, 'utf8'));
   config.mcpServers['seo-crawl-audit'].env.SEO_AUDIT_MCP_ROOT = root;
+  config.mcpServers['seo-crawl-audit'].command = process.execPath;
   await writeFile(path, JSON.stringify(config, null, 2) + '\n');
-  console.log('Codex workspace configured. Import or refresh this local plugin and restart the client.');
+  console.log('Codex workspace and Node executable configured. Import or refresh this local plugin and restart the client.');
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 2;

@@ -3,6 +3,7 @@
 ## 0.17.0 — Unreleased
 
 - package the existing MCP server and shared audit skill as native Codex/Claude Code ZIP and Claude Desktop MCPB distributions;
+- bind configured Codex startup to the setup process’s absolute Node executable, avoiding reliance on the client PATH while keeping public templates portable;
 - add explicit Codex workspace configuration, Claude Code project binding, and required Desktop audit-directory configuration;
 - reject missing, mismatched, overlapping installation/workspace roots and Windows UNC/cross-volume artifact escapes;
 - generate allowlisted, version-matched offline runtime archives with SHA-256 checksums and installation/update/removal guidance;

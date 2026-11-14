@@ -41,9 +41,9 @@ MCPB manifest, and writes these installable artifacts to `native-plugin-dist/`:
 
 Run `npm run plugins:release-assets` after capture/review to assemble the exact GitHub-upload directory with notes, media, evidence and SHA256SUMS. This step does not publish anything.
 
-Artifacts contain the bundled JavaScript dependencies. Node is supplied by the
-local Codex/Claude Code environment, and Claude Desktop supplies Node for its
-Node extensions. Optional browser rendering still requires Playwright and
+Artifacts contain the bundled JavaScript dependencies. Codex setup binds the
+absolute Node executable that runs `configure.mjs`; Claude Code requires Node
+on its launch PATH, and Claude Desktop supplies Node for its Node extensions. Optional browser rendering still requires Playwright and
 Chromium installed in the **consumer workspace**. There is no automatic browser
 download. The launcher changes CWD to the validated workspace before loading the
 engine, so consumer Playwright resolution and config discovery use that project.
@@ -68,6 +68,19 @@ Keep the unpacked package/marketplace outside the directory you audit: the packa
 ```sh
 node /absolute/my-seo-marketplace/plugins/seo-crawl-audit/configure.mjs /absolute/consumer-project
 ```
+
+Setup records both the workspace and the current `process.execPath` as the
+Codex MCP command. The configured plugin can therefore start even when the
+client PATH cannot find an nvm-managed `node`. If `node` is unavailable in your
+setup shell, invoke the desired Node executable by its absolute path instead.
+This does not install a runtime or change global PATH. Keep this configured copy
+local: the public archive retains the portable `node` command.
+
+After upgrading, moving or removing that Node installation, rerun
+`configure.mjs` with the desired executable, refresh/reinstall the local plugin
+from that source and restart the client. If the client reports that the bound
+executable is missing, this is also the recovery procedure; the package does
+not download a replacement automatically.
 
 Use this marketplace file (paths are relative to `my-seo-marketplace`, **not** the
 `.agents/plugins` directory):
@@ -97,7 +110,7 @@ into an existing catalog rather than overwriting unrelated plugins.
 Codex's portable plugin CWD defaults to the installation directory, and portable
 placeholders only support `PLUGIN_ROOT` and `PLUGIN_DATA`. Therefore this plugin
 requires explicit configuration; it deliberately fails before starting MCP if
-the workspace is unset. The configure command sets an absolute non-secret root
+the workspace is unset. The configure command sets an absolute non-secret root and Node executable
 in the package's `mcp.json`. It never guesses from the installation CWD. Use a
 separate configured package and uniquely named repo marketplace per workspace and keep it local. A
 configured plugin remains bound to that directory even if a chat opens another
@@ -169,7 +182,9 @@ bump all manifests (including the plugin's small package.json), rebuild and
 validate before distributing the new artifacts and checksums.
 
 - **Codex:** replace the local package with the reviewed release, rerun
-  `configure.mjs` for the same workspace, refresh the marketplace and restart.
+  `configure.mjs` for the same workspace using the desired Node executable,
+  refresh/reinstall from that source and restart. Rerun setup after a Node
+  upgrade that removes or moves the bound executable.
   Remove/disable through the Plugins UI, then remove its catalog entry if no
   longer needed. Remove only that entry when the catalog contains other plugins.
 - **Claude Code:** update the local package, refresh its marketplace with
@@ -191,7 +206,10 @@ marketplace, credentials, or client settings are changed by the build/tests.
 `plugins:test` exercises actual JSON-RPC STDIO initialize, eight-tool discovery,
 plan, fixture HTTP scan, paginated issues, report generation, traversal/symlink
 rejection and workspace configuration/update handling through each manifest's
-launch adapter. It verifies artifacts contain the exact existing engine bundle.
+launch adapter. Codex uses the configured absolute command with an empty PATH
+for the full fixture lifecycle. Public packaging also rejects a configured
+runtime path even if its workspace setting has been manually cleared. Tests
+verify artifacts contain the exact existing engine bundle.
 Codex CLI 0.167.0-alpha.4.1 also successfully added a local marketplace,
 installed and listed version 0.17.0 in an isolated task-only `CODEX_HOME`,
 initialized the actual installed-cache runtime, listed all eight tools and
