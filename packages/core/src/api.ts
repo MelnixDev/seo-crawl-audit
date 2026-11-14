@@ -23,10 +23,11 @@ function isPlan(input: ScanConfigInput | ScanPlan): input is ScanPlan {
 function checkpointIdentity(plan: ScanPlan, rendererId?: string): CheckpointIdentity {
   return {
     schemaVersion: 2,
-    pageSchemaVersion: 1,
+    pageSchemaVersion: 2,
     siteUrl: plan.startUrl,
     sitemapUrl: plan.sitemap?.url ?? null,
     includeQuery: plan.config.includeQuery,
+    trailingSlash: plan.config.trailingSlash,
     respectRobots: plan.config.respectRobots,
     timeout: plan.config.timeout,
     maxRedirects: plan.config.maxRedirects,
@@ -66,7 +67,7 @@ export async function scan(
   } catch (error) {
     if (isPlan(input) || !options.signal?.aborted) throw error;
     const config = resolveConfig(input);
-    const startUrl = normalizeUrl(config.url, undefined, { includeQuery: config.includeQuery });
+    const startUrl = normalizeUrl(config.url, undefined, { includeQuery: config.includeQuery, trailingSlash: config.trailingSlash });
     if (!startUrl) throw new Error(`invalid start URL: ${config.url}`, { cause: error });
     const robots = plannedRobots ?? {
       url: new URL("/robots.txt", startUrl).href,
@@ -124,6 +125,7 @@ export async function scan(
     timeout: config.timeout,
     respectRobots: config.respectRobots,
     includeQuery: config.includeQuery,
+    trailingSlash: config.trailingSlash,
     maxRedirects: config.maxRedirects,
     maxResponseBytes: config.maxResponseBytes,
     enabledRules: config.enabledRules,

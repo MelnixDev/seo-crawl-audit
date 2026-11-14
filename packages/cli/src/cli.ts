@@ -56,6 +56,7 @@ Options:
   --sitemap <url>         Seed the crawl from a sitemap or sitemap index
   --no-sitemap            Skip sitemap discovery and crawl internal links
   --include-query         Treat query-string URLs as separate pages
+  --trailing-slash <mode> Preserve URL paths (default: preserve), or opt into strip
   --ignore-robots         Crawl URLs disallowed by robots.txt
   --strict                Fail check on warnings as well as errors
   --headers-env <name>    Read target request headers from a JSON environment variable

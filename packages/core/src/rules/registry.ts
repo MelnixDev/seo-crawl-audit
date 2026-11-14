@@ -14,6 +14,7 @@ const definitions: RuleDefinition[] = [
   { id: "invalid-canonical", severity: "error", owner: "developer", scope: "page", remediation: "Use an absolute or valid relative HTTP(S) canonical URL." },
   { id: "cross-domain-canonical", severity: "error", owner: "seo", scope: "page", remediation: "Confirm the external canonical or point it to the intended same-site URL." },
   { id: "canonical-target-error", severity: "error", owner: "developer", scope: "page", remediation: "Point the canonical to an accessible, indexable URL." },
+  { id: "canonical-target-redirect", severity: "warning", owner: "seo", scope: "page", remediation: "Review the observed redirect and use the intended final canonical URL; a redirect alone does not prove an indexing failure." },
   { id: "redirect-loop", severity: "error", owner: "developer", scope: "page", remediation: "Remove the circular redirect path." },
   { id: "long-redirect-chain", severity: "warning", owner: "developer", scope: "page", remediation: "Redirect directly to the final destination." },
   { id: "sitemap-unavailable", severity: "error", owner: "developer", scope: "site", remediation: "Restore a valid, reachable XML sitemap." },

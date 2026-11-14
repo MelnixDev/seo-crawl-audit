@@ -1,4 +1,5 @@
 import type { Issue, PageSnapshot, SnapshotV2 } from "../types.js";
+import { sameSnapshotUrlPolicy } from "../urls.js";
 import { createIssue } from "./registry.js";
 
 function hasDirective(value: string | null | undefined, directive: string): boolean {
@@ -13,7 +14,8 @@ function changedIssue(ruleId: string, url: string, message: string, before: unkn
 }
 
 export function evaluateRegressionRules(baseline: SnapshotV2, current: SnapshotV2): Issue[] {
-  const complete = !current.partial && !current.truncated;
+  const comparableUrlPolicy = sameSnapshotUrlPolicy(baseline, current);
+  const complete = !current.partial && !current.truncated && comparableUrlPolicy;
   const issues: Issue[] = [];
   const currentPages = new Map(current.pages.map((page) => [page.url, page]));
 
@@ -42,14 +44,14 @@ export function evaluateRegressionRules(baseline: SnapshotV2, current: SnapshotV
     if (before.title && !after.title) issues.push(changedIssue("title-removed", before.url, "Page title was removed", before.title, after.title));
     else if (before.title && after.title && before.title !== after.title) issues.push(changedIssue("title-changed", before.url, "Page title changed", before.title, after.title));
     if (before.description && !after.description) issues.push(changedIssue("description-removed", before.url, "Meta description was removed", before.description, after.description));
-    if (before.canonical && !after.canonical) issues.push(changedIssue("canonical-removed", before.url, "Canonical URL was removed", before.canonical, after.canonical));
-    else if (before.canonical && after.canonical && before.canonical !== after.canonical) {
+    if (comparableUrlPolicy && before.canonical && !after.canonical) issues.push(changedIssue("canonical-removed", before.url, "Canonical URL was removed", before.canonical, after.canonical));
+    else if (comparableUrlPolicy && before.canonical && after.canonical && before.canonical !== after.canonical) {
       const candidate = changedIssue("canonical-changed", before.url, "Canonical URL changed", before.canonical, after.canonical);
       if (new URL(after.canonical).origin !== new URL(before.url).origin) candidate.severity = "error";
       issues.push(candidate);
     }
     if (before.h1Count > 0 && after.h1Count === 0) issues.push(changedIssue("h1-removed", before.url, "All H1 headings were removed", before.h1Count, after.h1Count));
-    if (before.finalUrl && after.finalUrl && before.finalUrl !== after.finalUrl) {
+    if (comparableUrlPolicy && before.finalUrl && after.finalUrl && before.finalUrl !== after.finalUrl) {
       const candidate = changedIssue("redirect-changed", before.url, "Final redirect URL changed", before.finalUrl, after.finalUrl);
       if (new URL(after.finalUrl).origin !== new URL(before.url).origin) candidate.severity = "error";
       issues.push(candidate);

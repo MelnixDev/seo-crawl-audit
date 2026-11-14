@@ -49,6 +49,7 @@ export type {
   RobotsState,
   ScanConfigInput,
   ScanConfigV1,
+  TrailingSlashPolicy,
   ScanEvent,
   ScanOptions,
   ScanPlan,

@@ -21,6 +21,7 @@ interface HeaderV1 {
     startUrl?: string;
     sitemap?: string | null;
     includeQuery?: boolean;
+    trailingSlash?: "preserve" | "strip";
     respectRobots?: boolean;
   };
 }
@@ -52,6 +53,8 @@ function compatible(saved: unknown, identity: CheckpointIdentity): boolean {
   return source?.startUrl === identity.siteUrl
     && (source.sitemap ?? null) === identity.sitemapUrl
     && (source.includeQuery ?? false) === identity.includeQuery
+    && (source.trailingSlash ?? "strip") === (identity.trailingSlash ?? "strip")
+    && identity.pageSchemaVersion === 1
     && (source.respectRobots ?? true) === identity.respectRobots;
 }
 

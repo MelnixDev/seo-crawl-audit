@@ -3,6 +3,7 @@ import { createIssue } from "./registry.js";
 
 export function indexableTitlePage(page: PageSnapshot): boolean {
   return Boolean(page.title && !page.error && !page.blockedByRobots && page.status === 200
+    && (!page.finalUrl || page.url === page.finalUrl)
     && !/(^|[\s,])noindex($|[\s,])/i.test(`${page.robots ?? ""},${page.xRobotsTag ?? ""}`)
     && (!page.canonical || page.canonical === (page.finalUrl || page.url)));
 }

@@ -17,6 +17,7 @@ export interface CliValues {
   sitemap?: string;
   "no-sitemap"?: boolean;
   "include-query"?: boolean;
+  "trailing-slash"?: string;
   "ignore-robots"?: boolean;
   strict?: boolean;
   json?: boolean;
@@ -53,7 +54,7 @@ export function parseCliArgs(args: string[]): { values: CliValues; positionals: 
       baseline: { type: "string" }, config: { type: "string" }, output: { type: "string" }, report: { type: "string" },
       "no-report": { type: "boolean" }, "no-cache": { type: "boolean" }, pages: { type: "string" }, all: { type: "boolean" },
       "max-pages": { type: "string" }, concurrency: { type: "string" }, delay: { type: "string" }, timeout: { type: "string" },
-      sitemap: { type: "string" }, "no-sitemap": { type: "boolean" }, "include-query": { type: "boolean" },
+      sitemap: { type: "string" }, "no-sitemap": { type: "boolean" }, "include-query": { type: "boolean" }, "trailing-slash": { type: "string" },
       "ignore-robots": { type: "boolean" }, strict: { type: "boolean" }, json: { type: "boolean" },
       help: { type: "boolean" }, version: { type: "boolean" },
       production: { type: "string" }, preview: { type: "string" },
@@ -100,6 +101,10 @@ export function scanConfig(url: string, values: CliValues, baseline?: SnapshotV2
   if (values["no-sitemap"]) cli.sitemap = "none";
   else if (values.sitemap) cli.sitemap = values.sitemap;
   if (values["include-query"] !== undefined) cli.includeQuery = values["include-query"];
+  if (values["trailing-slash"] !== undefined) {
+    if (!["preserve", "strip"].includes(values["trailing-slash"])) throw new Error("--trailing-slash must be preserve or strip");
+    cli.trailingSlash = values["trailing-slash"] as "preserve" | "strip";
+  }
   if (values["ignore-robots"] !== undefined) cli.respectRobots = !values["ignore-robots"];
   return resolveConfig(cli, file, saved);
 }

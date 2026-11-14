@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- preserve trailing slashes by default across crawl requests, sitemap entries and discovered links; add explicit preserve/strip traversal policy to JSON, CLI and MCP;
+- keep observed final URLs, canonical targets and hreflang intact independently of traversal policy;
+- add evidence-backed canonical-target-redirect warnings and avoid critical duplicate-title findings for redirect aliases;
+- identify legacy stripped observations, invalidate old observation checkpoints and mark cross-policy comparisons incomplete;
+- advance rule set to 1.3.0; package release version remains unchanged pending release.
+
 ## 0.17.2 — 2026-11-14
 
 - unify the local app and offline HTML report with the approved product website through a shared, validated design system;

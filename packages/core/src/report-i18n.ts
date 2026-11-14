@@ -23,6 +23,7 @@ const UK_RULE_LABELS: Readonly<Record<string, string>> = {
   "invalid-canonical": "Некоректний canonical",
   "cross-domain-canonical": "Canonical на іншому домені",
   "canonical-target-error": "Помилка цілі canonical",
+  "canonical-target-redirect": "Ціль canonical перенаправляється",
   "redirect-loop": "Цикл перенаправлень",
   "long-redirect-chain": "Довгий ланцюжок перенаправлень",
   "sitemap-unavailable": "Sitemap недоступний",
@@ -74,6 +75,7 @@ const UK_REMEDIATIONS: Readonly<Record<string, string>> = {
   "invalid-canonical": "Використайте абсолютний або коректний відносний HTTP(S) canonical URL.",
   "cross-domain-canonical": "Підтвердьте зовнішній canonical або вкажіть потрібний URL цього сайту.",
   "canonical-target-error": "Спрямуйте canonical на доступний URL, дозволений для індексації.",
+  "canonical-target-redirect": "Звірте редірект і вкажіть потрібну кінцеву canonical-адресу. Сам редірект не доводить проблеми індексації.",
   "redirect-loop": "Приберіть циклічний маршрут перенаправлень.",
   "long-redirect-chain": "Перенаправляйте одразу на кінцеву адресу.",
   "sitemap-unavailable": "Відновіть коректний і доступний XML sitemap.",
@@ -131,6 +133,7 @@ function ukrainianMessage(issue: Partial<Issue>, ruleId: string): string {
     case "missing-canonical": return "Сторінка не містить canonical URL";
     case "invalid-canonical": return "Canonical URL некоректний";
     case "cross-domain-canonical": return "Canonical вказує на інший домен";
+    case "canonical-target-redirect": return "Ціль canonical перенаправляється на інший фактичний URL";
     case "canonical-target-error": return "Ціль canonical недоступна";
     case "long-redirect-chain": return `Сторінка використовує ${String(value ?? 0)} перенаправлень`;
     case "sitemap-unavailable": return "Не вдалося завантажити налаштований sitemap";

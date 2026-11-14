@@ -1,3 +1,4 @@
+import { sameSnapshotUrlPolicy } from "./urls.js";
 import { audit } from "./audit.js";
 import { diff } from "./compare.js";
 import { groupPageTemplates } from "./issue-groups.js";
@@ -49,7 +50,7 @@ function lifecycleCounts(): Counts { return { new: 0, ongoing: 0, resolved: 0, u
 
 const STATUS_RULES = new Set(["page-unreachable", "http-error", "robots-blocked", "redirect-loop", "long-redirect-chain", "status-regression", "page-missing", "redirect-changed"]);
 const HTML_RULES = new Set([
-  "noindex", "x-robots-noindex", "missing-canonical", "invalid-canonical", "cross-domain-canonical", "canonical-target-error",
+  "noindex", "x-robots-noindex", "missing-canonical", "invalid-canonical", "cross-domain-canonical", "canonical-target-error", "canonical-target-redirect",
   "noindex-in-sitemap", "redirect-in-sitemap", "missing-title", "duplicate-title", "pagination-title-duplicate", "near-duplicate-title", "title-length", "missing-description",
   "duplicate-description", "description-length", "missing-h1", "broken-internal-link", "orphan-sitemap-page",
   "crawlable-not-in-sitemap", "invalid-hreflang", "malformed-json-ld", "http-on-https-site", "invalid-language",
@@ -100,6 +101,10 @@ export function buildLocalComparison(previous: SnapshotV2, current: SnapshotV2, 
   const raw = diff(before, after, ruleSet);
   const unverified: ComparisonSummaryV1["unverified"] = [];
   const currentPages = new Map(current.pages.map((page) => [page.url, page]));
+  if (!sameSnapshotUrlPolicy(previous, current)) {
+    const currentFingerprints = new Set(afterFindings.map((issue) => issue.fingerprint));
+    for (const issue of beforeFindings) if (!currentFingerprints.has(issue.fingerprint)) unverified.push({ fingerprint: issue.fingerprint, ruleId: issue.ruleId, url: issue.url, reason: "url-policy-changed" });
+  }
   const resolvedIssues = raw.resolvedIssues.filter((issue) => {
     const reason = hasResolutionEvidence(issue, previous, current, currentPages);
     if (reason) unverified.push({ fingerprint: issue.fingerprint, ruleId: issue.ruleId, url: issue.url, reason });
@@ -113,7 +118,7 @@ export function buildLocalComparison(previous: SnapshotV2, current: SnapshotV2, 
   if (previous.partial || previous.truncated) warnings.push("incomplete-before");
   if (current.partial || current.truncated) warnings.push("incomplete-after");
   if (previous.configurationHash !== current.configurationHash) warnings.push("configuration-changed");
-  if (previous.config.includeQuery !== current.config.includeQuery) warnings.push("url-policy-changed");
+  if (!sameSnapshotUrlPolicy(previous, current)) warnings.push("url-policy-changed");
   if (previous.ruleSetVersion !== current.ruleSetVersion) warnings.push("rule-set-changed");
   if (previous.generatedAt === current.generatedAt) warnings.push("same-timestamp");
   if (JSON.stringify(previous.config.enabledRules) !== JSON.stringify(effective.enabledRules)
@@ -133,7 +138,7 @@ export function buildLocalComparison(previous: SnapshotV2, current: SnapshotV2, 
   return { diff: comparison, summary: {
     schemaVersion: 1, evaluatedAt: options.evaluatedAt, from: descriptor(previous), to: descriptor(current),
     coverage: { common, onlyBefore: beforeUrls.size - common, onlyAfter: afterUrls.size - common,
-      complete: !(previous.partial || previous.truncated || current.partial || current.truncated) },
+      complete: sameSnapshotUrlPolicy(previous, current) && !(previous.partial || previous.truncated || current.partial || current.truncated) },
     evaluationPolicy: { source: "after", enabledRules: effective.enabledRules ? [...effective.enabledRules] : null,
       severityOverrides: { ...effective.severityOverrides }, suppressions: effective.suppressions.map((entry) => ({ ...entry })),
       regressionBudgets: { ...effective.regressionBudgets } },

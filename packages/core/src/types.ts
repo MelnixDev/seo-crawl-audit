@@ -1,5 +1,6 @@
 import type { ComparisonSummaryV1 } from "./local-comparison.js";
 
+export type TrailingSlashPolicy = "preserve" | "strip";
 export type Severity = "error" | "warning" | "info";
 export type IssueScope = "page" | "site";
 export type IssueOwner = "seo" | "content" | "developer";
@@ -17,6 +18,7 @@ export interface ScanConfigV1 {
   timeout: number;
   respectRobots: boolean;
   includeQuery: boolean;
+  trailingSlash: TrailingSlashPolicy;
   maxRedirects: number;
   maxResponseBytes: number;
   enabledRules: string[] | null;
@@ -123,6 +125,7 @@ export interface ReportOptions {
 
 export interface PageSnapshot {
   url: string;
+  /** Observed final URL, preserving path and query regardless of traversal policy. */
   finalUrl: string | null;
   status: number | null;
   contentType: string | null;
@@ -188,6 +191,8 @@ export interface CrawlStatistics {
 
 export interface SnapshotV2 {
   schemaVersion: 2;
+  /** Absent in historical snapshots whose observed URL paths may have been stripped. */
+  urlObservationVersion?: 1 | undefined;
   engineVersion: string;
   ruleSetVersion: string;
   generatedAt: string;
@@ -206,6 +211,7 @@ export interface SnapshotV2 {
     maxPages: number;
     requestDelay: number;
     includeQuery: boolean;
+    trailingSlash?: TrailingSlashPolicy;
     respectRobots: boolean;
     sitemap: string | null;
   };
@@ -280,10 +286,11 @@ export interface DiffResult {
 
 export interface CheckpointIdentity {
   schemaVersion: 2;
-  pageSchemaVersion: 1;
+  pageSchemaVersion: 1 | 2;
   siteUrl: string;
   sitemapUrl: string | null;
   includeQuery: boolean;
+  trailingSlash?: TrailingSlashPolicy;
   respectRobots: boolean;
   timeout: number;
   maxRedirects: number;

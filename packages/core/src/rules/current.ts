@@ -27,6 +27,7 @@ export function evaluateCurrentRules(snapshot: SnapshotV2): Issue[] {
   const issues: Issue[] = [];
   const add = (candidate: Issue): void => { issues.push(candidate); };
   const pageByUrl = new Map(snapshot.pages.map((page) => [page.url, page]));
+  const reportedCanonicalRedirects = new Set<string>();
   const sitemapUrls = new Set(snapshot.sitemap?.urls ?? []);
   const titles = duplicateMap(snapshot.pages, (page) => page.title);
   const indexableTitles = duplicateMap(snapshot.pages.filter(indexableTitlePage), (page) => page.title);
@@ -49,6 +50,14 @@ export function evaluateCurrentRules(snapshot: SnapshotV2): Issue[] {
     if (page.canonical && new URL(page.canonical).origin !== new URL(snapshot.siteUrl).origin) add(createIssue("cross-domain-canonical", page.url, "Canonical points to another origin", { actual: page.canonical }));
     if (page.canonical) {
       const target = pageByUrl.get(page.canonical);
+      if (target && target.redirectChain.length > 0 && target.finalUrl && page.canonical !== target.finalUrl) {
+        const representative = page.finalUrl && pageByUrl.has(page.finalUrl) ? page.finalUrl : page.url;
+        const key = `${page.finalUrl ?? page.url}\n${page.canonical}`;
+        if (!reportedCanonicalRedirects.has(key)) {
+          reportedCanonicalRedirects.add(key);
+          add(createIssue("canonical-target-redirect", representative, "Canonical target redirects to a different observed URL", { target: page.canonical, requestedUrl: target.url, finalUrl: target.finalUrl, redirectChain: target.redirectChain }, page.canonical));
+        }
+      }
       if (target && (target.error || (target.status ?? 500) >= 400)) add(createIssue("canonical-target-error", page.url, "Canonical target is unavailable", { target: page.canonical, actual: target.status ?? target.error }, page.canonical));
     }
     if (page.redirectChain.length > 3) add(createIssue("long-redirect-chain", page.url, `Page uses ${page.redirectChain.length} redirects`, { actual: page.redirectChain.length, redirectChain: page.redirectChain }));
@@ -73,6 +82,14 @@ export function evaluateCurrentRules(snapshot: SnapshotV2): Issue[] {
     else if (page.h1Count > 1) add(createIssue("multiple-h1", page.url, `Page contains ${page.h1Count} H1 headings`, { actual: page.h1Count }));
     for (const targetUrl of page.internalLinks) {
       const target = pageByUrl.get(targetUrl);
+      if (target && target.redirectChain.length > 0 && target.finalUrl && page.canonical !== target.finalUrl) {
+        const representative = page.finalUrl && pageByUrl.has(page.finalUrl) ? page.finalUrl : page.url;
+        const key = `${page.finalUrl ?? page.url}\n${page.canonical}`;
+        if (!reportedCanonicalRedirects.has(key)) {
+          reportedCanonicalRedirects.add(key);
+          add(createIssue("canonical-target-redirect", representative, "Canonical target redirects to a different observed URL", { target: page.canonical, requestedUrl: target.url, finalUrl: target.finalUrl, redirectChain: target.redirectChain }, page.canonical));
+        }
+      }
       if (target && (target.error || (target.status ?? 500) >= 400)) add(createIssue("broken-internal-link", page.url, "Internal link points to an unavailable page", { target: targetUrl, actual: target.status ?? target.error }, targetUrl));
     }
     if (sitemapUrls.has(page.url) && page.url !== snapshot.siteUrl && snapshot.linkGraph.orphanUrls.includes(page.url)) add(createIssue("orphan-sitemap-page", page.url, "Sitemap page has no discovered internal links", { actual: true }));
