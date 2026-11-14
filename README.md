@@ -15,7 +15,7 @@ and respect robots.txt.
 [Choose your installation](docs/native-plugins.md) ·
 [CLI quick start](#requirements-and-installation)
 
-The screenshots show the actual 0.17.1 interface with controlled local fixtures or deterministic demonstration data. They contain no personal workspace paths or customer audits; the larger regression example is synthetic.
+The screenshots show the actual 0.17.2 interface with controlled local fixtures or deterministic demonstration data. They contain no personal workspace paths or customer audits; the regression example is synthetic.
 
 ## Choose your client
 
@@ -25,8 +25,8 @@ The screenshots show the actual 0.17.1 interface with controlled local fixtures 
 | **Claude Code** | Same ZIP, loaded from outside the audited project. Uses Claude Code’s project directory. [Setup](docs/native-plugins.md#claude-code) |
 | **Claude Desktop** | MCPB extension with a required existing-directory picker. [Setup](docs/native-plugins.md#claude-desktop-chat) |
 
-Native packages and the crab identity are included in **0.17.1**. See the
-[release notes](docs/releases/0.17.1.md) for exact verification and limitations.
+Native packages and the crab identity are included in **0.17.2**. See the
+[release notes](docs/releases/0.17.2.md) for exact verification and limitations.
 No public directory listing or client endorsement is implied. The CLI remains
 available through npm; its [quick start](#requirements-and-installation) is below.
 
@@ -35,13 +35,13 @@ configured workspace. Your AI client receives tool results under its own data
 policies. A crawl measures observed pages; it does not establish Google indexing,
 rankings, traffic or complete site coverage.
 
-### A real bundled-MCP report
+### A reproducible reference report
 
-![Report produced by the bundled MCP server from a three-page local fixture](docs/site/media/native-report-pages.png)
+![SEO Crawl Audit reference report rendered from deterministic four-page example data](docs/site/media/native-report-pages.png)
 
-This report was generated through the plugin’s bundled STDIO MCP server against
-a deliberately small local fixture. It demonstrates actual report output, not an
-installed AI client interface. [Watch the report walkthrough](docs/site/media/native-workflow.mp4).
+This report was rendered by the 0.17.2 engine from deterministic reference data:
+four example pages and eight synthetic historical runs. It is not a live audit
+of quotes.toscrape.com or an installed AI-client interface. [Watch the report walkthrough](docs/site/media/native-workflow.mp4).
 
 ## Report preview
 
@@ -105,7 +105,7 @@ table immediately.
 
 ### Filtered issue table
 
-![SEO Crawl Audit issue table filtered to errors](docs/images/report-issues.png)
+![SEO Crawl Audit issue table with evidence and remediation](docs/images/report-issues.png)
 
 Chart selections and report filters narrow the table to the findings that need
 attention, with evidence and remediation kept alongside each issue.
@@ -620,7 +620,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: MelnixDev/seo-crawl-audit@v0.17.1
+      - uses: MelnixDev/seo-crawl-audit@v0.17.2
         id: seo
         with:
           url: https://preview.example.com/

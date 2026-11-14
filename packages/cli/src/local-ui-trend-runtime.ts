@@ -66,15 +66,15 @@ export const LOCAL_TREND_RUNTIME = String.raw`
     if (!points.length) { status.textContent = t().empty; return; }
     const maximum = Math.max(1, ...points.map(value));
     const coords = points.map((point, index) => ({ x: 32 + index * 610 / Math.max(1, points.length - 1), y: 186 - value(point) * 150 / maximum }));
-    chart.append(svg("line", { x1: 32, y1: 186, x2: 650, y2: 186, stroke: "#cbd5e1" }));
+    chart.append(svg("line", { x1: 32, y1: 186, x2: 650, y2: 186, stroke: "var(--line)" }));
     for (let index = 1; index < points.length; index++) {
       const previous = coords[index - 1], current = coords[index], point = points[index];
       const comparable = point.previousRunId === points[index - 1].runId && point.warnings.length === 0;
       chart.append(svg("line", { x1: previous.x, y1: previous.y, x2: current.x, y2: current.y,
-        stroke: comparable ? "#3157d5" : "#f59e0b", "stroke-width": 3, ...(comparable ? {} : { "stroke-dasharray": "7 5" }) }));
+        stroke: comparable ? "var(--coral)" : "var(--warning)", "stroke-width": 3, ...(comparable ? {} : { "stroke-dasharray": "7 5" }) }));
     }
     points.forEach((point, index) => {
-      const circle = svg("circle", { cx: coords[index].x, cy: coords[index].y, r: 7, fill: point.warnings.length ? "#f59e0b" : "#3157d5", tabindex: 0, role: "button" });
+      const circle = svg("circle", { cx: coords[index].x, cy: coords[index].y, r: 7, fill: point.warnings.length ? "var(--warning)" : "var(--coral)", tabindex: 0, role: "button" });
       const title = svg("title", {});
       title.textContent = new Date(point.generatedAt).toLocaleDateString(language() === "uk" ? "uk-UA" : "en-US") + ": " + value(point) + " · " + point.pages + " pages" + (point.warnings.length ? " · " + point.warnings.join(", ") : "");
       circle.append(title);
