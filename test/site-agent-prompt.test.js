@@ -21,14 +21,17 @@ const renderedPrompt = textContent(promptElement);
 
 function page(clipboard) {
   const listeners = new Map();
-  const button = { hidden: true, addEventListener: (name, listener) => listeners.set(name, listener) };
+  const classes = new Set();
+  const timers = new Map();
+  let timerId = 0;
+  const button = { textContent: "Copy agent prompt", classList: { add: name => classes.add(name), remove: name => classes.delete(name), contains: name => classes.has(name) }, hidden: true, addEventListener: (name, listener) => listeners.set(name, listener) };
   const prompt = { textContent: renderedPrompt, focused: false, focus() { this.focused = true; } };
   const preview = { open: false };
   const status = { textContent: "" };
   const elements = new Map([["copy-agent-prompt", button], ["agent-prompt-text", prompt], ["agent-prompt-preview", preview], ["copy-agent-status", status]]);
-  vm.runInNewContext(source, { document: { getElementById: id => elements.get(id) }, navigator: clipboard ? { clipboard } : {} });
+  vm.runInNewContext(source, { document: { getElementById: id => elements.get(id) }, navigator: clipboard ? { clipboard } : {}, setTimeout: callback => { timers.set(++timerId, callback); return timerId; }, clearTimeout: id => timers.delete(id) });
   assert.equal(button.hidden, false, "button is progressively enabled by the actual script");
-  return { prompt, preview, status, click: () => listeners.get("click")() };
+  return { button, expire: () => { for (const callback of [...timers.values()]) callback(); }, prompt, preview, status, click: () => listeners.get("click")() };
 }
 
 test("site copy action writes the exact trimmed prompt and announces success", async () => {
@@ -39,9 +42,14 @@ test("site copy action writes the exact trimmed prompt and announces success", a
   assert.ok(writes[0].includes("\n\n"), "preserve paragraph breaks");
   assert.match(writes[0], /<WEBSITE_URL>/, "copy the rendered placeholder, not HTML entities");
   for (const client of ["Codex", "Claude Code", "Chat", "Cowork"]) assert.ok(writes[0].includes(client));
-  assert.match(ui.status.textContent, /Prompt copied/);
+  assert.equal(ui.status.textContent, "");
   assert.equal(ui.preview.open, false);
   assert.equal(ui.prompt.focused, false);
+  assert.equal(ui.button.textContent, "Copied!");
+  assert.equal(ui.button.classList.contains("copy-success"), true);
+  ui.expire();
+  assert.equal(ui.button.textContent, "Copy agent prompt");
+  assert.equal(ui.button.classList.contains("copy-success"), false);
 });
 
 for (const [label, clipboard] of [["clipboard rejection", { writeText: async () => { throw new Error("Permission denied"); } }], ["missing Clipboard API", undefined]]) {
@@ -54,5 +62,7 @@ for (const [label, clipboard] of [["clipboard rejection", { writeText: async () 
     assert.equal(ui.prompt.textContent, original);
     assert.match(ui.status.textContent, /Select and copy the prompt below/);
     assert.doesNotMatch(ui.status.textContent, /Prompt copied/);
+    assert.equal(ui.button.textContent, "Copy agent prompt");
+    assert.equal(ui.button.classList.contains("copy-success"), false);
   });
 }

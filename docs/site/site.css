@@ -8,3 +8,5 @@
 .client-action .copy-status{margin-top:14px;margin-bottom:0}.client-row .agent-prompt{margin-top:16px;padding-bottom:0}.client-row pre:focus-visible{outline:3px solid var(--focus);outline-offset:4px}
 
 .client-name{display:flex;align-items:center;gap:12px}.client-name img{flex:none;width:36px;height:36px}
+
+.button.outline.copy-success,.button.outline.copy-success:hover{background:var(--success);border-color:var(--success);color:var(--paper)}
