@@ -25,8 +25,8 @@ The screenshots show the actual 0.17.2 interface with controlled local fixtures 
 | **Claude Code** | Same ZIP, loaded from outside the audited project. Uses Claude Code’s project directory. [Setup](docs/native-plugins.md#claude-code) |
 | **Claude Desktop** | MCPB extension with a required existing-directory picker. [Setup](docs/native-plugins.md#claude-desktop-chat) |
 
-Current maintenance release: **0.17.3**, including the trailing-slash audit fix. See the
-[release notes](docs/releases/0.17.3.md) for exact verification and limitations.
+Current maintenance release: **0.17.4**, including the trailing-slash audit fix. See the
+[release notes](docs/releases/0.17.4.md) for exact verification and limitations.
 No public directory listing or client endorsement is implied. The CLI remains
 available through npm; its [quick start](#requirements-and-installation) is below.
 
@@ -622,7 +622,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: MelnixDev/seo-crawl-audit@v0.17.3
+      - uses: MelnixDev/seo-crawl-audit@v0.17.4
         id: seo
         with:
           url: https://preview.example.com/
@@ -734,3 +734,7 @@ Exact duplicate titles across successful indexable/self-canonical pages are crit
 Paths are preserved by default: `/section` and `/section/` are distinct resources. Use `--trailing-slash strip` or `"trailingSlash": "strip"` only for legacy traversal compatibility; the option is also available on MCP scan/planning inputs and through the Action configuration file. Final URLs, canonical targets and hreflang are observed metadata and retain their actual paths and queries even in strip mode.
 
 Older snapshots without URL policy metadata are read as legacy strip observations, without guessing the original paths. New observation checkpoints do not reuse old normalized page records. Comparisons across URL/observation policy changes are incomplete and do not claim resolutions or missing pages caused solely by changed URL keys; capture a fresh baseline under the intended policy. See [issue #32](https://github.com/MelnixDev/seo-crawl-audit/issues/32).
+
+### Non-interactive page budgets
+
+Non-TTY and `--json` scans honor the resolved `maxPages` from configuration (or saved configuration where applicable); without a supplied limit the safe default is 100. Explicit `--pages N`/`--max-pages N` or intentional `--all` override that budget. An interactive menu selection is also an explicit user choice. Limits are capped by the discovered candidate count when a sitemap is available.

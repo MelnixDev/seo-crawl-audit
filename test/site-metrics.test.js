@@ -32,7 +32,7 @@ test("builds deterministic local site metrics from a snapshot", () => {
   assert.equal(estimate.value, 1);
   assert.equal(estimate.status, "estimate");
   assert.equal(estimate.confidence, "low");
-  assert.equal(estimate.label.uk, "Орієнтовна кількість індексованих сторінок");
+  assert.equal(estimate.label.uk, "Орієнтовна кількість сторінок, доступних для індексації");
   assert.match(estimate.detail.en, /not the number indexed by Google/);
   assert.equal(values["search.google-indexed"], null);
   assert.equal(metrics.metrics.find((metric) => metric.id === "search.google-indexed").status, "not-connected");
