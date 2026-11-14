@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.17.0 — Unreleased
+## 0.17.0 — 2026-11-14
 
 - package the existing MCP server and shared audit skill as native Codex/Claude Code ZIP and Claude Desktop MCPB distributions;
 - bind configured Codex startup to the setup process’s absolute Node executable, avoiding reliance on the client PATH while keeping public templates portable;
