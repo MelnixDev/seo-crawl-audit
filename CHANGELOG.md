@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.5 — 2026-11-14
+
+- resolve audit targets from the active project before asking for a URL; clarify only missing or ambiguous site/app/environment details;
+- align the copyable agent prompt and packaged skill, preserving explicit user URLs and evidence-based target selection;
+- use the current-project CLI when MCP is bound elsewhere, keeping artifacts out of unrelated workspaces.
+
 ## 0.17.4 — 2026-11-14
 
 - honor resolved config/baseline page limits in non-interactive scans; retain safe defaults, explicit CLI overrides and intentional interactive selection;
