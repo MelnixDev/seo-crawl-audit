@@ -20,7 +20,7 @@ and respect robots.txt.
 | **Claude Code** | Same ZIP, loaded from outside the audited project. Uses Claude Code’s project directory. [Setup](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/native-plugins.md#claude-code) |
 | **Claude Desktop** | MCPB extension with a required existing-directory picker. [Setup](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/native-plugins.md#claude-desktop-chat) |
 
-Native packages are prepared for **0.17.0**, an unreleased candidate. See the
+Native packages are available with **0.17.0**. See the
 [release notes](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/releases/0.17.0.md) for exact verification and limitations.
 No public directory listing or client endorsement is implied. The CLI remains
 available through npm; its [quick start](#requirements-and-installation) is below.
@@ -607,7 +607,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: MelnixDev/seo-crawl-audit@v0
+      - uses: MelnixDev/seo-crawl-audit@v0.17.0
         id: seo
         with:
           url: https://preview.example.com/

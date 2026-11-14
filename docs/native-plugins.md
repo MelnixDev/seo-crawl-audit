@@ -7,19 +7,17 @@ selected site; snapshots and reports remain in the configured workspace. Tool
 results are compact; issues are paginated (maximum 100 per call), and reports are
 returned as artifact paths.
 
-## Candidate release assets
+## Release assets
 
 The native packages are separate GitHub release assets; the npm CLI tarball does
-**not** contain these native distributions. These exact links become available
-when the reviewed 0.17.0 release is published:
+**not** contain these native distributions. Download version 0.17.0 here:
 
 - [Codex / Claude Code ZIP](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-codex-claude-code.zip)
 - [ZIP SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-codex-claude-code.zip.sha256)
 - [Claude Desktop MCPB](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-claude-desktop.mcpb)
 - [MCPB SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-claude-desktop.mcpb.sha256)
 
-Until publication, build from this candidate checkout or use the reviewed local
-artifacts. Verify the downloaded archive against its matching checksum before
+Verify the downloaded archive against its matching checksum before
 unpacking/opening it. Published 0.16.1 remains immutable.
 
 ## Build and verify

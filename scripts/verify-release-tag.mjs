@@ -28,10 +28,11 @@ for (const value of manifests) {
   }
 }
 
-const [, core, cli, action, mcp] = manifests;
+const [, core, cli, action, mcp, renderer] = manifests;
 if (core.private !== true) throw new Error("the core workspace must remain private");
 if (action.private !== true) throw new Error("the Action workspace must remain private");
 if (mcp.private !== true) throw new Error("the MCP workspace must remain private");
+if (renderer.private !== true) throw new Error("the renderer workspace must remain private; its adapter is bundled with the CLI");
 if (cli.private === true) throw new Error("the CLI workspace must remain publishable");
 
 console.log(

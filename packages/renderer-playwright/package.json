@@ -41,5 +41,6 @@
   },
   "devDependencies": {
     "@seo-crawl-audit/core": "0.17.0"
-  }
+  },
+  "private": true
 }
