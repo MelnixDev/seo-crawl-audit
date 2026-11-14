@@ -10,12 +10,12 @@ returned as artifact paths.
 ## Release assets
 
 The native packages are separate GitHub release assets; the npm CLI tarball does
-**not** contain these native distributions. Download version 0.17.0 here:
+**not** contain these native distributions. Download version 0.17.1 here:
 
-- [Codex / Claude Code ZIP](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-codex-claude-code.zip)
-- [ZIP SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-codex-claude-code.zip.sha256)
-- [Claude Desktop MCPB](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-claude-desktop.mcpb)
-- [MCPB SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.0/seo-crawl-audit-0.17.0-claude-desktop.mcpb.sha256)
+- [Codex / Claude Code ZIP](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.1/seo-crawl-audit-0.17.1-codex-claude-code.zip)
+- [ZIP SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.1/seo-crawl-audit-0.17.1-codex-claude-code.zip.sha256)
+- [Claude Desktop MCPB](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.1/seo-crawl-audit-0.17.1-claude-desktop.mcpb)
+- [MCPB SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.1/seo-crawl-audit-0.17.1-claude-desktop.mcpb.sha256)
 
 Verify the downloaded archive against its matching checksum before
 unpacking/opening it. Published 0.16.1 remains immutable.
@@ -33,14 +33,14 @@ This builds the existing engine first, copies its exact bundled MCP and shared
 skill into `plugins/seo-crawl-audit`, validates portable schemas and the official
 MCPB manifest, and writes these installable artifacts to `native-plugin-dist/`:
 
-- `seo-crawl-audit-0.17.0-codex-claude-code.zip`
-- `seo-crawl-audit-0.17.0-claude-desktop.mcpb`
+- `seo-crawl-audit-0.17.1-codex-claude-code.zip`
+- `seo-crawl-audit-0.17.1-claude-desktop.mcpb`
 - one `.sha256` checksum file per archive
 
 Run `npm run plugins:release-assets` after capture/review to assemble the exact GitHub-upload directory with notes, media, evidence and SHA256SUMS. This step does not publish anything.
 
 Artifacts contain the bundled JavaScript dependencies. Codex setup binds the
-absolute Node executable that runs `configure.mjs`; Claude Code requires Node
+Node installation that runs `configure.mjs` using a server-scoped `PATH`; Claude Code requires Node
 on its launch PATH, and Claude Desktop supplies Node for its Node extensions. Optional browser rendering still requires Playwright and
 Chromium installed in the **consumer workspace**. There is no automatic browser
 download. The launcher changes CWD to the validated workspace before loading the
@@ -67,11 +67,17 @@ Keep the unpacked package/marketplace outside the directory you audit: the packa
 node /absolute/my-seo-marketplace/plugins/seo-crawl-audit/configure.mjs /absolute/consumer-project
 ```
 
-Setup records both the workspace and the current `process.execPath` as the
-Codex MCP command. The configured plugin can therefore start even when the
-client PATH cannot find an nvm-managed `node`. If `node` is unavailable in your
+Setup records the workspace, keeps the Codex MCP command as the supported bare
+executable `node`, and sets this MCP server’s `PATH` to the directory containing
+the current `process.execPath`. Absolute executable commands are rejected by
+Codex’s Agent Plugins loader. The server-scoped PATH selects the configured
+Node installation even when the desktop client’s inherited PATH is empty or
+cannot find an nvm-managed `node`. If `node` is unavailable in your
 setup shell, invoke the desired Node executable by its absolute path instead.
-This does not install a runtime or change global PATH. Keep this configured copy
+This does not install a runtime or change global PATH. Only this MCP process
+receives the scoped PATH; arbitrary executables from the desktop’s PATH are not
+inherited by the plugin. Optional Playwright/browser tooling must be installed
+in the consumer workspace and use its resolved executable paths. Keep this configured copy
 local: the public archive retains the portable `node` command.
 
 After upgrading, moving or removing that Node installation, rerun
@@ -108,8 +114,8 @@ into an existing catalog rather than overwriting unrelated plugins.
 Codex's portable plugin CWD defaults to the installation directory, and portable
 placeholders only support `PLUGIN_ROOT` and `PLUGIN_DATA`. Therefore this plugin
 requires explicit configuration; it deliberately fails before starting MCP if
-the workspace is unset. The configure command sets an absolute non-secret root and Node executable
-in the package's `mcp.json`. It never guesses from the installation CWD. Use a
+the workspace is unset. The configure command sets an absolute non-secret root and a server-scoped Node
+installation PATH in the package's `mcp.json`. It never guesses from the installation CWD. Use a
 separate configured package and uniquely named repo marketplace per workspace and keep it local. A
 configured plugin remains bound to that directory even if a chat opens another
 project; verify the configured root before scanning. MCP initialization names the bound root, and Codex tools require a `workspace` argument matching it. A call naming another project (or omitting the workspace) fails schema validation before any crawl or write. The configuration command operates on the unpacked source package before import, never an installed immutable cache; it creates no mutable global last-workspace preference or shared `PLUGIN_DATA` setting.
@@ -199,24 +205,42 @@ Uninstalling the plugin does not delete user scan/report artifacts. Remove those
 from the consumer project separately only when desired. No global plugin,
 marketplace, credentials, or client settings are changed by the build/tests.
 
+For the shared artwork, client icon fields and display limits, see
+[Plugin branding](plugin-branding.md).
+
+## Native Codex loader regression check
+
+When Codex CLI is installed, run its actual marketplace importer and app-server
+loader against an isolated profile (no sign-in or model request):
+
+```sh
+CODEX_NATIVE_TEST_BINARY=/absolute/path/to/codex node --test test/native-codex-loader.test.js
+```
+
+Build first. This optional integration test installs the generated plugin,
+checks skill and eight-tool discovery, runs a one-page fixture scan with an
+empty inherited client PATH, and rejects a mismatched workspace. Without the
+explicit binary path, the test is skipped; standalone STDIO tests alone do not
+prove native loader compatibility.
+
 ## Verification limits
 
 `plugins:test` exercises actual JSON-RPC STDIO initialize, eight-tool discovery,
 plan, fixture HTTP scan, paginated issues, report generation, traversal/symlink
 rejection and workspace configuration/update handling through each manifest's
-launch adapter. Codex uses the configured absolute command with an empty PATH
+launch adapter. Codex uses the supported bare `node` command and its configured server PATH
+while the client’s inherited PATH is empty
 for the full fixture lifecycle. Public packaging also rejects a configured
 runtime path even if its workspace setting has been manually cleared. Tests
 verify artifacts contain the exact existing engine bundle.
-Codex CLI 0.167.0-alpha.4.1 also successfully added a local marketplace,
-installed and listed version 0.17.0 in an isolated task-only `CODEX_HOME`,
-initialized the actual installed-cache runtime, listed all eight tools and
-removed the plugin. The real user's config hash stayed unchanged. This is
-native CLI import/cache/removal evidence, not GUI installation or an agent-driven
-scan. Interactive GUI installation remains unverified in Codex desktop, Claude
-Code and Claude Desktop. A release still
-needs a clean installation and first audit in each real client on supported
-platforms, including optional Playwright on a consumer project if used.
+The optional native-loader integration test is separate from the portable
+STDIO tests. Its actual Codex app-server discovery and tool dispatch are the
+acceptance gate for the configured Codex launcher; merely launching the
+installed-cache JavaScript directly is insufficient. No model-generated tool
+selection is exercised. Interactive GUI installation remains unverified in
+Codex desktop, Claude Code and Claude Desktop. A release still needs a clean
+installation and first audit in each real client on supported platforms,
+including optional Playwright on a consumer project if used.
 
 ## Primary format references (verified 2026-11-14)
 

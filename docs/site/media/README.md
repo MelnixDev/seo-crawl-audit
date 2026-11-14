@@ -23,3 +23,5 @@ self-contained report is `native-demo-report.html`; the public copy adds only a 
 The release-preparation evidence includes the MCP transcript and visual QA
 results. Native GUI installation and first use remain a separate verification
 step. AI-client data policies are separate from local artifact storage.
+
+The report screenshots and recording are retained from engine 0.17.0, before the crab header refresh. They are real historical fixture captures, not retouched images of the 0.17.1 interface. `logo.png` is the selected 512px production crab artwork.

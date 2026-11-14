@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.17.1 — 2026-11-14
+
+- fix configured Codex plugin startup through the actual native loader using a bare Node command and a server-scoped executable search path;
+- verify native plugin discovery and MCP tool dispatch with an empty inherited PATH;
+- add the crab brand across client packages, skill metadata, README and the public product website;
+- keep the example report accessible at `/demo/` and `/report.html` as the homepage becomes the product website.
+
 ## 0.17.0 — 2026-11-14
 
 - package the existing MCP server and shared audit skill as native Codex/Claude Code ZIP and Claude Desktop MCPB distributions;

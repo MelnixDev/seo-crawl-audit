@@ -50,6 +50,8 @@ try {
   assert.ok(mcpBundle && mcpBundle.size <= 1.5 * 1024 * 1024, `MCP bundle is ${mcpBundle?.size ?? 0} bytes`);
   assert.equal(cliPaths.includes("bin/seo-audit-mcp.js"), true);
   assert.equal(cliPaths.includes("agent-skill/seo-crawl-audit/SKILL.md"), true);
+  assert.equal(cliPaths.includes("agent-skill/seo-crawl-audit/agents/openai.yaml"), true);
+  assert.equal(cliPaths.includes("agent-skill/seo-crawl-audit/assets/logo.png"), true);
   assert.doesNotMatch(builtCli, /@seo-crawl-audit\/renderer-playwright/);
   assert.doesNotMatch(builtServer, /@seo-crawl-audit\/renderer-playwright/);
   assert.match(builtCli, /npm install --save-dev playwright/);

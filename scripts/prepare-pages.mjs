@@ -1,0 +1,12 @@
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const root = resolve(import.meta.dirname, '..');
+const output = resolve(root, process.argv[2] ?? '_site');
+await mkdir(resolve(output, 'demo'), { recursive: true });
+await cp(resolve(root, 'docs/site'), output, { recursive: true });
+const source = await readFile(resolve(root, 'examples/quotes-toscrape-report.html'), 'utf8');
+const demo = source.replace(/<head\b[^>]*>/i, '$&<meta name="robots" content="noindex, follow">');
+if (demo === source) throw new Error('Example report is missing its head element');
+await writeFile(resolve(output, 'demo/index.html'), demo);
+await writeFile(resolve(output, 'report.html'), demo);
+console.log(`Prepared product website and preserved example reports: ${output}`);

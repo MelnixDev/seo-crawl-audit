@@ -1,5 +1,5 @@
 import { readFile, realpath, stat, writeFile } from 'node:fs/promises';
-import { isAbsolute, relative, sep } from 'node:path';
+import { dirname, isAbsolute, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Configure an unpacked Codex package before importing it into a marketplace.
@@ -18,7 +18,10 @@ try {
   const path = new URL('./mcp.json', import.meta.url);
   const config = JSON.parse(await readFile(path, 'utf8'));
   config.mcpServers['seo-crawl-audit'].env.SEO_AUDIT_MCP_ROOT = root;
-  config.mcpServers['seo-crawl-audit'].command = process.execPath;
+  // Codex permits a bare executable name or a contained ./ path, not an absolute command.
+  // Scope PATH to this MCP process so desktop startup never depends on its inherited PATH.
+  config.mcpServers['seo-crawl-audit'].command = 'node';
+  config.mcpServers['seo-crawl-audit'].env.PATH = dirname(process.execPath);
   await writeFile(path, JSON.stringify(config, null, 2) + '\n');
   console.log('Codex workspace and Node executable configured. Import or refresh this local plugin and restart the client.');
 } catch (error) {
