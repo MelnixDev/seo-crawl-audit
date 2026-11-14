@@ -1,25 +1,16 @@
-# Native plugin release media
+# Native plugin release media — 0.17.1
 
-These images and the silent MP4 show an actual report produced by the bundled
-0.17.0 STDIO MCP server. They do not show an installed Codex or Claude interface.
+These screenshots are unretouched viewport captures of the actual 0.17.1 HTML report generated through the bundled plugin MCP launcher. They show the selected crab header and engine version. They do not simulate an installed Codex or Claude interface.
 
-The local three-page fixture was explicitly created for this demonstration:
-`/`, `/catalog/`, and `/guide/`. The two inner pages repeat their title, and all
-three omit descriptions. The fixture uses localhost only; no customer website,
-credentials, hosted service or invented production metrics are involved.
+The local three-page fixture is defined in demo-fixture.mjs: root, catalog and guide. It deliberately repeats titles and omits metadata. All visible URLs are loopback fixture addresses; no customer site, credentials or personal paths are shown.
 
-The capture called `initialize`, `tools/list`, `seo_audit_plan`,
-`seo_audit_scan` (three-page cap, robots respected), `seo_audit_issues` (limit5)
-and `seo_audit_report` through the actual plugin launcher. The generated
-self-contained report is `native-demo-report.html`; the public copy adds only a noindex/nofollow meta tag so fixture content is not a search landing page.
+Capture workflow: initialize, tools/list (8 tools), seo_audit_plan, seo_audit_scan (maxPages 3, robots respected), seo_audit_issues and seo_audit_report. Real browser actions switch Pages/Issues, search catalog and filter severity Error. Screenshots retain the complete browser viewport without compositing or pasted logos. PNG files are lossless format conversions of the browser JPEG captures, not enhanced redraws.
 
-- `native-report-overview.png`: initial rendered report, 1440×1000.
-- `native-report-pages.png`: actual Page Explorer after switching sections.
-- `native-report-issues.png`: actual findings table.
-- `native-workflow.mp4`: one continuous browser recording of the report,
-  switching sections, searching a URL and filtering issues. No synthetic client
-  UI, narration, background music, retimed actions or fabricated installation.
+- native-report-overview.png: report overview, 1185×669.
+- native-report-pages.png: actual Page Explorer, 1185×669.
+- native-report-issues.png: actual Issues view filtered to Error, 1185×669.
+- native-workflow.mp4: approximately 14-second silent preview assembled from four real browser capture states, held 3.5 seconds each. This is a capture sequence, not a continuous screen recording. No simulated UI, narration or music.
+- native-demo-report.html: same actual generated report, with only noindex/nofollow added for public hosting.
+- logo.png: selected 512px production crab artwork.
 
-The release-preparation evidence includes the MCP transcript and visual QA
-results. Native GUI installation and first use remain a separate verification
-step. AI-client data policies are separate from local artifact storage.
+The larger /demo/ report uses explicit synthetic regression fixtures, not current measurements of quotes.toscrape.com. Both examples are demonstrations. GUI client installation remains a separate verification gate; metadata discovery is not a visual picker acceptance claim.

@@ -4,6 +4,9 @@ export function assertPortableCodexTemplate(config) {
   if (server?.command !== 'node') {
     throw new Error('Do not distribute a runtime-configured plugin; restore the portable node command first.');
   }
+  if (Object.keys(server.env ?? {}).some(name => name.toUpperCase() === 'PATH')) {
+    throw new Error('Do not distribute a runtime-configured plugin; restore the portable template without PATH first.');
+  }
   if (server.env?.SEO_AUDIT_MCP_ROOT !== '') {
     throw new Error('Do not distribute a workspace-configured plugin; restore the empty template root first.');
   }

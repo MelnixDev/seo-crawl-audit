@@ -1,4 +1,4 @@
-name: Deploy demo to GitHub Pages
+name: Deploy product website to GitHub Pages
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
       - examples/quotes-toscrape-report.html
       - .github/workflows/pages.yml
       - docs/site/**
+      - scripts/prepare-pages.mjs
   workflow_dispatch:
 
 permissions:
@@ -27,11 +28,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Prepare demo
-        run: |
-          mkdir -p _site
-          cp examples/quotes-toscrape-report.html _site/index.html
-          cp -R docs/site/. _site/
+      - name: Prepare product website and example reports
+        run: node scripts/prepare-pages.mjs
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
       - name: Upload GitHub Pages artifact

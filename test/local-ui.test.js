@@ -191,7 +191,7 @@ test("local UI binds only to loopback and serves its application shell", async (
   assert.equal(response.status, 200);
   const page = await response.text();
   assert.match(page, /Free, local-first site crawler/);
-  assert.match(page, /rel="icon" href="data:image\/svg\+xml/);
+  assert.match(page, /rel="icon" href="data:image\/jpeg;base64,/);
   assert.match(page, /new EventSource\("\/api\/events"\)/);
   assert.match(page, /id="reportFrame"/);
   assert.match(page, /Compact overview preview/);

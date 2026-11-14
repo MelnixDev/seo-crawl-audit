@@ -1,6 +1,6 @@
 {
   "name": "seo-crawl-audit",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "description": "Free, open-source, local-first SEO crawler and regression audit tool.",
   "type": "module",
   "bin": {
@@ -43,7 +43,7 @@
   "bugs": {
     "url": "https://github.com/MelnixDev/seo-crawl-audit/issues"
   },
-  "homepage": "https://github.com/MelnixDev/seo-crawl-audit#readme",
+  "homepage": "https://melnixdev.github.io/seo-crawl-audit/",
   "engines": {
     "node": ">=20.19"
   },
@@ -56,7 +56,7 @@
     }
   },
   "devDependencies": {
-    "@seo-crawl-audit/core": "0.17.0",
-    "@seo-crawl-audit/renderer-playwright": "0.17.0"
+    "@seo-crawl-audit/core": "0.17.1",
+    "@seo-crawl-audit/renderer-playwright": "0.17.1"
   }
 }

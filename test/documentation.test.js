@@ -24,12 +24,12 @@ test("English and Ukrainian rule references cover the same built-in rules", asyn
 
 test("README report screenshots are present and linked from the npm README", async () => {
   const screenshots = new Map([
-    ["report-local-ui.png", [2424, 1050]],
-    ["report-overview.png", [1652, 1664]],
-    ["report-metrics.png", [1622, 1610]],
-    ["report-pages.png", [1642, 728]],
-    ["report-analytics.png", [1362, 484]],
-    ["report-issues.png", [1670, 880]],
+    ["report-local-ui.png", [1185, 669]],
+    ["report-overview.png", [1185, 1634]],
+    ["report-metrics.png", [1185, 669]],
+    ["report-pages.png", [1185, 669]],
+    ["report-analytics.png", [1185, 669]],
+    ["report-issues.png", [1185, 669]],
   ]);
   const [rootReadme, packageReadme] = await Promise.all([
     readFile(new URL("../README.md", import.meta.url), "utf8"),

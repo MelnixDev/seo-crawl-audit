@@ -52,7 +52,7 @@ Save the complete JSON object as a GitHub Actions secret, for example
 variable and pass only its name to the Action:
 
 ```yaml
-- uses: MelnixDev/seo-crawl-audit@v0.17.0
+- uses: MelnixDev/seo-crawl-audit@v0.17.1
   with:
     url: https://preview.example.com/
     headers-env: SEO_AUDIT_SITE_HEADERS

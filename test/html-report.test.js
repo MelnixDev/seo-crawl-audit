@@ -66,7 +66,7 @@ test("renders a self-contained filterable report and escapes embedded data", () 
   assert.match(html, /id="page-search"/);
   assert.match(html, /This report contains URLs only/);
   assert.match(html, /id="metrics-view"/);
-  assert.match(html, /rel="icon" href="data:image\/svg\+xml/);
+  assert.match(html, /rel="icon" href="data:image\/jpeg;base64,/);
   assert.match(html, /function renderMetrics/);
   assert.match(html, /id="metrics-hero"/);
   assert.match(html, /id="metrics-insights"/);

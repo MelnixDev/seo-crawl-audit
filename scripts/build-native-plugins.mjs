@@ -19,12 +19,14 @@ assertPortableCodexTemplate(config);
 await mkdir(resolve(plugin, 'server'), { recursive: true });
 await cp(resolve(root, 'packages/cli/bundle/mcp.js'), resolve(plugin, 'server/mcp.js'));
 await cp(resolve(root, 'packages/cli/agent-skill'), resolve(plugin, 'skills'), { recursive: true });
+await mkdir(resolve(plugin, 'skills/seo-crawl-audit/assets'), { recursive: true });
+await cp(resolve(plugin, 'assets/logo.png'), resolve(plugin, 'skills/seo-crawl-audit/assets/logo.png'));
 await cp(resolve(root, 'LICENSE'), resolve(plugin, 'LICENSE'));
 await cp(resolve(root, 'docs/native-plugins.md'), resolve(plugin, 'INSTALL.md'));
 await mkdir(out, { recursive: true });
 const zip = `seo-crawl-audit-${version}-codex-claude-code.zip`;
 const entries = {};
-const allowed = new Set(['plugin.json', 'mcp.json', '.claude-plugin/plugin.json', '.mcp.json', 'manifest.json', 'package.json', 'configure.mjs', 'server/launch.mjs', 'server/mcp.js', 'skills/seo-crawl-audit/SKILL.md', 'LICENSE', 'INSTALL.md']);
+const allowed = new Set(['plugin.json', 'mcp.json', '.claude-plugin/plugin.json', '.mcp.json', 'manifest.json', 'package.json', 'configure.mjs', 'server/launch.mjs', 'server/mcp.js', 'skills/seo-crawl-audit/SKILL.md', 'LICENSE', 'INSTALL.md', 'assets/logo.png', 'skills/seo-crawl-audit/agents/openai.yaml', 'skills/seo-crawl-audit/assets/logo.png']);
 for (const path of await readdir(plugin, { recursive: true, withFileTypes: true })) {
   if (path.isDirectory()) continue;
   if (!path.isFile()) throw new Error(`Unexpected symlink or special file in plugin: ${path.name}`);

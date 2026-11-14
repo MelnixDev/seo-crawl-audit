@@ -1,3 +1,5 @@
+<p align="center"><img src="https://raw.githubusercontent.com/MelnixDev/seo-crawl-audit/main/docs/brand/logo-512.png" width="144" height="144" alt="SEO Crawl Audit crab logo"></p>
+
 # SEO Crawl Audit
 
 **Find technical SEO issues. Keep the evidence. Catch regressions.**
@@ -8,9 +10,12 @@ bounded crawl, inspect concrete URL findings and compare runs after a deployment
 No SEO service account or SEO API key is required. Scans default to 100 pages
 and respect robots.txt.
 
-[Explore the example report](https://melnixdev.github.io/seo-crawl-audit/) ·
+[Product website](https://melnixdev.github.io/seo-crawl-audit/) ·
+[Explore the example report](https://melnixdev.github.io/seo-crawl-audit/demo/) ·
 [Choose your installation](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/native-plugins.md) ·
 [CLI quick start](#requirements-and-installation)
+
+The screenshots show the actual 0.17.1 interface with controlled local fixtures or deterministic demonstration data. They contain no personal workspace paths or customer audits; the larger regression example is synthetic.
 
 ## Choose your client
 
@@ -20,8 +25,8 @@ and respect robots.txt.
 | **Claude Code** | Same ZIP, loaded from outside the audited project. Uses Claude Code’s project directory. [Setup](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/native-plugins.md#claude-code) |
 | **Claude Desktop** | MCPB extension with a required existing-directory picker. [Setup](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/native-plugins.md#claude-desktop-chat) |
 
-Native packages are available with **0.17.0**. See the
-[release notes](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/releases/0.17.0.md) for exact verification and limitations.
+Native packages and the crab identity are included in **0.17.1**. See the
+[release notes](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/releases/0.17.1.md) for exact verification and limitations.
 No public directory listing or client endorsement is implied. The CLI remains
 available through npm; its [quick start](#requirements-and-installation) is below.
 
@@ -607,7 +612,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: MelnixDev/seo-crawl-audit@v0.17.0
+      - uses: MelnixDev/seo-crawl-audit@v0.17.1
         id: seo
         with:
           url: https://preview.example.com/
