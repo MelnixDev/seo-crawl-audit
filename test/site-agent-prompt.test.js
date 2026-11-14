@@ -38,7 +38,7 @@ test("site copy action writes the exact trimmed prompt and announces success", a
   assert.deepEqual(writes, [renderedPrompt.trim()], "copy the whole HTML-decoded displayed prompt");
   assert.ok(writes[0].includes("\n\n"), "preserve paragraph breaks");
   assert.match(writes[0], /<WEBSITE_URL>/, "copy the rendered placeholder, not HTML entities");
-  for (const client of ["Codex", "Claude Code", "Claude Desktop"]) assert.ok(writes[0].includes(client));
+  for (const client of ["Codex", "Claude Code", "Chat", "Cowork"]) assert.ok(writes[0].includes(client));
   assert.match(ui.status.textContent, /Prompt copied/);
   assert.equal(ui.preview.open, false);
   assert.equal(ui.prompt.focused, false);
