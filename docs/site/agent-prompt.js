@@ -22,7 +22,7 @@ if (button && prompt && preview && status) {
       button.textContent = "Copied!";
       button.classList.add("copy-success");
       resetTimer = setTimeout(resetButton, 2500);
-      status.textContent = "Prompt copied. Paste it into your coding agent to start.";
+      status.textContent = "";
     } catch {
       if (currentAttempt !== attempt) return;
       resetButton();

@@ -42,7 +42,7 @@ test("site copy action writes the exact trimmed prompt and announces success", a
   assert.ok(writes[0].includes("\n\n"), "preserve paragraph breaks");
   assert.match(writes[0], /<WEBSITE_URL>/, "copy the rendered placeholder, not HTML entities");
   for (const client of ["Codex", "Claude Code", "Chat", "Cowork"]) assert.ok(writes[0].includes(client));
-  assert.match(ui.status.textContent, /Prompt copied/);
+  assert.equal(ui.status.textContent, "");
   assert.equal(ui.preview.open, false);
   assert.equal(ui.prompt.focused, false);
   assert.equal(ui.button.textContent, "Copied!");
