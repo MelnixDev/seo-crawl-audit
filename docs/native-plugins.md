@@ -10,12 +10,12 @@ returned as artifact paths.
 ## Release assets
 
 The native packages are separate GitHub release assets; the npm CLI tarball does
-**not** contain these native distributions. Download version 0.17.1 here:
+**not** contain these native distributions. Download version 0.17.2 here:
 
-- [Codex / Claude Code ZIP](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.1/seo-crawl-audit-0.17.1-codex-claude-code.zip)
-- [ZIP SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.1/seo-crawl-audit-0.17.1-codex-claude-code.zip.sha256)
-- [Claude Desktop MCPB](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.1/seo-crawl-audit-0.17.1-claude-desktop.mcpb)
-- [MCPB SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.1/seo-crawl-audit-0.17.1-claude-desktop.mcpb.sha256)
+- [Codex / Claude Code ZIP](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.2/seo-crawl-audit-0.17.2-codex-claude-code.zip)
+- [ZIP SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.2/seo-crawl-audit-0.17.2-codex-claude-code.zip.sha256)
+- [Claude Desktop MCPB](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.2/seo-crawl-audit-0.17.2-claude-desktop.mcpb)
+- [MCPB SHA-256](https://github.com/MelnixDev/seo-crawl-audit/releases/download/v0.17.2/seo-crawl-audit-0.17.2-claude-desktop.mcpb.sha256)
 
 Verify the downloaded archive against its matching checksum before
 unpacking/opening it. Published 0.16.1 remains immutable.
@@ -33,8 +33,8 @@ This builds the existing engine first, copies its exact bundled MCP and shared
 skill into `plugins/seo-crawl-audit`, validates portable schemas and the official
 MCPB manifest, and writes these installable artifacts to `native-plugin-dist/`:
 
-- `seo-crawl-audit-0.17.1-codex-claude-code.zip`
-- `seo-crawl-audit-0.17.1-claude-desktop.mcpb`
+- `seo-crawl-audit-0.17.2-codex-claude-code.zip`
+- `seo-crawl-audit-0.17.2-claude-desktop.mcpb`
 - one `.sha256` checksum file per archive
 
 Run `npm run plugins:release-assets` after capture/review to assemble the exact GitHub-upload directory with notes, media, evidence and SHA256SUMS. This step does not publish anything.

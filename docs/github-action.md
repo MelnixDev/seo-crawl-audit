@@ -6,7 +6,7 @@ results to a project-owned server.
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: MelnixDev/seo-crawl-audit@v0.17.1
+  - uses: MelnixDev/seo-crawl-audit@v0.17.2
     id: seo
     with:
       url: https://preview.example.com/
@@ -40,7 +40,7 @@ The Action uses only the public core root and `/node` file adapters. A partial
 scan produces an incomplete comparison: regressions found on checked pages are
 kept, but unchecked pages are not marked resolved or missing.
 
-Use `MelnixDev/seo-crawl-audit@v0.17.1` for this versioned Action release.
+Use `MelnixDev/seo-crawl-audit@v0.17.2` for this versioned Action release.
 The moving `v0` alias is maintained separately; this release does not move it. The Action bundle is committed to the
 repository and is not published as a separate npm package.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.17.2 — 2026-11-14
+
+- unify the local app and offline HTML report with the approved product website through a shared, validated design system;
+- align typography, coral actions, neutral surfaces, forms, tables, metrics, charts, history/comparison views and accessible focus/semantic states;
+- preserve custom report branding, offline behavior and existing public APIs;
+- refresh all README/site screenshots and the video preview from the final interface before publication.
+
 ## 0.17.1 — 2026-11-14
 
 - fix configured Codex plugin startup through the actual native loader using a bare Node command and a server-scoped executable search path;

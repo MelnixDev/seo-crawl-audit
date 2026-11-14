@@ -8,7 +8,7 @@ For JavaScript-rendered pages, install Playwright in the consumer project:
 ```sh
 npm install --save-dev playwright
 npx playwright install chromium
-npx seo-crawl-audit@0.17.1 scan https://example.com/ --render playwright --pages 100
+npx seo-crawl-audit@0.17.2 scan https://example.com/ --render playwright --pages 100
 ```
 
 One Chromium browser and context are reused. Browser pages are bounded to

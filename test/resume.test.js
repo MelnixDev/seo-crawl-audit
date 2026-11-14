@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const cliPath = join(projectRoot, "bin", "seo-audit.js");
 
-async function waitFor(check, timeout = 5_000) {
+async function waitFor(check, timeout = 5_000, state = "the interrupted scan state") {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeout) {
     if (await check()) {
@@ -22,12 +22,13 @@ async function waitFor(check, timeout = 5_000) {
     }
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
-  throw new Error("timed out waiting for the interrupted scan state");
+  throw new Error(`timed out waiting for ${state}`);
 }
 
 test("interrupted scan leaves a report and resumes without refetching saved pages", async (context) => {
   const requests = new Map();
   let origin;
+  let firstDocumentRequested = false;
   const server = createServer((request, response) => {
     requests.set(request.url, (requests.get(request.url) ?? 0) + 1);
 
@@ -48,6 +49,7 @@ test("interrupted scan leaves a report and resumes without refetching saved page
       return;
     }
 
+    firstDocumentRequested = true;
     setTimeout(() => {
       response.writeHead(200, { "content-type": "text/html" });
       response.end(`<title>${request.url}</title><h1>Page</h1>`);
@@ -89,6 +91,14 @@ test("interrupted scan leaves a report and resumes without refetching saved page
       interrupted.kill("SIGKILL");
     }
   });
+
+  // CLI bootstrap and robots/sitemap planning are separate from partial-state readiness.
+  // Keep the original five-second state budget once the crawl has actually requested HTML.
+  await waitFor(async () => {
+    if (firstDocumentRequested) return true;
+    assert.equal(interrupted.exitCode, null, "scan exited before requesting its first document");
+    return false;
+  }, 15_000, "the first document request after CLI startup");
 
   await waitFor(async () => {
     try {

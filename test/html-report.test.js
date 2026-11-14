@@ -376,3 +376,20 @@ test("renders local history as a self-contained bilingual trend chart", () => {
   assert.match(html, /dateFormat\.format\(first\)===dateFormat\.format\(last\)/);
   assert.match(html, /if\(points\.length===1\)historyChart\.querySelectorAll\("text"\)\[1\]\?\.remove\(\)/);
 });
+
+test("report theme keeps site defaults and readable custom-brand selections", () => {
+  const base = { pages: [], issues: [] };
+  const themed = renderHtmlReport(base);
+  assert.match(themed, /--accent:var\(--coral\);--accent-text:var\(--ink\)/);
+  const selectedStyle = themed.match(/\.report-nav button\[aria-selected="true"\]\{([^}]*)\}/)?.[1] ?? "";
+  assert.match(selectedStyle, /background:var\(--accent\)/);
+  assert.match(selectedStyle, /color:var\(--accent-text\)/);
+  assert.match(selectedStyle, /border-color:var\(--i\)/, "white agency accents must keep a visible selected boundary");
+  for (const [color, foreground] of [["#000000", "#fff"], ["#ffffff", "#000"], ["#ffff00", "#000"], ["#123456", "#fff"]]) {
+    const html = renderHtmlReport({ ...base, branding: { primaryColor: color } });
+    assert.ok(html.includes(`--accent:${color};--accent-text:${foreground}`));
+  }
+  const rejected = renderHtmlReport({ ...base, branding: { primaryColor: "#000000;--injected:yes" } });
+  assert.doesNotMatch(rejected, /--injected:/);
+  assert.match(rejected, /--accent:var\(--coral\);--accent-text:var\(--ink\)/);
+});

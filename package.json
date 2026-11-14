@@ -1,13 +1,13 @@
 {
   "name": "seo-crawl-audit-workspace",
-  "version": "0.17.1",
+  "version": "0.17.2",
   "private": true,
   "type": "module",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -b && npm run bundle --workspace seo-crawl-audit && npm run bundle --workspace @seo-crawl-audit/mcp && npm run bundle --workspace @seo-crawl-audit/action && node scripts/build-native-plugins.mjs",
+    "build": "npm run design:check && tsc -b && npm run bundle --workspace seo-crawl-audit && npm run bundle --workspace @seo-crawl-audit/mcp && npm run bundle --workspace @seo-crawl-audit/action && node scripts/build-native-plugins.mjs",
     "clean": "tsc -b --clean",
     "lint": "eslint packages/*/src --max-warnings=0",
     "test": "npm run build && node --test",
@@ -25,7 +25,9 @@
     "seo-audit": "node bin/seo-audit.js",
     "plugins:build": "npm run build",
     "plugins:test": "npm run plugins:build && node --test test/native-plugins.test.js",
-    "plugins:release-assets": "node scripts/prepare-native-release.mjs"
+    "plugins:release-assets": "node scripts/prepare-native-release.mjs",
+    "design:generate": "node scripts/generate-design-system.mjs",
+    "design:check": "node scripts/generate-design-system.mjs --check"
   },
   "engines": {
     "node": ">=20.19"

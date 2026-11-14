@@ -78,7 +78,7 @@ const html = renderReport({
   ...lifecycle,
   engineVersion: current.engineVersion,
   ruleSetVersion: current.ruleSetVersion,
-  branding: { agencyName: "SEO Crawl Audit", primaryColor: "#3157d5" },
+  branding: { agencyName: "SEO Crawl Audit" },
   siteMetrics: buildSiteMetrics(current),
   ...(history ? { history } : {}),
 });

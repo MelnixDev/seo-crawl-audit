@@ -1,4 +1,4 @@
-// Reproducible local-only source for the native plugin release report/media.
+// Legacy 0.17.1 local MCP fixture. Current 0.17.2 reference-report media uses scripts/generate-demo.mjs.
 import { createServer } from 'node:http';
 const server = createServer((request, response) => {
   if (request.url === '/robots.txt') return response.end('User-agent: *\nAllow: /\n');
