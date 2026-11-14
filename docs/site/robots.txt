@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://melnixdev.github.io/seo-crawl-audit/sitemap.xml

@@ -1,0 +1,41 @@
+{
+  "manifest_version": "0.3",
+  "name": "seo-crawl-audit",
+  "display_name": "SEO Crawl Audit",
+  "version": "0.17.0",
+  "description": "Local SEO crawling, regression checks and reports, with workspace-bound artifacts.",
+  "author": {
+    "name": "MelnixDev"
+  },
+  "license": "MIT",
+  "server": {
+    "type": "node",
+    "entry_point": "server/launch.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/launch.mjs"
+      ],
+      "env": {
+        "SEO_AUDIT_MCP_ROOT": "${user_config.workspace}"
+      }
+    }
+  },
+  "user_config": {
+    "workspace": {
+      "type": "directory",
+      "title": "Audit workspace",
+      "description": "Existing project directory for configs, snapshots, reports and optional Playwright. No files are written in the extension directory.",
+      "required": true
+    }
+  },
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32"
+    ],
+    "runtimes": {
+      "node": ">=20.19.0"
+    }
+  }
+}

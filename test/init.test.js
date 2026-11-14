@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main } from "../packages/cli/dist/cli.js";
 import { initializeProject, workflowContent } from "../packages/cli/dist/init.js";
+import { ENGINE_VERSION } from "../packages/core/dist/index.js";
 import { loadConfig } from "../packages/core/dist/node.js";
 
 test("init creates a validated safe config and local artifact recommendations", async () => {
@@ -103,7 +104,8 @@ test("init workflow templates cover manual, scheduled, and preview checks", () =
   const manual = workflowContent("manual");
   assert.match(manual, /workflow_dispatch:/);
   assert.doesNotMatch(manual, /schedule:/);
-  assert.match(manual, /MelnixDev\/seo-crawl-audit@v0/);
+  assert.ok(manual.includes(`MelnixDev/seo-crawl-audit@v${ENGINE_VERSION}\n`));
+  assert.doesNotMatch(manual, /seo-crawl-audit@v0(?:\s|$)/);
   assert.match(manual, /if: always\(\)/);
 
   const scheduled = workflowContent("scheduled");

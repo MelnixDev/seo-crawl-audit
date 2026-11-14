@@ -1,3 +1,4 @@
+import { ENGINE_VERSION } from "@seo-crawl-audit/core";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { ask as defaultAsk } from "./ui.js";
@@ -96,7 +97,7 @@ function actionSteps(extraInputs = "", preflight = ""): string {
   return `      - uses: actions/checkout@v6${preflight}
       - name: Run SEO Crawl Audit
         id: seo
-        uses: MelnixDev/seo-crawl-audit@v0
+        uses: MelnixDev/seo-crawl-audit@v${ENGINE_VERSION}
         with:
           config: seo-audit.config.json
           fail-on: error

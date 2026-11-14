@@ -1,0 +1,10 @@
+{
+  "name": "seo-crawl-audit",
+  "version": "0.17.0",
+  "description": "Local SEO crawling, regression checks and reports, with workspace-bound artifacts.",
+  "author": {
+    "name": "MelnixDev"
+  },
+  "repository": "https://github.com/MelnixDev/seo-crawl-audit",
+  "license": "MIT"
+}

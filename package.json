@@ -1,13 +1,13 @@
 {
   "name": "seo-crawl-audit-workspace",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "private": true,
   "type": "module",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -b && npm run bundle --workspace seo-crawl-audit && npm run bundle --workspace @seo-crawl-audit/mcp && npm run bundle --workspace @seo-crawl-audit/action",
+    "build": "tsc -b && npm run bundle --workspace seo-crawl-audit && npm run bundle --workspace @seo-crawl-audit/mcp && npm run bundle --workspace @seo-crawl-audit/action && node scripts/build-native-plugins.mjs",
     "clean": "tsc -b --clean",
     "lint": "eslint packages/*/src --max-warnings=0",
     "test": "npm run build && node --test",
@@ -22,16 +22,22 @@
     "benchmark:comparison": "npm run build && node scripts/benchmark-comparison.mjs",
     "demo:generate": "npm run build && node scripts/generate-demo.mjs",
     "screenshots:prepare": "npm run demo:generate && node scripts/prepare-screenshot-pages.mjs",
-    "seo-audit": "node bin/seo-audit.js"
+    "seo-audit": "node bin/seo-audit.js",
+    "plugins:build": "npm run build",
+    "plugins:test": "npm run plugins:build && node --test test/native-plugins.test.js",
+    "plugins:release-assets": "node scripts/prepare-native-release.mjs"
   },
   "engines": {
     "node": ">=20.19"
   },
   "devDependencies": {
+    "@anthropic-ai/mcpb": "2.1.2",
     "@eslint/js": "^9.39.5",
     "@types/node": "^24.0.0",
+    "ajv": "8.20.0",
     "esbuild": "^0.25.0",
     "eslint": "^9.39.5",
+    "fflate": "0.8.3",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.67.0"
   }

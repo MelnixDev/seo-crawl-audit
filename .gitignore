@@ -11,3 +11,10 @@ seo-audit-report.html
 seo-guard-report.html
 *-baseline.json
 *-seo-report.html
+
+# Native plugin build artifacts (generated from the existing bundled MCP).
+plugins/seo-crawl-audit/server/mcp.js
+plugins/seo-crawl-audit/skills/
+native-plugin-dist/
+plugins/seo-crawl-audit/LICENSE
+plugins/seo-crawl-audit/INSTALL.md
