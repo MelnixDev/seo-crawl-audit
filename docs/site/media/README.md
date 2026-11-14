@@ -19,3 +19,13 @@ The README local-app screenshot separately shows a completed three-page HTTP sca
 - `logo.png`: the existing selected 512px production crab artwork, unchanged in this media refresh.
 
 PNG files are format-only conversions of the browser JPEG captures. No colors, controls, values or logos were redrawn or pasted into them. The video adds at most one pixel of padding for the codec's even-width requirement. GUI plugin installation remains a separate verification gate; report captures do not establish client picker rendering or platform endorsement.
+
+## Codex native verification — 0.17.4, 2026-11-14
+
+See `codex-0.17.4-verification.json` for the sanitized native installation and actual Codex app-server tool-dispatch result. One localhost page was planned/scanned and its issues/report read through the plugin. This proves the native tool workflow, not interactive GUI installation.
+
+The plugins page intentionally does not duplicate generated-report media already shown on the homepage. A Codex client walkthrough should show the actual client installation/removal and a bounded first scan; report-only captures must not be presented as such a walkthrough. GUI capture remains blocked in the current automation environment. Claude acceptance is #50; remaining Codex acceptance is #51.
+
+## Client identification marks
+
+`codex.svg` and `claude-color.svg` are unmodified brand icons from [LobeHub Icons](https://github.com/lobehub/lobe-icons), downloaded 2026-11-14 from `packages/static-svg/icons/`. The library MIT notice is retained in `CLIENT-ICONS-LICENSE.txt`. Product marks identify the supported clients; they do not indicate endorsement.
