@@ -1,4 +1,5 @@
 import { crawlSite } from "./crawler.js";
+import { createHash } from "node:crypto";
 import { createBaseline } from "./baseline.js";
 import { resolveConfig } from "./config.js";
 import { createPerOriginRequestGate } from "./request-gate.js";
@@ -34,6 +35,7 @@ function checkpointIdentity(plan: ScanPlan, rendererId?: string): CheckpointIden
     maxResponseBytes: plan.config.maxResponseBytes,
     userAgent: plan.userAgent,
     ...(rendererId ? { rendererId } : {}),
+    ...(plan.retry ? { retrySelectionHash: createHash("sha256").update(JSON.stringify(plan.retry)).digest("hex") } : {}),
   };
 }
 
@@ -112,13 +114,15 @@ export async function scan(
     ...(options.cachedPages ?? []),
     ...(checkpoint?.pages.filter(reusableCheckpointPage) ?? []),
   ];
-  const uniqueCachedPages = [...new Map(cachedPages.map((page) => [page.url, page])).values()];
+  const targets = plan.retry ? new Set(plan.candidateUrls) : null;
+  const uniqueCachedPages = [...new Map(cachedPages.filter(page => !targets || targets.has(page.url)).map((page) => [page.url, page])).values()];
   if (uniqueCachedPages.length > 0) {
     await options.onEvent?.({ type: "resume", completed: uniqueCachedPages.length, total: limit });
   }
 
   const result = await crawlSite(plan.startUrl, {
     ...options,
+    ...(plan.retry ? { targetUrls: plan.candidateUrls } : {}),
     maxPages: limit,
     concurrency: config.concurrency,
     requestDelay: config.delay,
@@ -146,6 +150,12 @@ export async function scan(
   });
 
   await options.checkpointStore?.flush?.();
+  if (plan.retry) {
+    result.snapshot.retry = plan.retry;
+    // This snapshot is deliberately a subset, never a new full-site baseline.
+    result.truncated = true;
+    result.snapshot.truncated = true;
+  }
   if (!result.partial && !options.retainCheckpoint) {
     await options.checkpointStore?.clear(identity);
   }

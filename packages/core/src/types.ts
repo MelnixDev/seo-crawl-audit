@@ -42,6 +42,7 @@ export interface ReportBranding {
 }
 
 export interface ReportData {
+  retry?: RetrySelection;
   mode?: "scan" | "check";
   startUrl?: string;
   generatedAt?: string;
@@ -190,6 +191,7 @@ export interface CrawlStatistics {
 }
 
 export interface SnapshotV2 {
+  retry?: RetrySelection;
   schemaVersion: 2;
   /** Absent in historical snapshots whose observed URL paths may have been stripped. */
   urlObservationVersion?: 1 | undefined;
@@ -285,6 +287,7 @@ export interface DiffResult {
 }
 
 export interface CheckpointIdentity {
+  retrySelectionHash?: string;
   schemaVersion: 2;
   pageSchemaVersion: 1 | 2;
   siteUrl: string;
@@ -360,7 +363,16 @@ export interface PlanScanOptions {
   onEvent?: ((event: ScanEvent) => void | Promise<void>) | undefined;
 }
 
+export interface RetrySelection {
+  sourcePages: number;
+  sourceSnapshots: number;
+  statuses: number[] | null;
+  networkErrors: boolean;
+  urls: string[];
+}
+
 export interface ScanPlan {
+  retry?: RetrySelection;
   planVersion: 1;
   config: ScanConfigV1;
   startUrl: string;
@@ -370,10 +382,12 @@ export interface ScanPlan {
   sitemap: SitemapState | null;
   candidateUrls: string[];
   candidateCount: number | null;
-  mode: "sitemap" | "links";
+  mode: "sitemap" | "links" | "retry";
 }
 
 export interface ScanOptions extends PlanScanOptions {
+  /** Internal bounded frontier used for targeted retries; links cannot expand it. */
+  targetUrls?: string[];
   renderer?: PageRenderer | undefined;
   storage?: StorageAdapter | undefined;
   checkpointStore?: CheckpointStore | undefined;

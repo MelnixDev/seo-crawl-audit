@@ -40,3 +40,7 @@ Rule documentation: https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/
 ## Pagination and title coverage
 
 For collection audits, run a targeted crawl from a collection with `--no-sitemap --include-query --max-pages 100`. Verify that first and later pages actually appear in the saved snapshot; a sitemap-only sample can miss pagination. Review critical `pagination-title-duplicate` and indexable `duplicate-title` separately from warning-level `near-duplicate-title`. Do not infer Google exclusion from titles alone; inspect Search Console. Preserve intentional canonical/robots policy.
+
+## Retry only failed URLs
+
+For a user-requested repeat check of previous failures, plan and scan with `retryFrom` pointing to local snapshot(s). Use `retryStatuses: [503]` to select that previous status; `retryNetworkErrors` explicitly includes network failures when filtering by status. No additional links/sitemap URLs are crawled. Default budget is 100; increase only for the authorized selected set. Report selected/checked/remaining and recovered/still-failing/blocked counts. Output is a separate subset, never a replacement full-site baseline. CLI fallback: `seo-audit retry snapshot.json --status 503 --all` when the whole selected set is authorized. Preserve sources and do not infer resolution of unchecked pages.

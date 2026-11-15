@@ -313,7 +313,7 @@ export async function crawlSite(inputUrl: string, rawOptions: CrawlerOptions = {
       options.logger.warn(`Could not load sitemap ${options.sitemap}: ${sitemap.error}`);
     }
   }
-  const seeds = [...new Set([startUrl, ...(sitemap?.urls ?? [])])];
+  const seeds = [...new Set(rawOptions.targetUrls ?? [startUrl, ...(sitemap?.urls ?? [])])];
   let frontier: Array<{ url: string; depth: number }> = seeds
     .slice(0, options.maxPages)
     .map((url) => ({ url, depth: 0 }));
@@ -356,6 +356,7 @@ export async function crawlSite(inputUrl: string, rawOptions: CrawlerOptions = {
 
     const next = new Map<string, { url: string; depth: number }>();
     for (const { item, page } of completed.sort((left, right) => left.item.url.localeCompare(right.item.url))) {
+      if (rawOptions.targetUrls) continue;
       const discoveredLinks = page.internalLinks?.length
         ? page.internalLinks
         : (page.links ?? []).filter((link) => isSameOrigin(link, origin));

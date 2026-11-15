@@ -1,4 +1,5 @@
 import { dirname, join, resolve } from "node:path";
+import { realpath, stat } from "node:fs/promises";
 import {
   audit,
   buildHistorySeries,
@@ -7,6 +8,8 @@ import {
   diff,
   migrateSnapshot,
   planScan,
+  planRetry,
+  retryOutcome,
   scan,
   type PageSnapshot,
   type PageRenderer,
@@ -102,6 +105,42 @@ export async function statusCommand(inputPath: string | undefined, values: CliVa
   return 0;
 }
 
+export async function retryCommand(inputs: string[], values: CliValues, signal?: AbortSignal): Promise<number> {
+  if (!inputs.length) throw new Error("retry requires one or more source snapshot files");
+  if (values.sitemap || values["no-sitemap"] || values["trailing-slash"] === "strip") throw new Error("retry preserves observed URLs and does not accept sitemap or strip options");
+  if (values.status !== undefined && !/^\d{3}(,\d{3})*$/.test(values.status)) throw new Error("--status must contain comma-separated HTTP error codes, e.g. 503 or 429,503");
+  const snapshots = await Promise.all(inputs.map(input => readSnapshot(resolve(input))));
+  const output = resolve(values.output ?? ".seo-audit.retry.json");
+  const report = resolve(values.report ?? "seo-audit-retry.html");
+  const checkpoint = checkpointPathForRequestHeaders(checkpointPathForOutput(output), values["headers-env"]);
+  const identity = async (path: string) => realpath(path).then(async resolved => { const info = await stat(resolved); return `${info.dev}:${info.ino}`; }).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; return path; });
+  const sources = await Promise.all(inputs.map(input => identity(resolve(input))));
+  for (const target of [output, report, checkpoint]) if (sources.includes(await identity(target))) throw new Error("retry artifacts must not overwrite a source snapshot");
+  const baseline = snapshots[0]!;
+  const config = scanConfig(baseline.siteUrl, values, baseline);
+  const fetch = requestFetch(values["headers-env"], baseline.siteUrl);
+  const plan = await planRetry(snapshots, {
+    statuses: values.status?.split(",").map(Number), networkErrors: values["retry-network-errors"],
+    config: { ...config, respectRobots: !values["ignore-robots"] }, signal, fetch,
+  });
+  const limit = values.all ? Math.max(1, plan.candidateUrls.length) : plan.config.maxPages;
+  const store = values["no-cache"] ? undefined : createFileCheckpointStore(checkpoint);
+  const renderer = await selectedRenderer(values);
+  const result = await scan(plan, { limit, signal, fetch, checkpointStore: store, resume: !values["no-cache"], retainCheckpoint: true, ...(renderer ? { renderer } : {}) });
+  await writeSnapshot(output, result.snapshot);
+  const issues = audit(result.snapshot);
+  const reportPath = await saveReport({ ...values, report }, reportData(result.snapshot, "scan", issues));
+  if (!result.partial) await store?.clearCurrent();
+  const summary = { command: "retry", sources: inputs, selected: plan.candidateUrls.length, checked: result.pages.length, remaining: Math.max(0, plan.candidateUrls.length - result.pages.length), siteCoverageComplete: false, outcome: retryOutcome(result.pages), partial: result.partial, output, report: reportPath, severity: summarizeIssues(issues) };
+  if (values.json) console.log(JSON.stringify(summary, null, 2));
+  else {
+    console.log(`Retried ${summary.checked} of ${summary.selected} selected failing URL(s). Unchecked pages were not re-evaluated.`);
+    console.log(`Snapshot: ${output}`);
+    if (reportPath) console.log(`Report: ${reportPath}`);
+  }
+  return result.partial ? 130 : 0;
+}
+
 function reportEnabled(values: CliValues, force = false): boolean {
   return force || (!values["no-report"] && (values.report !== undefined || (process.stdin.isTTY && process.stdout.isTTY && !values.json)));
 }
@@ -156,6 +195,7 @@ function mapPage(page: PageSnapshot, fromStart: string, toStart: string): PageSn
 
 function reportData(snapshot: SnapshotV2, mode: "scan" | "check", issues = audit(snapshot), extra: Partial<ReportData> = {}): ReportData {
   return {
+    ...(snapshot.retry ? { retry: snapshot.retry } : {}),
     mode,
     startUrl: snapshot.siteUrl,
     generatedAt: snapshot.generatedAt,

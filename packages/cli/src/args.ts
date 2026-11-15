@@ -2,6 +2,8 @@ import { parseArgs } from "node:util";
 import { resolveConfig, type ScanConfigInput, type ScanConfigV1, type SnapshotV2 } from "@seo-crawl-audit/core";
 
 export interface CliValues {
+  status?: string;
+  "retry-network-errors"?: boolean;
   baseline?: string;
   config?: string;
   output?: string;
@@ -51,6 +53,7 @@ export function parseCliArgs(args: string[]): { values: CliValues; positionals: 
     allowPositionals: true,
     strict: true,
     options: {
+      status: { type: "string" }, "retry-network-errors": { type: "boolean" },
       baseline: { type: "string" }, config: { type: "string" }, output: { type: "string" }, report: { type: "string" },
       "no-report": { type: "boolean" }, "no-cache": { type: "boolean" }, pages: { type: "string" }, all: { type: "boolean" },
       "max-pages": { type: "string" }, concurrency: { type: "string" }, delay: { type: "string" }, timeout: { type: "string" },
