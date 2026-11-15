@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.0 — 2026-11-15
+
+- Add targeted retries from saved snapshots: CLI `retry` and MCP `retryFrom`, `retryStatuses`, `retryNetworkErrors` on the existing plan/scan tools.
+- Retry only observed failing URLs. Preserve queries/slashes, respect robots, skip link/sitemap discovery and bind resumable checkpoints/large-scan confirmations to the selection.
+- Keep sources immutable and save separate subset-labelled artifacts with recovered/still-failing/blocked counts. Unchecked pages are not resolved by comparison.
+- Empty selections make no website requests. Multiple snapshots support existing batched audits.
+
 ## 0.17.5 — 2026-11-14
 
 - resolve audit targets from the active project before asking for a URL; clarify only missing or ambiguous site/app/environment details;

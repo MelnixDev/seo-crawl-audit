@@ -5,6 +5,9 @@ import {
   diff,
   getRuleDefinitions,
   planScan,
+  planRetry,
+  retryOutcome,
+  selectRetryUrls,
   resolveConfig,
   scan,
   ENGINE_VERSION,
@@ -24,7 +27,7 @@ import {
   writeReport,
   writeSnapshot,
 } from "@seo-crawl-audit/core/node";
-import { mkdir } from "node:fs/promises";
+import { mkdir, realpath, stat } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { dirname } from "node:path";
 import { assertRealWorkspacePath, workspacePath, relativeArtifact } from "./paths.js";
@@ -37,6 +40,9 @@ export interface ToolContext {
 }
 
 interface CommonInput {
+  retryFrom?: string | string[] | undefined;
+  retryStatuses?: number[] | undefined;
+  retryNetworkErrors?: boolean | undefined;
   url?: string | undefined;
   config?: string | undefined;
   maxPages?: number | undefined;
@@ -93,6 +99,7 @@ function confirmationId(plan: Awaited<ReturnType<typeof planScan>>, limit: numbe
     trailingSlash: plan.config.trailingSlash,
     maxRedirects: plan.config.maxRedirects,
     maxResponseBytes: plan.config.maxResponseBytes,
+    ...(plan.retry ? { retry: plan.retry } : {}),
   });
   return createHash("sha256").update(identity).digest("hex").slice(0, 24);
 }
@@ -175,6 +182,7 @@ function summary(snapshot: SnapshotV2) {
 
 function reportData(snapshot: SnapshotV2, issues: Issue[], mode: "scan" | "check", extra: Partial<ReportData> = {}): ReportData {
   return {
+    ...(snapshot.retry ? { retry: snapshot.retry } : {}),
     mode,
     startUrl: snapshot.siteUrl,
     generatedAt: snapshot.generatedAt,
@@ -218,15 +226,32 @@ export async function historyTool(context: ToolContext, input: { url?: string | 
   return { trendSummary: summary };
 }
 
-export async function planTool(context: ToolContext, input: CommonInput): Promise<Record<string, unknown>> {
+async function toolPlan(context: ToolContext, input: CommonInput) {
+  if (input.retryFrom !== undefined) {
+    if (input.sitemap !== undefined || input.includeQuery === false || input.trailingSlash === "strip") throw new Error("retry preserves observed URLs and cannot be combined with sitemap or URL-collapsing options");
+    const files = typeof input.retryFrom === "string" ? [input.retryFrom] : input.retryFrom;
+    const snapshots = await Promise.all(files.map(async file => readSnapshot(await localPath(context, file, ""))));
+    selectRetryUrls(snapshots, { statuses: input.retryStatuses, networkErrors: input.retryNetworkErrors });
+    const config = await inputConfig(context, { ...input, sitemap: "none", includeQuery: true, trailingSlash: "preserve" }, snapshots[0]?.siteUrl);
+    return planRetry(snapshots, { statuses: input.retryStatuses, networkErrors: input.retryNetworkErrors, config, signal: context.signal, fetch: requestFetch(input.headersEnv, config.url, context.fetch) });
+  }
+  if (input.retryStatuses !== undefined || input.retryNetworkErrors !== undefined) throw new Error("retry filters require retryFrom");
   const config = await inputConfig(context, input);
-  const fetch = requestFetch(input.headersEnv, config.url, context.fetch);
-  const plan = await planScan(config, { signal: context.signal, fetch });
+  return planScan(config, { signal: context.signal, fetch: requestFetch(input.headersEnv, config.url, context.fetch) });
+}
+
+function retrySummary(plan: Awaited<ReturnType<typeof planScan>>, checked = 0) {
+  return plan.retry ? { retry: { sourceSnapshots: plan.retry.sourceSnapshots, sourcePages: plan.retry.sourcePages, statuses: plan.retry.statuses, networkErrors: plan.retry.networkErrors, selected: plan.retry.urls.length, checked, remaining: Math.max(0, plan.retry.urls.length - checked), siteCoverageComplete: false } } : {};
+}
+
+export async function planTool(context: ToolContext, input: CommonInput): Promise<Record<string, unknown>> {
+  const plan = await toolPlan(context, input);
   return {
     planVersion: plan.planVersion,
     startUrl: plan.startUrl,
     origin: plan.origin,
     mode: plan.mode,
+    ...retrySummary(plan),
     candidateCount: plan.candidateCount,
     robots: { url: plan.robots.url, status: plan.robots.status, error: plan.robots.error, denyAll: plan.robots.denyAll ?? false },
     sitemap: plan.sitemap ? { url: plan.sitemap.url, count: plan.sitemap.urls.length, truncated: plan.sitemap.truncated, error: plan.sitemap.error ?? null } : null,
@@ -235,9 +260,10 @@ export async function planTool(context: ToolContext, input: CommonInput): Promis
 }
 
 export async function scanTool(context: ToolContext, input: ScanToolInput): Promise<Record<string, unknown>> {
-  const config = await inputConfig(context, input);
+  if (input.retryFrom !== undefined && input.fullSitemap) throw new Error("retryFrom cannot be combined with fullSitemap");
+  const plan = await toolPlan(context, input);
+  const config = plan.config;
   const fetch = requestFetch(input.headersEnv, config.url, context.fetch);
-  const plan = await planScan(config, { signal: context.signal, fetch });
   let limit = input.maxPages ?? config.maxPages;
   if (input.fullSitemap) {
     if (plan.mode !== "sitemap" || plan.candidateCount === null) {
@@ -250,9 +276,14 @@ export async function scanTool(context: ToolContext, input: ScanToolInput): Prom
   }
   const preflight = largeScanPreflight(plan, limit, input, "seo_audit_scan");
   if (preflight) return preflight;
-  const output = await localPath(context, input.output, ".seo-audit.json");
-  const report = await localPath(context, input.report, "seo-audit-report.html");
-  const checkpoint = await checkpointPath(context, input.checkpoint, input.headersEnv);
+  const output = await localPath(context, input.output, plan.retry ? ".seo-audit.retry.json" : ".seo-audit.json");
+  const report = await localPath(context, input.report, plan.retry ? "seo-audit-retry.html" : "seo-audit-report.html");
+  const checkpoint = await checkpointPath(context, input.checkpoint ?? (plan.retry ? ".seo-audit.retry.checkpoint.ndjson" : undefined), input.headersEnv);
+  if (input.retryFrom !== undefined) {
+    const identity = async (path: string) => realpath(path).then(async resolved => { const info = await stat(resolved); return `${info.dev}:${info.ino}`; }).catch((error: NodeJS.ErrnoException) => { if (error.code !== "ENOENT") throw error; return path; });
+    const sources = await Promise.all((typeof input.retryFrom === "string" ? [input.retryFrom] : input.retryFrom).map(async file => identity(await localPath(context, file, ""))));
+    for (const target of [output, report, checkpoint]) if (sources.includes(await identity(target))) throw new Error("retry artifacts must not overwrite a source snapshot");
+  }
   await ensureParents(output, report, checkpoint);
   const store = createFileCheckpointStore(checkpoint);
   const result = await scan(plan, {
@@ -267,10 +298,11 @@ export async function scanTool(context: ToolContext, input: ScanToolInput): Prom
   const issues = audit(result.snapshot);
   await writeReport(report, reportData(result.snapshot, issues, "scan"));
   if (!result.partial) await store.clearCurrent();
-  return { ...summary(result.snapshot), startUrl: result.startUrl, artifacts: { snapshot: relativeArtifact(context.root, output), report: relativeArtifact(context.root, report), checkpoint: result.partial ? relativeArtifact(context.root, checkpoint) : null } };
+  return { ...summary(result.snapshot), ...retrySummary(plan, result.snapshot.pages.length), ...(plan.retry ? { outcome: retryOutcome(result.pages) } : {}), startUrl: result.startUrl, artifacts: { snapshot: relativeArtifact(context.root, output), report: relativeArtifact(context.root, report), checkpoint: result.partial ? relativeArtifact(context.root, checkpoint) : null } };
 }
 
 export async function checkTool(context: ToolContext, input: CheckToolInput): Promise<Record<string, unknown>> {
+  if (input.retryFrom !== undefined || input.retryStatuses !== undefined || input.retryNetworkErrors !== undefined) throw new Error("use seo_audit_scan with retryFrom for targeted retries");
   const baselinePath = await localPath(context, input.baseline, ".seo-audit.json");
   const baseline = await readSnapshot(baselinePath);
   const config = await inputConfig(context, input, baseline.siteUrl);

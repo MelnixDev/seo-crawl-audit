@@ -3,6 +3,8 @@ import { diff as diffSnapshots } from "./compare.js";
 import type { DiffResult, Issue, SnapshotV2 } from "./types.js";
 
 export { planScan } from "./planning.js";
+export { planRetry, selectRetryUrls, retryOutcome } from "./retry.js";
+export type { RetryOptions } from "./retry.js";
 export { scan } from "./api.js";
 export { renderReport } from "./html-report.js";
 export { migrateSnapshot } from "./baseline.js";
@@ -53,6 +55,7 @@ export type {
   ScanEvent,
   ScanOptions,
   ScanPlan,
+  RetrySelection,
   ScanResult,
   Severity,
   SiteMetric,

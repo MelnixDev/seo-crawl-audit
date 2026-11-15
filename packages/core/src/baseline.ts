@@ -18,6 +18,7 @@ type ConfigInput = Partial<ScanConfigV1> & { requestDelay?: number };
 
 export interface BaselineInput {
   schemaVersion?: unknown;
+  retry?: SnapshotV2["retry"];
   urlObservationVersion?: 1 | undefined;
   engineVersion?: string;
   ruleSetVersion?: string;
@@ -232,7 +233,7 @@ export function migrateSnapshot(input: unknown): SnapshotV2 {
       statistics: value.statistics,
       linkGraph: value.linkGraph,
     });
-    return { ...migrated, urlObservationVersion: value.urlObservationVersion, engineVersion: value.engineVersion ?? migrated.engineVersion, ruleSetVersion: value.ruleSetVersion ?? migrated.ruleSetVersion };
+    return { ...migrated, ...(value.retry ? { retry: value.retry, truncated: true } : {}), urlObservationVersion: value.urlObservationVersion, engineVersion: value.engineVersion ?? migrated.engineVersion, ruleSetVersion: value.ruleSetVersion ?? migrated.ruleSetVersion };
   }
   if (value.schemaVersion === 1) {
     return { ...createBaseline({ ...value, options: { ...value.options, trailingSlash: value.options?.trailingSlash ?? value.source?.trailingSlash ?? "strip" } }), urlObservationVersion: undefined };

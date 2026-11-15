@@ -46,10 +46,13 @@ test("locks the documented core function surface", () => {
     "getRuleDefinitions",
     "groupIssuesByTemplate",
     "migrateSnapshot",
+    "planRetry",
     "planScan",
     "renderReport",
     "resolveConfig",
+    "retryOutcome",
     "scan",
+    "selectRetryUrls",
     "validateConfig",
   ]);
   const definitions = core.getRuleDefinitions();

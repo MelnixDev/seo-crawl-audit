@@ -1,7 +1,7 @@
 import { ENGINE_VERSION } from "@seo-crawl-audit/core";
 import { loadConfig } from "@seo-crawl-audit/core/node";
 import { parseCliArgs, withFileConfig } from "./args.js";
-import { checkCommand, compareCommand, historyCommand, reportCommand, scanCommand, statusCommand } from "./commands.js";
+import { checkCommand, compareCommand, historyCommand, reportCommand, retryCommand, scanCommand, statusCommand } from "./commands.js";
 import { initCommand } from "./init.js";
 import { doctorCommand } from "./doctor.js";
 import { agentInitCommand } from "./agent-init.js";
@@ -15,6 +15,7 @@ Local-first SEO crawler, audit, and regression checker.
 Usage:
   seo-audit <url> [options]
   seo-audit scan <url> [options]
+  seo-audit retry <snapshot...> [--status 503] [--all] [options]
   seo-audit check [url] [options]
   seo-audit compare --production <url> --preview <url> [options]
   seo-audit history [url] [options]
@@ -29,6 +30,7 @@ Usage:
 Commands:
   <url>   Shortcut for scan.
   scan    Crawl a site and save its SEO baseline.
+  retry   Recheck only HTTP/network failures from saved snapshots; no discovery.
   check   Crawl again and compare with a saved baseline.
   compare Compare a production site with a preview deployment.
   history View local scan trends or compare two saved history snapshots.
@@ -42,6 +44,8 @@ Commands:
 
 Options:
   --baseline <file>       Baseline file for check (default: .seo-audit.json)
+  --status <codes>        Retry only these previous HTTP errors, e.g. 429,503
+  --retry-network-errors Include network failures with a status-filtered retry
   --config <file>         Configuration file (default: seo-audit.config.json)
   --output <file>         Output file for scan (default: .seo-audit.json)
   --report <file>         HTML report path (default: seo-audit-report.html)
@@ -218,12 +222,14 @@ export async function main(
   if ((command === "scan" || command === "check") && !url && values.__config?.url) {
     url = values.__config.url;
   }
-  if (extra.length > 0) {
+  if (extra.length > 0 && command !== "retry") {
     console.error(`Unexpected argument: ${extra[0]}`);
     return 2;
   }
 
   try {
+    if (command === "retry") return await retryCommand([...(url ? [url] : []), ...extra], values, options.signal);
+    if (values.status !== undefined || values["retry-network-errors"] !== undefined) throw new Error("retry filters require the retry command");
     if (command === "scan") return await scanCommand(url, values, options.signal);
     if (command === "check") return await checkCommand(url, values, options.signal);
     if (command === "compare") return await compareCommand(values, options.signal);

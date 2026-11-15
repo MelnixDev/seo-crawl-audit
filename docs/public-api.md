@@ -170,3 +170,7 @@ discarding compatible results.
 The package exposes `@seo-crawl-audit/core/config.schema.json` as well as
 `validateConfig()` and `resolveConfig()`. Resolution order is CLI values,
 config file, saved baseline, then safe defaults.
+
+## Targeted retry (0.18.0)
+
+`selectRetryUrls(snapshots, { statuses?, networkErrors? })` selects observed failures without network access. `planRetry(snapshots, { statuses?, networkErrors?, config?, fetch?, signal? })` refreshes robots only for a nonempty selection and returns a bounded retry plan for `scan`. `retryOutcome(pages)` counts recovered, still-failing and blocked pages. The resulting snapshot carries `retry` provenance and remains a subset (`truncated: true`), even when every selected page completes. See [retry semantics](retry.md).
