@@ -2,6 +2,8 @@
 
 # SEO Crawl Audit
 
+[![Latest release](https://img.shields.io/github/v/release/MelnixDev/seo-crawl-audit)](https://github.com/MelnixDev/seo-crawl-audit/releases/latest)
+
 **Find technical SEO issues. Keep the evidence. Catch regressions.**
 
 A free, open-source, local-first crawler with HTML reports, versioned JSON
