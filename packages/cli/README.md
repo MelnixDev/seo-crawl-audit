@@ -4,7 +4,11 @@
 
 **Find technical SEO issues. Keep the evidence. Catch regressions.**
 
-A free, open-source, local-first crawler with HTML reports, versioned JSON
+**Free for personal and commercial use.** Run audits and generate reports
+without a subscription or credit card. Open source under the
+[MIT license](https://github.com/MelnixDev/seo-crawl-audit/blob/main/LICENSE).
+
+A local-first crawler with HTML reports, versioned JSON
 snapshots and eight MCP tools for Codex, Claude Code and Claude Desktop. Plan a
 bounded crawl, inspect concrete URL findings and compare runs after a deployment.
 No SEO service account or SEO API key is required. Scans default to 100 pages
