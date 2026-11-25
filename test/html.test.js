@@ -46,3 +46,15 @@ test("retains restrictive robots in either order without applying bot-scoped met
   assert.equal(extractSeoData('<meta name="robots" content="noindex"><meta name="robots" content="index">').robots, "noindex, index");
   assert.equal(extractSeoData('<meta name="googlebot" content="noindex"><meta name="robots" content="index">').robots, "index");
 });
+
+test("body word count and visible text are independent of the document title", () => {
+  const body = '<h1>Article heading</h1><p>Two words</p><svg><title>An icon label</title></svg><script>ignored()</script>';
+  const extract = (title) => extractSeoData(`<head><title>${title}</title><meta name="description" content="SEO metadata"></head><body>${body}</body>`);
+  const before = extract("An unnecessarily long document title");
+  const after = extract("A shorter title");
+  assert.notEqual(before.title, after.title);
+  assert.equal(before.visibleText, "Article heading Two words");
+  assert.equal(before.wordCount, 4);
+  assert.equal(after.visibleText, before.visibleText);
+  assert.equal(after.wordCount, before.wordCount);
+});

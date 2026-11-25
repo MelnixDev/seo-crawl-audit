@@ -61,11 +61,12 @@ export function extractSeoData(html: string): ExtractedSeoData {
   };
   const textParts: string[] = [];
 
-  function visit(node: HtmlNode, hidden = false): void {
+  function visit(node: HtmlNode, inBody = false, hidden = false): void {
     const tagName = node.tagName?.toLowerCase();
-    const excludesText = hidden || tagName === "script" || tagName === "style" || tagName === "noscript" || tagName === "template";
+    const bodyContent = inBody || tagName === "body";
+    const excludesText = hidden || tagName === "title" || tagName === "script" || tagName === "style" || tagName === "noscript" || tagName === "template";
 
-    if (node.nodeName === "#text" && !excludesText) {
+    if (node.nodeName === "#text" && bodyContent && !excludesText) {
       const text = cleanText(node.value);
       if (text) textParts.push(text);
     }
@@ -121,7 +122,7 @@ export function extractSeoData(html: string): ExtractedSeoData {
       }
     }
 
-    for (const child of node.childNodes ?? []) visit(child, excludesText);
+    for (const child of node.childNodes ?? []) visit(child, bodyContent, excludesText);
   }
 
   visit(document);

@@ -43,3 +43,33 @@ test('exact duplicate titles of indexable pages are errors; noindex pairs remain
  assert.ok(evaluateCurrentRules(make('index, follow')).filter(i=>i.ruleId==='duplicate-title').every(i=>i.severity==='error'));
  assert.ok(evaluateCurrentRules(make('noindex')).filter(i=>i.ruleId==='duplicate-title').every(i=>i.severity==='warning'));
 });
+
+test('near matches require two-way hreflang evidence before excluding different languages', () => {
+  const a = page('/de/repair', 'NGINX: Ingress Controller 5.8.0 und Gateway Fabric 2.9.0', { lang: 'de-DE' });
+  const b = page('/hu/repair', 'NGINX Ingress Controller 5.8.0 és Gateway Fabric 2.9.0', { lang: 'hu' });
+  const links = (peer, lang) => [{ url: peer.url, lang }];
+
+  assert.equal(evaluateTitleSimilarity([a, b]).length, 1);
+  a.hreflang = links(b, 'hu-HU');
+  assert.equal(evaluateTitleSimilarity([a, b]).length, 1);
+  b.hreflang = links(a, 'fr');
+  assert.equal(evaluateTitleSimilarity([a, b]).length, 1);
+  b.hreflang = links(a, 'de');
+  assert.deepEqual(evaluateTitleSimilarity([a, b]), []);
+
+  const site = createBaseline({ startUrl: 'https://example.com/', pages: [a, { ...b, title: a.title }] });
+  assert.equal(evaluateCurrentRules(site).filter(issue => issue.ruleId === 'duplicate-title' && issue.severity === 'error').length, 2);
+});
+
+test('title length is checked on indexable pages and noindex findings remain separate', () => {
+  const pages = [
+    page('/short', 'Short'),
+    page('/meta', 'Short', { robots: 'noindex, follow' }),
+    page('/header', 'Short', { xRobotsTag: 'googlebot: NOINDEX' }),
+    page('/alias', 'Short', { canonical: 'https://example.com/short' }),
+  ];
+  const issues = evaluateCurrentRules(createBaseline({ startUrl: 'https://example.com/', pages }));
+  assert.deepEqual(issues.filter(issue => issue.ruleId === 'title-length').map(issue => issue.url), [pages[0].url]);
+  assert.ok(issues.some(issue => issue.ruleId === 'noindex' && issue.url === pages[1].url));
+  assert.ok(issues.some(issue => issue.ruleId === 'x-robots-noindex' && issue.url === pages[2].url));
+});

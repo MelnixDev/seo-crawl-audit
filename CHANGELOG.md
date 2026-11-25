@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.1 — 2026-11-25
+
+- Evaluate title length on indexable pages so intentional noindex gateways do not trigger length warnings.
+- Exclude reciprocally linked translations in different languages from fuzzy title matching. Exact duplicate checks still run.
+- Count visible body text without document titles or other head metadata. Advance the rule set to 1.4.0.
+
 ## 0.18.0 — 2026-11-15
 
 - Add targeted retries from saved snapshots: CLI `retry` and MCP `retryFrom`, `retryStatuses`, `retryNetworkErrors` on the existing plan/scan tools.
