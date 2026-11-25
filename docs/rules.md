@@ -131,11 +131,11 @@ Critical (`error`): successful indexable pages with distinct final/self-canonica
 
 ### near-duplicate-title
 
-Warning: titles of 6–40 tokens differ only in punctuation or one token with at least 90% overlap. Owner: `content`. Deterministic candidate search is bounded to 20 candidates per signature, not exhaustive semantic comparison. Exact duplicates use `duplicate-title`; correctly differentiated same-family pagination is excluded from fuzzy review. Both new rules exclude noindex, blocked, failed, non-200 and non-self-canonical pages. Similarity alone does not prove duplicate content or indexing exclusion.
+Warning: titles of 6–40 tokens differ only in punctuation or one token with at least 90% overlap. Owner: `content`. Deterministic candidate search is bounded to 20 candidates per signature, not exhaustive semantic comparison. Exact duplicates use `duplicate-title`; correctly differentiated same-family pagination is excluded from fuzzy review. Reciprocally linked translations in different languages are excluded from fuzzy review when the hreflang labels agree with the documents. Exact duplicate checks still run. Both rules exclude noindex, blocked, failed, non-200 and non-self-canonical pages. Similarity alone does not prove duplicate content or indexing exclusion.
 
 ### title-length
 
-The title is shorter than 10 or longer than 60 characters. Owner: `content`.
+An indexable page has a title shorter than 10 or longer than 60 characters. Owner: `content`.
 Treat the range as a review signal, not a guarantee of search rendering.
 
 ### missing-description
@@ -196,7 +196,7 @@ text, or an empty attribute for decorative images.
 
 ### low-word-count
 
-The page has fewer than 200 visible words. Owner: `content`. This is only a
+The page has fewer than 200 words in its visible body text. The document title and other head metadata are excluded. Owner: `content`. This is only a
 review prompt; concise pages can be entirely appropriate.
 
 ### missing-open-graph

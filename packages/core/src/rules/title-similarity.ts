@@ -15,6 +15,22 @@ function family(page: PageSnapshot): string {
   for (const key of ["page", "paged", "p"]) url.searchParams.delete(key);
   url.searchParams.sort(); return url.href;
 }
+function language(tag: string | null): string | undefined {
+  if (!tag) return undefined;
+  try {
+    return new Intl.Locale(tag).language;
+  } catch {
+    return undefined;
+  }
+}
+function areLinkedTranslations(page: PageSnapshot, peer: PageSnapshot): boolean {
+  if (!page.hreflang?.length || !peer.hreflang?.length) return false;
+  const pageLanguage = language(page.lang);
+  const peerLanguage = language(peer.lang);
+  if (!pageLanguage || !peerLanguage || pageLanguage === peerLanguage) return false;
+  return page.hreflang.some((alternate) => alternate.url === peer.url && language(alternate.lang) === peerLanguage)
+    && peer.hreflang.some((alternate) => alternate.url === page.url && language(alternate.lang) === pageLanguage);
+}
 /** Bounded candidate search, not exhaustive semantic similarity. */
 export function evaluateTitleSimilarity(pages: PageSnapshot[]): Issue[] {
   const issues: Issue[] = [];
@@ -30,7 +46,7 @@ export function evaluateTitleSimilarity(pages: PageSnapshot[]): Issue[] {
     const matches = new Map<string, PageSnapshot>();
     for (const signature of signatures) {
       for (const peer of candidates.get(signature) ?? []) {
-        if (peer.title!.trim().toLowerCase() === page.title!.trim().toLowerCase() || family(peer) === base) continue;
+        if (peer.title!.trim().toLowerCase() === page.title!.trim().toLowerCase() || family(peer) === base || areLinkedTranslations(page, peer)) continue;
         const other = normalize(peer.title!).split(" ");
         const shared = tokens.filter((token) => other.includes(token)).length;
         if (2 * shared / (tokens.length + other.length) >= 0.9) matches.set(peer.url, peer);

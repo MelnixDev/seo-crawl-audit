@@ -71,7 +71,7 @@ export function evaluateCurrentRules(snapshot: SnapshotV2): Issue[] {
         if (critical) issue.severity = "error";
         add(issue);
       }
-      if (page.title.length < 10 || page.title.length > 60) add(createIssue("title-length", page.url, `Title length is ${page.title.length} characters`, { actual: page.title.length, value: page.title }));
+      if (indexableTitlePage(page) && (page.title.length < 10 || page.title.length > 60)) add(createIssue("title-length", page.url, `Title length is ${page.title.length} characters`, { actual: page.title.length, value: page.title }));
     }
     if (!page.description) add(createIssue("missing-description", page.url, "Page does not have a meta description", { actual: null }));
     else {

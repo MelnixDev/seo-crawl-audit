@@ -37,8 +37,8 @@ npx seo-crawl-audit retry baseline.json --status 503 --all --output retry.json
 
 Omit `--status` to select previous HTTP 400–599 and network failures. The default budget remains 100; `--all` explicitly selects the entire failure set. Output is a separate, subset-labelled snapshot/report, and source snapshots are preserved. [Retry guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/retry.md).
 
-Current release: **0.18.0**, including targeted retries of failed URLs. See the
-[release notes](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/releases/0.18.0.md) for exact verification and limitations.
+Current release: **0.18.1**, with more precise title and body text findings. See the
+[release notes](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/releases/0.18.1.md) for exact verification and limitations.
 No public directory listing or client endorsement is implied. The CLI remains
 available through npm; its [quick start](#requirements-and-installation) is below.
 
@@ -626,7 +626,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: MelnixDev/seo-crawl-audit@v0.18.0
+      - uses: MelnixDev/seo-crawl-audit@v0.18.1
         id: seo
         with:
           url: https://preview.example.com/
