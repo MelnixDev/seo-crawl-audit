@@ -38,7 +38,7 @@ check() {
 
 for path in / /plugins/ /demo/ /report.html /regression-demo/failed.html /regression-demo/passed.html \
     /site.css /agent-prompt.js /plugins/installation-prompts.js /media/logo.png \
-    /media/native-report-pages.png /robots.txt /sitemap.xml; do
+    /media/native-report-pages.png /media/regression-demo-noindex.webp /robots.txt /sitemap.xml; do
   check 200 "$path"
 done
 

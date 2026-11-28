@@ -13,6 +13,7 @@ for (const path of [
   'media/CLIENT-ICONS-LICENSE.txt', 'media/native-demo-report.html',
   'media/native-report-pages.png', 'media/native-report-issues.png',
   'media/native-report-overview.png', 'media/native-workflow.mp4',
+  'media/regression-demo-noindex.webp',
 ]) {
   await cp(resolve(sourceRoot, path), resolve(output, path));
 }
