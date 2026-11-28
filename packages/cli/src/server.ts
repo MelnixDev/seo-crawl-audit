@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { spawn } from "node:child_process";
 import { readFile, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   audit,
   buildHistorySeries,
@@ -73,6 +74,9 @@ export interface BrowserLaunchCommand {
 
 export function browserLaunchCommand(url: string, platform = process.platform): BrowserLaunchCommand {
   if (platform === "darwin") return { command: "open", args: [url] };
+  if (platform === "win32" && url.startsWith("file:")) {
+    return { command: "explorer.exe", args: [fileURLToPath(url, { windows: true })] };
+  }
   if (platform === "win32") return { command: "cmd", args: ["/c", "start", "", url] };
   return { command: "xdg-open", args: [url] };
 }

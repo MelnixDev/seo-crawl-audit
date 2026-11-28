@@ -440,6 +440,10 @@ test("serve opens the local URL with a platform-appropriate browser command", as
     command: "cmd",
     args: ["/c", "start", "", "http://127.0.0.1:4179/"],
   });
+  assert.deepEqual(browserLaunchCommand("file:///C:/Demo%20Reports/a%26b.html", "win32"), {
+    command: "explorer.exe",
+    args: ["C:\\Demo Reports\\a&b.html"],
+  });
   assert.deepEqual(browserLaunchCommand("http://127.0.0.1:4179/", "linux"), {
     command: "xdg-open",
     args: ["http://127.0.0.1:4179/"],
