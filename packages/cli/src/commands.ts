@@ -463,13 +463,17 @@ export async function checkCommand(url: string | undefined, values: CliValues, s
   return summary.error > 0 || comparison.budgetExceeded.length > 0 || (values.strict && summary.warning > 0) ? 1 : 0;
 }
 
-export async function compareCommand(values: CliValues, signal?: AbortSignal): Promise<number> {
+export async function compareCommand(
+  values: CliValues,
+  signal?: AbortSignal,
+  fixtureFetch?: typeof globalThis.fetch,
+): Promise<number> {
   validateRendererMode(values);
   const productionUrl = values.production;
   const previewUrl = values.preview;
   if (!productionUrl || !previewUrl) throw new Error("compare requires --production and --preview URLs");
-  const productionFetch = requestFetch(values["production-headers-env"], productionUrl);
-  const previewFetch = requestFetch(values["preview-headers-env"], previewUrl);
+  const productionFetch = fixtureFetch ?? requestFetch(values["production-headers-env"], productionUrl);
+  const previewFetch = fixtureFetch ?? requestFetch(values["preview-headers-env"], previewUrl);
 
   const productionPlan = await planScan(scanConfig(productionUrl, values), { signal, fetch: productionFetch });
   const selection = await selectScan(productionPlan, values);
@@ -543,10 +547,14 @@ export async function compareCommand(values: CliValues, signal?: AbortSignal): P
   });
   const issues = comparison.newIssues;
   const summary = summarizeIssues(issues);
-  const report = await saveReport(values, await reportDataWithMetrics(current, "check", issues, resolve(DEFAULT_BASELINE), {
+  const reportDetails = {
     ...comparison,
-    comparison: { kind: "preview", productionUrl, previewUrl },
-  }), true);
+    comparison: { kind: "preview" as const, productionUrl, previewUrl },
+  };
+  const data = fixtureFetch
+    ? reportData(current, "check", issues, reportDetails)
+    : await reportDataWithMetrics(current, "check", issues, resolve(DEFAULT_BASELINE), reportDetails);
+  const report = await saveReport(values, data, true);
   if (values.json) {
     console.log(JSON.stringify({ command: "compare", production: productionUrl, preview: previewUrl, pages: current.pages.length, summary, issues, lifecycle: comparison, report }, null, 2));
   } else {

@@ -6,7 +6,7 @@ results to a project-owned server.
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  - uses: MelnixDev/seo-crawl-audit@v0.17.4
+  - uses: MelnixDev/seo-crawl-audit@v0.19.0
     id: seo
     with:
       url: https://preview.example.com/
@@ -15,6 +15,7 @@ steps:
       fail-on: error
       report: seo-audit-report.html
   - uses: actions/upload-artifact@v4
+    if: always()
     with:
       name: seo-crawl-audit-report
       path: |
@@ -40,11 +41,26 @@ The Action uses only the public core root and `/node` file adapters. A partial
 scan produces an incomplete comparison: regressions found on checked pages are
 kept, but unchecked pages are not marked resolved or missing.
 
-Use `MelnixDev/seo-crawl-audit@v0.17.4` for this versioned Action release.
+Use `MelnixDev/seo-crawl-audit@v0.19.0` for this versioned Action release.
 The moving `v0` alias is maintained separately; this release does not move it. The Action bundle is committed to the
 repository and is not published as a separate npm package.
 
 ## Generate a workflow
+
+From the repository for the site you maintain, replace the example URL with
+your production site and run:
+
+```bash
+npx seo-crawl-audit init https://example.com/ --workflow pull-request --yes
+npx seo-crawl-audit scan https://example.com/ --pages 100
+```
+
+Review the generated workflow and baseline before committing them. Set the
+repository variable `SEO_AUDIT_PREVIEW_URL` for a shared preview. If your
+provider gives each pull request its own URL, run the check after the preview
+is ready and pass the deployment job’s URL output to the Action’s `url` input.
+Use a preview that reflects the SEO settings intended for production.
+
 
 `seo-audit init` can create `.github/workflows/seo-audit.yml` without copying
 YAML by hand:

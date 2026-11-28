@@ -15,7 +15,7 @@ No SEO service account or SEO API key is required. Scans default to 100 pages
 and respect robots.txt.
 
 [Product website](https://melnixdev.github.io/seo-crawl-audit/) ·
-[Explore the example report](https://melnixdev.github.io/seo-crawl-audit/demo/) ·
+[See a failing SEO check](https://melnixdev.github.io/seo-crawl-audit/#regression-demo) ·
 [Choose your installation](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/native-plugins.md) ·
 [CLI quick start](#requirements-and-installation)
 
@@ -37,8 +37,8 @@ npx seo-crawl-audit retry baseline.json --status 503 --all --output retry.json
 
 Omit `--status` to select previous HTTP 400–599 and network failures. The default budget remains 100; `--all` explicitly selects the entire failure set. Output is a separate, subset-labelled snapshot/report, and source snapshots are preserved. [Retry guide](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/retry.md).
 
-Current release: **0.18.1**, with more precise title and body text findings. See the
-[release notes](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/releases/0.18.1.md) for exact verification and limitations.
+Current release: **0.19.0**, with an offline SEO regression demo. See the
+[release notes](https://github.com/MelnixDev/seo-crawl-audit/blob/main/docs/releases/0.19.0.md) for exact verification and limitations.
 No public directory listing or client endorsement is implied. The CLI remains
 available through npm; its [quick start](#requirements-and-installation) is below.
 
@@ -149,6 +149,16 @@ remediation.
 ## Requirements and installation
 
 Node.js 20.19 or newer is required.
+
+Try the demo before scanning your own site:
+
+```bash
+npx seo-crawl-audit demo
+```
+
+The demo compares a fictional production site with a preview that adds
+`noindex` to its pricing page, then checks the repaired preview. It saves two
+self-contained HTML reports. Use `--no-open` in scripts or CI.
 
 Run without installing:
 
@@ -626,7 +636,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: MelnixDev/seo-crawl-audit@v0.18.1
+      - uses: MelnixDev/seo-crawl-audit@v0.19.0
         id: seo
         with:
           url: https://preview.example.com/
@@ -635,6 +645,7 @@ jobs:
           fail-on: error
           report: seo-audit-report.html
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: seo-crawl-audit-report
           path: |

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.19.0 — 2026-11-28
+
+- Add an offline `seo-audit demo` with a before-and-after preview comparison and two local HTML reports.
+
 ## 0.18.1 — 2026-11-25
 
 - Evaluate title length on indexable pages so intentional noindex gateways do not trigger length warnings.

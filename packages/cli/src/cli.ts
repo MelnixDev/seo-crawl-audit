@@ -1,3 +1,4 @@
+import { demoCommand } from "./demo.js";
 import { ENGINE_VERSION } from "@seo-crawl-audit/core";
 import { loadConfig } from "@seo-crawl-audit/core/node";
 import { parseCliArgs, withFileConfig } from "./args.js";
@@ -18,6 +19,7 @@ Usage:
   seo-audit retry <snapshot...> [--status 503] [--all] [options]
   seo-audit check [url] [options]
   seo-audit compare --production <url> --preview <url> [options]
+  seo-audit demo [--directory <new-directory>] [--no-open]
   seo-audit history [url] [options]
   seo-audit status [snapshot] [options]
   seo-audit report [baseline] [options]
@@ -33,6 +35,7 @@ Commands:
   retry   Recheck only HTTP/network failures from saved snapshots; no discovery.
   check   Crawl again and compare with a saved baseline.
   compare Compare a production site with a preview deployment.
+  demo    Run an offline production-to-preview comparison and open its report.
   history View local scan trends or compare two saved history snapshots.
   status  Inspect the local snapshot and resumable checkpoint.
   report  Generate HTML from an existing baseline without crawling.
@@ -75,7 +78,7 @@ Options:
   --no-history            Do not save this scan to local history
   --from <snapshot>        Older history snapshot for an explicit comparison
   --to <snapshot>          Newer history snapshot for an explicit comparison
-  --directory <path>       Project directory for init or doctor
+  --directory <path>       Project directory for init/doctor or new demo output directory
   --workflow <mode>        Init workflow: none, manual, scheduled, or pull-request
   --yes                    Accept safe init defaults without prompting
   --force                  Allow init to replace existing generated files
@@ -172,6 +175,20 @@ export async function main(
     if (values.version) { console.log(ENGINE_VERSION); return 0; }
     try { return await statusCommand(positionals[1], values); }
     catch (error) { console.error(`seo-audit: ${error instanceof Error ? error.message : String(error)}`); return 2; }
+  }
+  if (positionals[0] === "demo") {
+    if (values.help) { console.log(HELP); return 0; }
+    if (values.version) { console.log(ENGINE_VERSION); return 0; }
+    if (positionals.length > 1) {
+      console.error(`Unexpected argument: ${positionals[1]}`);
+      return 2;
+    }
+    try {
+      return await demoCommand(values, options.signal);
+    } catch (error) {
+      console.error(`seo-audit: ${error instanceof Error ? error.message : String(error)}`);
+      return options.signal?.aborted ? 130 : 2;
+    }
   }
   if (positionals[0] === "serve") {
     if (positionals.length > 2) { console.error(`Unexpected argument: ${positionals[2]}`); return 2; }

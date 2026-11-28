@@ -2,10 +2,37 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { mkdtemp, readFile, readdir } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main, parseScanMenuSelection } from "../packages/cli/dist/cli.js";
+
+test("demo produces separate failed and passing preview reports offline", async (context) => {
+  const scratch = await mkdtemp(join(tmpdir(), "seo-audit-preview-demo-test-"));
+  context.after(() => rm(scratch, { recursive: true, force: true }));
+  const output = join(scratch, "reports");
+  context.mock.method(console, "log", () => {});
+  context.mock.method(console, "error", () => {});
+  context.mock.method(globalThis, "fetch", () => {
+    assert.fail("demo must use local fixtures");
+  });
+
+  assert.equal(await main(["demo", "--directory", output, "--no-open"]), 0);
+  const [failed, passed] = await Promise.all([
+    readFile(join(output, "failed.html"), "utf8"),
+    readFile(join(output, "passed.html"), "utf8"),
+  ]);
+  const regression = "Page now contains a noindex directive";
+  assert.ok(failed.includes(regression));
+  assert.ok(failed.includes("https://preview.store.example/"));
+  assert.ok(failed.includes("/pricing"));
+  assert.ok(!passed.includes(regression));
+  assert.equal(await main(["demo", "--directory", output, "--no-open"]), 2);
+  assert.equal(await readFile(join(output, "failed.html"), "utf8"), failed);
+  assert.equal(await main(["demo", "unexpected"]), 2);
+  assert.equal(await main(["demo", "--help"]), 0);
+  assert.equal(await main(["demo", "--version"]), 0);
+});
 
 test("scan creates a baseline and check fails on a new noindex", async (context) => {
   let noindex = false;
@@ -153,7 +180,7 @@ test("--version prints the package version", async (context) => {
   });
 
   assert.equal(await main(["--version"]), 0);
-  assert.deepEqual(messages, ["0.18.1"]);
+  assert.deepEqual(messages, ["0.19.0"]);
 });
 
 test("--delay rejects negative values before crawling", async (context) => {
