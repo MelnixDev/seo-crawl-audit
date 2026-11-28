@@ -1,0 +1,31 @@
+name: SEO Crawl Audit pilot
+description: Share how the first audit and a repeat run went on one project.
+title: "Pilot: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This report is public. Share one issue per project and update that issue after a repeat run. Use a project nickname if you prefer. Keep private URLs, snapshots, credentials and customer data out of the issue.
+  - type: input
+    id: project
+    attributes:
+      label: Project name, public repository, or nickname
+      description: Use the same project identifier when you update this report.
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Furthest step reached
+      options:
+        - Opened the example report
+        - Ran the local demo
+        - Ran the first check on my project
+        - Ran a repeat check on a later change or deployment
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: What worked or got in the way?
+      description: Tell us which command or setup step you reached and what you expected to see. When reporting a repeat check, include the approximate dates of both runs.

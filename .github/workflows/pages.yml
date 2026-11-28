@@ -8,6 +8,10 @@ on:
       - .github/workflows/pages.yml
       - docs/site/**
       - scripts/prepare-pages.mjs
+      - scripts/qa/check-production-security.sh
+      - packages/cli/bundle/cli.js
+  schedule:
+    - cron: '17 5 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -16,6 +20,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'schedule'
     permissions:
       contents: read
       pages: read
@@ -45,3 +50,14 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+  security-smoke:
+    needs: deploy
+    if: always() && (github.event_name == 'schedule' || needs.deploy.result == 'success')
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check production Pages responses
+        run: bash scripts/qa/check-production-security.sh
